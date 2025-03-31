@@ -942,6 +942,17 @@ export function calculateFinalPrice(
   return Math.round(product.basePrice * (1 + totalMultiplier));
 }
 
+export function calculateFinalCost(currentMix: string[]): number {
+  let totalCost = 0;
+  currentMix.forEach((substanceName) => {
+    const substance = substances.find((s) => s.name === substanceName);
+    if (substance) {
+      totalCost += substance.cost;
+    }
+  });
+  return Math.round(totalCost);
+}
+
 // Function to apply a substance’s rules to the current list of effects.
 export function applySubstanceRules(
   currentEffects: string[],

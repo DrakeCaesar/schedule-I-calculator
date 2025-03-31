@@ -3,6 +3,7 @@
 import { currentMix, currentProduct } from ".";
 import {
   applySubstanceRules,
+  calculateFinalCost,
   calculateFinalPrice,
   substances,
 } from "./substances";
@@ -50,13 +51,18 @@ export function updateResult() {
     }
   }
   const finalPrice = calculateFinalPrice("Weed", effectsList);
+  const finalCost = calculateFinalCost(currentMix);
   const finalEffectsEl = document.getElementById("finalEffects");
   const finalPriceEl = document.getElementById("finalPrice");
+  const finalCostEl = document.getElementById("finalCost");
   if (finalEffectsEl) {
     finalEffectsEl.textContent = "Effects: " + effectsList.join(", ");
   }
   if (finalPriceEl) {
     finalPriceEl.textContent = "Price: $" + finalPrice.toFixed(2);
+  }
+  if (finalCostEl) {
+    finalCostEl.textContent = "Cost: $" + finalCost.toFixed(2);
   }
 }
 
