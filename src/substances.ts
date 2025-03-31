@@ -70,6 +70,8 @@ interface SubstanceRule {
 interface Substance {
   name: string;
   // Default effect to add after rules (or if not already present)
+  cost: number;
+  // The purchase cost of the substance
   defaultEffect: string;
   // Pricing adjustments (for display, etc.)
   pricing: { [key: string]: number };
@@ -81,6 +83,7 @@ interface Substance {
 export const substances: Substance[] = [
   {
     name: "Cuke",
+    cost: 2,
     defaultEffect: "Energizing",
     pricing: { Weed: 43, Meth: 85, Cocaine: 183 },
     rules: [
@@ -136,6 +139,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Flu Medicine",
+    cost: 5,
     defaultEffect: "Sedating",
     pricing: { Weed: 44, Meth: 88, Cocaine: 189 },
     rules: [
@@ -203,6 +207,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Gasoline",
+    cost: 5,
     defaultEffect: "Toxic",
     pricing: { Weed: 35, Meth: 70, Cocaine: 150 },
     rules: [
@@ -283,6 +288,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Donut",
+    cost: 3,
     defaultEffect: "Calorie-Dense",
     pricing: { Weed: 45, Meth: 90, Cocaine: 192 },
     rules: [
@@ -326,6 +332,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Energy Drink",
+    cost: 6,
     defaultEffect: "Athletic",
     pricing: { Weed: 46, Meth: 92, Cocaine: 198 },
     rules: [
@@ -387,6 +394,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Mouth Wash",
+    cost: 4,
     defaultEffect: "Balding",
     pricing: { Weed: 46, Meth: 91, Cocaine: 195 },
     rules: [
@@ -418,6 +426,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Motor Oil",
+    cost: 6,
     defaultEffect: "Slippery",
     pricing: { Weed: 47, Meth: 94, Cocaine: 201 },
     rules: [
@@ -462,6 +471,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Banana",
+    cost: 2,
     defaultEffect: "Gingeritis",
     pricing: { Weed: 42, Meth: 84, Cocaine: 180 },
     rules: [
@@ -524,6 +534,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Chili",
+    cost: 7,
     defaultEffect: "Spicy",
     pricing: { Weed: 48, Meth: 97, Cocaine: 207 },
     rules: [
@@ -567,6 +578,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Iodine",
+    cost: 8,
     defaultEffect: "Jennerising",
     pricing: { Weed: 50, Meth: 99, Cocaine: 213 },
     rules: [
@@ -610,6 +622,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Paracetamol",
+    cost: 3,
     defaultEffect: "Sneaky",
     pricing: { Weed: 43, Meth: 87, Cocaine: 186 },
     rules: [
@@ -684,6 +697,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Viagra",
+    cost: 4,
     defaultEffect: "Tropic Thunder",
     pricing: { Weed: 51, Meth: 102, Cocaine: 219 },
     rules: [
@@ -715,6 +729,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Horse Semen",
+    cost: 9,
     defaultEffect: "Long Faced",
     pricing: { Weed: 53, Meth: 106, Cocaine: 228 },
     rules: [
@@ -740,6 +755,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Mega Bean",
+    cost: 7,
     defaultEffect: "Foggy",
     pricing: { Weed: 48, Meth: 95, Cocaine: 204 },
     rules: [
@@ -820,6 +836,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Addy",
+    cost: 9,
     defaultEffect: "Thought-Provoking",
     pricing: { Weed: 50, Meth: 101, Cocaine: 216 },
     rules: [
@@ -857,6 +874,7 @@ export const substances: Substance[] = [
   },
   {
     name: "Battery",
+    cost: 8,
     defaultEffect: "Bright-Eyed",
     pricing: { Weed: 49, Meth: 98, Cocaine: 210 },
     rules: [
