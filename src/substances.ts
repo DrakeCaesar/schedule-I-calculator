@@ -927,15 +927,12 @@ export function calculateFinalPrice(
 // Function to apply a substance’s rules to the current list of effects.
 export function applySubstanceRules(
   currentEffects: string[],
-  substance: Substance
+  substance: Substance,
+  recipeLength: number
 ): string[] {
   // Convert input array to Set for more efficient operations
   let ogEffects = new Set(currentEffects);
   let newEffects = new Set(currentEffects);
-
-  // if (substance.name === "Donut") {
-  //   ogEffects.add(substance.defaultEffect);
-  // }
 
   // Apply each rule in order
   for (const rule of substance.rules) {
@@ -974,11 +971,14 @@ export function applySubstanceRules(
   }
 
   // Ensure default effect is present
-  console.log(`Adding default effect ${substance.defaultEffect}`);
-  // if not dunut
-  // if (substance.name !== "Donut") {
-  newEffects.add(substance.defaultEffect);
-  // }
+
+  if (recipeLength < 8) {
+    console.log(`Adding default effect ${substance.defaultEffect}`);
+
+    newEffects.add(substance.defaultEffect);
+  } else {
+    console.log("Skipping default effect addition due to recipe length");
+  }
 
   // Convert back to array for return
   return Array.from(newEffects);

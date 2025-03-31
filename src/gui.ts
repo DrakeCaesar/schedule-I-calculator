@@ -41,12 +41,14 @@ export function updateMixListUI() {
 export function updateResult() {
   let effectsList = [currentProduct.initialEffect];
   // Process each additive in order.
-  currentMix.forEach((substanceName) => {
+  let recipeLength = 0;
+  for (const substanceName of currentMix) {
+    recipeLength++;
     const substance = substances.find((s) => s.name === substanceName);
     if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance);
+      effectsList = applySubstanceRules(effectsList, substance, recipeLength);
     }
-  });
+  }
   const finalPrice = calculateFinalPrice("Weed", effectsList);
   const finalEffectsEl = document.getElementById("finalEffects");
   const finalPriceEl = document.getElementById("finalPrice");

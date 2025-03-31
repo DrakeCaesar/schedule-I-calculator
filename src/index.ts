@@ -6,47 +6,12 @@ import {
   onTrashDrop,
   updateProductDisplay,
 } from "./gui";
-import {
-  applySubstanceRules,
-  calculateFinalPrice,
-  substances,
-} from "./substances";
+import { calculateFinalPrice, substances } from "./substances";
 
 // ----- Example Usage -----
 // Start with an initial effect "Energizing"
 let currentEffects = ["Energizing"];
 console.log("Initial Effects:", currentEffects);
-
-// Suppose we add "Mega Bean" to our mix
-const megaBean = substances.find((sub) => sub.name === "Motor Oil");
-if (megaBean) {
-  currentEffects = applySubstanceRules(currentEffects, megaBean);
-  console.log("Effects after applying Motor Oil:", currentEffects);
-}
-
-const cuke = substances.find((sub) => sub.name === "Cuke");
-if (cuke) {
-  currentEffects = applySubstanceRules(currentEffects, cuke);
-  console.log("Effects after applying Cuke:", currentEffects);
-}
-
-if (cuke) {
-  currentEffects = applySubstanceRules(currentEffects, cuke);
-  console.log("Effects after applying Cuke:", currentEffects);
-}
-
-//donut
-const donut = substances.find((sub) => sub.name === "Donut");
-if (donut) {
-  currentEffects = applySubstanceRules(currentEffects, donut);
-  console.log("Effects after applying Donut:", currentEffects);
-}
-//banana
-const banana = substances.find((sub) => sub.name === "Banana");
-if (banana) {
-  currentEffects = applySubstanceRules(currentEffects, banana);
-  console.log("Effects after applying Banana:", currentEffects);
-}
 
 // Calculate final price for a product (e.g., Weed) using the resulting effects
 const finalPrice = calculateFinalPrice("Weed", currentEffects);
