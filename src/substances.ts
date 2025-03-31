@@ -957,9 +957,11 @@ export function applySubstanceRules(
       }
     }
   });
-  // Add the substance's default effect if it isn't already included
+
+  // Add default effect if not present
   if (!updatedEffects.includes(substance.defaultEffect)) {
     updatedEffects.push(substance.defaultEffect);
   }
-  return [...new Set(updatedEffects)]; // Remove any duplicates
+
+  return [...new Set(updatedEffects)];
 }

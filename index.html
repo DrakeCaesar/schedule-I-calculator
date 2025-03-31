@@ -2,12 +2,138 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Game Web Calculator</title>
+    <title>Mix Calculator</title>
+    <style>
+      /* Basic layout & style */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        height: 100vh;
+      }
+      #sidebar {
+        width: 200px;
+        border-right: 1px solid #ccc;
+        padding: 10px;
+        overflow-y: auto;
+      }
+      #main {
+        flex: 1;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      /* Additive items in the sidebar */
+      .draggable {
+        padding: 5px;
+        border: 1px solid #ccc;
+        margin-bottom: 5px;
+        cursor: grab;
+        background: #f9f9f9;
+        text-align: center;
+      }
+      /* Product selection area */
+      #productSelection label {
+        display: block;
+        margin-bottom: 5px;
+        cursor: pointer;
+      }
+      /* The mix area (drop zone) */
+      #mixZone {
+        border: 2px dashed #ccc;
+        padding: 10px;
+        margin-top: 10px;
+        min-height: 200px;
+      }
+      #mixZone ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+      #mixZone li {
+        padding: 5px;
+        border: 1px solid #aaa;
+        margin-bottom: 4px;
+        background: #eee;
+        cursor: grab;
+      }
+      /* Trash area for removal */
+      #trash {
+        border: 2px dashed red;
+        padding: 10px;
+        margin-top: 10px;
+        text-align: center;
+        color: red;
+      }
+      /* Results section */
+      #result {
+        margin-top: 10px;
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Game Web Calculator</h1>
-    <div id="calculator">
-      <p>Open the console to see sample outputs.</p>
+    <div id="sidebar">
+      <h3>Additives</h3>
+      <div id="additivesList">
+        <!-- Draggable additives will be inserted here -->
+      </div>
+    </div>
+    <div id="main">
+      <h2>Choose Your Starting Product</h2>
+      <div id="productSelection">
+        <label>
+          <input
+            type="radio"
+            name="product"
+            value="OG Kush"
+            data-initial="Calming"
+            checked
+          />
+          Weed - OG Kush - Calming
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="product"
+            value="Sour Diesel"
+            data-initial="Refreshing"
+          />
+          Weed - Sour Diesel - Refreshing
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="product"
+            value="Green Crack"
+            data-initial="Energizing"
+          />
+          Weed - Green Crack - Energizing
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="product"
+            value="Granddaddy Purple"
+            data-initial="Sedating"
+          />
+          Weed - Granddaddy Purple - Sedating
+        </label>
+      </div>
+      <h2>Your Mix</h2>
+      <div id="mixZone">
+        <div id="productDisplay"></div>
+        <ul id="mixList">
+          <!-- Dropped additives will appear here -->
+        </ul>
+      </div>
+      <div id="result">
+        <h3>Result</h3>
+        <p id="finalEffects">Effects:</p>
+        <p id="finalPrice">Price:</p>
+      </div>
+      <div id="trash">Drag here to remove</div>
     </div>
     <script src="/src/index.ts" type="module"></script>
   </body>
