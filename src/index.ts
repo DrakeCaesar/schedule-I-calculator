@@ -30,6 +30,24 @@ if (cuke) {
   console.log("Effects after applying Cuke:", currentEffects);
 }
 
+if (cuke) {
+  currentEffects = applySubstanceRules(currentEffects, cuke);
+  console.log("Effects after applying Cuke:", currentEffects);
+}
+
+//donut
+const donut = substances.find((sub) => sub.name === "Donut");
+if (donut) {
+  currentEffects = applySubstanceRules(currentEffects, donut);
+  console.log("Effects after applying Donut:", currentEffects);
+}
+//banana
+const banana = substances.find((sub) => sub.name === "Banana");
+if (banana) {
+  currentEffects = applySubstanceRules(currentEffects, banana);
+  console.log("Effects after applying Banana:", currentEffects);
+}
+
 // Calculate final price for a product (e.g., Weed) using the resulting effects
 const finalPrice = calculateFinalPrice("Weed", currentEffects);
 console.log("Final Price for Weed:", finalPrice);

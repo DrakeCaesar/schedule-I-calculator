@@ -933,6 +933,10 @@ export function applySubstanceRules(
   let ogEffects = new Set(currentEffects);
   let newEffects = new Set(currentEffects);
 
+  // if (substance.name === "Donut") {
+  //   ogEffects.add(substance.defaultEffect);
+  // }
+
   // Apply each rule in order
   for (const rule of substance.rules) {
     // Check if all conditions are met
@@ -944,7 +948,7 @@ export function applySubstanceRules(
       : true;
     if (conditionsMet && exclusionsMet) {
       if (rule.type === "replace" && rule.withEffect) {
-        if (newEffects.has(rule.target)) {
+        if (newEffects.has(rule.target) && !newEffects.has(rule.withEffect)) {
           console.log(
             `Replacing ${rule.target} with ${rule.withEffect} for ${substance.name}`
           );
@@ -971,7 +975,10 @@ export function applySubstanceRules(
 
   // Ensure default effect is present
   console.log(`Adding default effect ${substance.defaultEffect}`);
+  // if not dunut
+  // if (substance.name !== "Donut") {
   newEffects.add(substance.defaultEffect);
+  // }
 
   // Convert back to array for return
   return Array.from(newEffects);
