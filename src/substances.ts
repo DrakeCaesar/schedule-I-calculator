@@ -921,7 +921,7 @@ export function calculateFinalPrice(
       totalMultiplier += effects[effectName].multiplier;
     }
   });
-  return product.basePrice * (1 + totalMultiplier);
+  return Math.round(product.basePrice * (1 + totalMultiplier));
 }
 
 // Function to apply a substance’s rules to the current list of effects.
@@ -941,10 +941,14 @@ export function applySubstanceRules(
 
     if (conditionsMet && extraCondition) {
       if (rule.type === "replace" && rule.withEffect) {
-        // Replace the target effect with the new effect
-        updatedEffects = updatedEffects.map((eff) =>
-          eff === rule.target ? rule.withEffect! : eff
-        );
+        // Only replace if the new effect isn't already present
+        if (!updatedEffects.includes(rule.withEffect)) {
+          updatedEffects = updatedEffects.map((eff) =>
+            eff === rule.target ? rule.withEffect! : eff
+          );
+          // Remove any duplicates that might have been created
+          updatedEffects = [...new Set(updatedEffects)];
+        }
       } else if (rule.type === "add") {
         // Add the effect if not already present
         if (!updatedEffects.includes(rule.target)) {
@@ -953,9 +957,9 @@ export function applySubstanceRules(
       }
     }
   });
-  // Add the substance’s default effect if it isn’t already included
+  // Add the substance's default effect if it isn't already included
   if (!updatedEffects.includes(substance.defaultEffect)) {
     updatedEffects.push(substance.defaultEffect);
   }
-  return updatedEffects;
+  return [...new Set(updatedEffects)]; // Remove any duplicates
 }
