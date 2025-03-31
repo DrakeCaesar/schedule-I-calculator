@@ -18,10 +18,10 @@ let currentEffects = ["Energizing"];
 console.log("Initial Effects:", currentEffects);
 
 // Suppose we add "Mega Bean" to our mix
-const megaBean = substances.find((sub) => sub.name === "Mega Bean");
+const megaBean = substances.find((sub) => sub.name === "Motor Oil");
 if (megaBean) {
   currentEffects = applySubstanceRules(currentEffects, megaBean);
-  console.log("Effects after applying Mega Bean:", currentEffects);
+  console.log("Effects after applying Motor Oil:", currentEffects);
 }
 
 const cuke = substances.find((sub) => sub.name === "Cuke");

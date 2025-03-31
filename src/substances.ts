@@ -929,39 +929,50 @@ export function applySubstanceRules(
   currentEffects: string[],
   substance: Substance
 ): string[] {
-  let updatedEffects = [...currentEffects];
-  // Apply each rule in the order they are defined
-  substance.rules.forEach((rule) => {
-    const conditionsMet = rule.condition.every((cond) =>
-      updatedEffects.includes(cond)
-    );
-    const extraCondition = rule.ifNotPresent
-      ? rule.ifNotPresent.every((np) => !updatedEffects.includes(np))
-      : true;
+  // Convert input array to Set for more efficient operations
+  let ogEffects = new Set(currentEffects);
+  let newEffects = new Set(currentEffects);
 
-    if (conditionsMet && extraCondition) {
+  // Apply each rule in order
+  for (const rule of substance.rules) {
+    // Check if all conditions are met
+    const conditionsMet = rule.condition.every((cond) => ogEffects.has(cond));
+
+    // Check if all excluded effects are absent
+    const exclusionsMet = rule.ifNotPresent
+      ? !rule.ifNotPresent.some((np) => new Set(ogEffects).has(np))
+      : true;
+    if (conditionsMet && exclusionsMet) {
       if (rule.type === "replace" && rule.withEffect) {
-        // Only replace if the new effect isn't already present
-        if (!updatedEffects.includes(rule.withEffect)) {
-          updatedEffects = updatedEffects.map((eff) =>
-            eff === rule.target ? rule.withEffect! : eff
+        if (newEffects.has(rule.target)) {
+          console.log(
+            `Replacing ${rule.target} with ${rule.withEffect} for ${substance.name}`
           );
-          // Remove any duplicates that might have been created
-          updatedEffects = [...new Set(updatedEffects)];
+
+          // Remove target and add new effect
+          newEffects.delete(rule.target);
+          newEffects.add(rule.withEffect);
+          ogEffects.add(rule.withEffect); // Add new effect to original effects for future checks
+
+          console.log(Array.from(newEffects));
         }
       } else if (rule.type === "add") {
-        // Add the effect if not already present
-        if (!updatedEffects.includes(rule.target)) {
-          updatedEffects.push(rule.target);
+        // Add new effect if not present
+        if (!newEffects.has(rule.target)) {
+          newEffects.add(rule.target);
+          console.log(
+            `Adding ${rule.target} for ${substance.name} (not already present)`
+          );
+          console.log(Array.from(newEffects));
         }
       }
     }
-  });
-
-  // Add default effect if not present
-  if (!updatedEffects.includes(substance.defaultEffect)) {
-    updatedEffects.push(substance.defaultEffect);
   }
 
-  return [...new Set(updatedEffects)];
+  // Ensure default effect is present
+  console.log(`Adding default effect ${substance.defaultEffect}`);
+  newEffects.add(substance.defaultEffect);
+
+  // Convert back to array for return
+  return Array.from(newEffects);
 }
