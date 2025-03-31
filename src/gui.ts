@@ -7,6 +7,11 @@ import {
   calculateFinalPrice,
   substances,
 } from "./substances";
+// Add these imports at the top
+
+// Add these constants near the top
+const STORAGE_KEY_MIX = "currentMix";
+const STORAGE_KEY_PRODUCT = "currentProduct";
 
 // --- UI Update Functions ---
 
@@ -17,9 +22,10 @@ export function updateProductDisplay() {
     productDisplay.textContent = `Product: Weed - ${currentProduct.name} (Initial Effect: ${currentProduct.initialEffect})`;
   }
   // Reset mix additives when a new product is chosen.
-  currentMix.splice(0, currentMix.length);
+  // currentMix.splice(0, currentMix.length);
   updateMixListUI();
   updateResult();
+  saveToLocalStorage();
 }
 
 // Render the mix list items (each additive in the drop zone)
@@ -129,6 +135,7 @@ export function onMixDrop(e: DragEvent) {
   }
   updateMixListUI();
   updateResult();
+  saveToLocalStorage();
 }
 
 // Allow drop on mix zone by preventing default.
@@ -147,10 +154,36 @@ export function onTrashDrop(e: DragEvent) {
     currentMix.splice(index, 1);
     updateMixListUI();
     updateResult();
+    saveToLocalStorage();
   }
 }
 
 // Allow drop on trash area.
 export function onTrashDragOver(e: DragEvent) {
   e.preventDefault();
+}
+
+function saveToLocalStorage() {
+  localStorage.setItem(STORAGE_KEY_MIX, JSON.stringify(currentMix));
+  localStorage.setItem(STORAGE_KEY_PRODUCT, JSON.stringify(currentProduct));
+}
+
+export function loadFromLocalStorage() {
+  try {
+    const savedMix = localStorage.getItem(STORAGE_KEY_MIX);
+    const savedProduct = localStorage.getItem(STORAGE_KEY_PRODUCT);
+
+    if (savedMix) {
+      console.log("Loading saved mix:", savedMix);
+      console.log("Current mix before loading:", currentMix);
+      currentMix.splice(0, currentMix.length, ...JSON.parse(savedMix));
+      console.log("Current mix after loading:", currentMix);
+    }
+
+    if (savedProduct) {
+      Object.assign(currentProduct, JSON.parse(savedProduct));
+    }
+  } catch (error) {
+    console.error("Error loading saved state:", error);
+  }
 }

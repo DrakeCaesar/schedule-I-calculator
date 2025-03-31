@@ -1,4 +1,5 @@
 import {
+  loadFromLocalStorage,
   onDragStart,
   onMixDragOver,
   onMixDrop,
@@ -60,5 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialize display with default product.
+  loadFromLocalStorage();
   updateProductDisplay();
 });
