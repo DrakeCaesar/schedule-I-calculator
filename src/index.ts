@@ -6,16 +6,7 @@ import {
   onTrashDrop,
   updateProductDisplay,
 } from "./gui";
-import { calculateFinalPrice, substances } from "./substances";
-
-// ----- Example Usage -----
-// Start with an initial effect "Energizing"
-let currentEffects = ["Energizing"];
-console.log("Initial Effects:", currentEffects);
-
-// Calculate final price for a product (e.g., Weed) using the resulting effects
-const finalPrice = calculateFinalPrice("Weed", currentEffects);
-console.log("Final Price for Weed:", finalPrice);
+import { substances } from "./substances";
 
 // --- Initialization ---
 
