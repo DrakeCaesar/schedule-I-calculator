@@ -1,0 +1,42 @@
+{
+  "name": "scheduleI",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint 'src/**/*.ts'",
+    "dev": "vite",
+    "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
+    "serve": "vite preview",
+    "test": "node tests",
+    "start": "npx serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "@typescript-eslint/parser": "^8.6.0",
+    "eslint": "^9.11.0",
+    "sass": "^1.79.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.7"
+  },
+  "dependencies": {
+    "canvas": "^2.11.2",
+    "gh-pages": "^6.1.1",
+    "tesseract.js": "^5.1.1",
+    "tslib": "^2.7.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  }
+}
