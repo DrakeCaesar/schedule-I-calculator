@@ -44,6 +44,12 @@ export function updateMixListUI() {
   });
 }
 
+function createEffectSpan(effect: string): string {
+  // Convert effect name to kebab case for CSS class
+  const className = effect.toLowerCase().replace(/\s+/g, "-");
+  return `<span class="effect effect-${effect}">${effect}</span>`;
+}
+
 // Recalculate the resulting effects and price and update the result section.
 export function updateResult() {
   let effectsList = [currentProduct.initialEffect];
@@ -59,10 +65,14 @@ export function updateResult() {
   const finalPrice = calculateFinalPrice("Weed", effectsList);
   const finalCost = calculateFinalCost(currentMix);
   const finalEffectsEl = document.getElementById("finalEffects");
+
   const finalPriceEl = document.getElementById("finalPrice");
   const finalCostEl = document.getElementById("finalCost");
   if (finalEffectsEl) {
-    finalEffectsEl.textContent = "Effects: " + effectsList.join(", ");
+    const coloredEffects = effectsList.map((effect) =>
+      createEffectSpan(effect)
+    );
+    finalEffectsEl.innerHTML = "Effects: " + coloredEffects.join(" ");
   }
   if (finalPriceEl) {
     finalPriceEl.textContent = "Price: $" + finalPrice.toFixed(2);

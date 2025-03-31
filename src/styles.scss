@@ -1,0 +1,49 @@
+// Effect colors map
+$effect-colors: (
+  "Toxic": #8b0000,
+  "Euphoric": #ff69b4,
+  "Energizing": #ffd700,
+  "Sedating": #4b0082,
+  "Athletic": #32cd32,
+  "Slippery": #87ceeb,
+  "Munchies": #deb887,
+  "Paranoia": #800080,
+  "Cyclopean": #006400,
+  "Thought-Provoking": #4169e1,
+  "Laxative": #8b4513,
+  "Calming": #98fb98,
+  "Bright-Eyed": #ffff00,
+  "Gingeritis": #ff4500,
+  "Foggy": #808080,
+  "Refreshing": #00ffff,
+  "Sneaky": #483d8b,
+  "Tropic Thunder": #ff8c00,
+  "Spicy": #ff0000,
+  "Glowing": #ffd700,
+  "Disorienting": #9932cc,
+  "Focused": #1e90ff,
+  "Seizure-Inducing": #ff00ff,
+  "Long Faced": #a0522d,
+  "Anti-Gravity": #00bfff,
+  "Electrifying": #ffff00,
+  "Explosive": #ff4500,
+  "Balding": #dcdcdc,
+  "Calorie-Dense": #f4a460,
+  "Zombifying": #556b2f,
+);
+
+// Effect styles
+.effect {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin: 0 2px;
+
+  @each $effect, $color in $effect-colors {
+    &-#{$effect} {
+      color: $color;
+      background-color: rgba($color, 0.1);
+      border: 1px solid rgba($color, 0.3);
+    }
+  }
+}
