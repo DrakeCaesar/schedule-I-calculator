@@ -10,7 +10,7 @@ export default defineConfig({
       input: "index.html",
       output: {
         entryFileNames: "index.js",
-        assetFileNames: "styles.css",
+        assetFileNames: "style.css",
         format: "es",
       },
     },
