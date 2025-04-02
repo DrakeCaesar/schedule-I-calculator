@@ -7,7 +7,7 @@ import {
   onTrashDrop,
   updateProductDisplay,
 } from "./gui";
-import "./styles.scss";
+import "./style.scss";
 import { substances } from "./substances";
 
 // --- Initialization ---
