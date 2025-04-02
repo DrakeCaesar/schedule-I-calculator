@@ -17,7 +17,7 @@ export let currentProduct = { name: "OG Kush", initialEffect: "Calming" };
 // The additives (by substance name) added to the mix, in order.
 export let currentMix: string[] = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+function initializeApp() {
   // Populate the additives list in the sidebar using our substances array.
   const additivesList = document.getElementById("additivesList");
   if (additivesList) {
@@ -64,4 +64,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize display with default product.
   loadFromLocalStorage();
   updateProductDisplay();
-});
+}
+
+document.addEventListener("DOMContentLoaded", initializeApp);
+
+// Add HMR handling
+if ((import.meta as any).hot) {
+  (import.meta as any).hot.accept(["./gui", "./substances"], () => {
+    initializeApp();
+  });
+}
