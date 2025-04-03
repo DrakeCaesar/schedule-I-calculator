@@ -40,6 +40,7 @@ function initializeApp() {
   // Dynamically generate product radio buttons
   const productSelection = document.getElementById("productSelection");
   if (productSelection) {
+    productSelection.innerHTML = ""; // Clear existing buttons to prevent duplication
     Object.values(products).forEach((product) => {
       if (product.varieties) {
         product.varieties.forEach((variety, index) => {
