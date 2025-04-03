@@ -17,6 +17,7 @@ let bfsRunning = false;
 let bfsPaused = false;
 let bfsQueue: string[][] = [];
 let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
+let bfsWorker: Worker | null = null;
 
 // --- UI Update Functions ---
 
@@ -210,15 +211,42 @@ export async function toggleBFS() {
   if (bfsRunning) {
     bfsPaused = !bfsPaused;
     bfsButton.textContent = bfsPaused ? "Resume BFS" : "Pause BFS";
+    if (bfsPaused) {
+      bfsWorker?.postMessage({ type: "pause" });
+    } else {
+      bfsWorker?.postMessage({ type: "resume" });
+    }
   } else {
     bfsRunning = true;
     bfsPaused = false;
     bfsButton.textContent = "Pause BFS";
     bestMix = { mix: [], profit: -Infinity };
     bfsQueue = [[]]; // Start with an empty mix
-    await runBFS();
-    bfsRunning = false;
-    bfsButton.textContent = "Start BFS";
+
+    if (!bfsWorker) {
+      bfsWorker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
+        type: "module",
+      });
+      bfsWorker.onmessage = (event: MessageEvent) => {
+        const { type, bestMix: updatedBestMix } = event.data;
+        if (type === "update") {
+          bestMix = updatedBestMix;
+          updateBestMixDisplay();
+        } else if (type === "done") {
+          bfsRunning = false;
+          bfsButton.textContent = "Start BFS";
+        }
+      };
+    }
+
+    bfsWorker.postMessage({
+      type: "start",
+      data: {
+        product: currentProduct,
+        queue: bfsQueue,
+        bestMix,
+      },
+    });
   }
 }
 
