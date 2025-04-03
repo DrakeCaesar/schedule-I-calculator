@@ -9,6 +9,10 @@ import {
 // Constants
 export const MAX_RECIPE_DEPTH = 6;
 
+const substanceMap = new Map(
+  substances.map((substance) => [substance.name, substance])
+);
+
 // BFS state variables
 let bfsRunning = false;
 let bfsPaused = false;
@@ -36,12 +40,15 @@ export function calculateEffects(
   initialEffect: string
 ): string[] {
   let effectsList = [initialEffect];
-  mix.forEach((substanceName, index) => {
-    const substance = substances.find((s) => s.name === substanceName);
+
+  for (let i = 0; i < mix.length; i++) {
+    const substanceName = mix[i];
+    const substance = substanceMap.get(substanceName);
     if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance, index + 1);
+      effectsList = applySubstanceRules(effectsList, substance, i + 1);
     }
-  });
+  }
+
   return effectsList;
 }
 

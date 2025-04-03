@@ -7,6 +7,14 @@ import {
   substances,
 } from "./substances";
 
+// Performance optimization: Create a Map for O(1) substance lookups
+const substanceMap = new Map(
+  substances.map((substance) => [substance.name, substance])
+);
+
+// Cache substance names array for iteration
+const substanceNames = substances.map((s) => s.name);
+
 let currentProduct: ProductVariety | null = null;
 let isPaused = false;
 let combinationsProcessed = 0;
@@ -90,8 +98,9 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
     }
 
     if (currentMix.length < MAX_RECIPE_DEPTH) {
-      for (const substance of substances) {
-        queue.push([...currentMix, substance.name]);
+      // Use the cached names array for faster iteration
+      for (const substanceName of substanceNames) {
+        queue.push([...currentMix, substanceName]);
       }
     }
 
@@ -129,11 +138,15 @@ function sendProgressUpdate() {
 
 function calculateEffects(mix: string[]): string[] {
   let effectsList = currentProduct ? [currentProduct.initialEffect] : [];
-  mix.forEach((substanceName, index) => {
-    const substance = substances.find((s) => s.name === substanceName);
+
+  // Use Map lookup (O(1)) instead of find() (O(n))
+  for (let i = 0; i < mix.length; i++) {
+    const substanceName = mix[i];
+    const substance = substanceMap.get(substanceName);
     if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance, index + 1);
+      effectsList = applySubstanceRules(effectsList, substance, i + 1);
     }
-  });
+  }
+
   return effectsList;
 }

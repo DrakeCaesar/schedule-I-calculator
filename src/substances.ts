@@ -70,6 +70,21 @@ export const effects: { [key: string]: Effect } = {
   Zombifying: { name: "Zombifying", multiplier: 0.58 },
 };
 
+// Performance optimizations: Create Maps for O(1) lookups
+export const effectsMap = new Map(
+  Object.entries(effects).map(([name, effect]) => [name, effect.multiplier])
+);
+
+// Map for finding base product from variety name
+const productVarietyMap = new Map<string, string>();
+for (const [productName, product] of Object.entries(products)) {
+  if (product.varieties) {
+    for (const variety of product.varieties) {
+      productVarietyMap.set(variety.name, productName);
+    }
+  }
+}
+
 // A rule can be of type 'replace' or 'add'
 interface SubstanceRule {
   type: "replace" | "add";
@@ -942,36 +957,43 @@ export const substances: Substance[] = [
   },
 ];
 
+// Create a Map for fast substance cost lookups
+const substanceCostMap = new Map(substances.map((s) => [s.name, s.cost]));
+
 // A simple pricing calculation: Final Price = Base Price * (1 + total effect multiplier)
 export function calculateFinalPrice(
   productName: string,
   currentEffects: string[]
 ): number {
-  const baseProductName =
-    Object.keys(products).find((key) =>
-      products[key].varieties?.some((v) => v.name === productName)
-    ) || productName;
+  // Use Map for O(1) lookup instead of find());
+  const baseProductName = productVarietyMap.get(productName) || productName;
 
   const product = products[baseProductName];
   if (!product) return 0;
 
   let totalMultiplier = 0;
-  currentEffects.forEach((effectName) => {
-    if (effects[effectName]) {
-      totalMultiplier += effects[effectName].multiplier;
+  // Use for...of loop instead of forEach for better performance
+  for (const effectName of currentEffects) {
+    const multiplier = effectsMap.get(effectName);
+    if (multiplier !== undefined) {
+      totalMultiplier += multiplier;
     }
-  });
+  }
+
   return Math.round(product.basePrice * (1 + totalMultiplier));
 }
 
 export function calculateFinalCost(currentMix: string[]): number {
   let totalCost = 0;
-  currentMix.forEach((substanceName) => {
-    const substance = substances.find((s) => s.name === substanceName);
-    if (substance) {
-      totalCost += substance.cost;
+
+  // Use Map for O(1) lookups instead of find()
+  for (const substanceName of currentMix) {
+    const cost = substanceCostMap.get(substanceName);
+    if (cost !== undefined) {
+      totalCost += cost;
     }
-  });
+  }
+
   return Math.round(totalCost);
 }
 
