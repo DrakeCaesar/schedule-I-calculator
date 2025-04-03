@@ -100,12 +100,33 @@ function updateProgressDisplay() {
   const now = Date.now();
   const executionTime = now - startTime;
 
-  // Create HTML for each worker's progress
+  // Sum up totals from all workers
+  workersProgress.forEach((progress) => {
+    totalProcessed += progress.totalProcessed;
+    grandTotal += progress.grandTotal;
+  });
+
+  // Calculate overall percentage
+  const overallPercentage =
+    Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
+
+  // Create HTML for overall progress (now at the top)
+  const overallProgressHTML = `
+    <div class="overall-progress">
+      <h4>Overall Progress - ${activeWorkers} active workers</h4>
+      <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" style="width: ${overallPercentage}%">
+          <span class="progress-text">${overallPercentage}%</span>
+        </div>
+      </div>
+      <div>Execution time: ${formatTime(executionTime)}</div>
+    </div>
+  `;
+
+  // Create more compact HTML for each worker's progress
   const workerProgressHTML = Array.from(workersProgress.entries())
     .map(([id, progress]) => {
-      totalProcessed += progress.totalProcessed;
-      grandTotal += progress.grandTotal;
-
       // Calculate percentage for current worker's depth
       const depthPercentage =
         Math.min(
@@ -115,33 +136,25 @@ function updateProgressDisplay() {
 
       return `
         <div class="worker-progress">
-          <h4>Worker ${id + 1}: ${progress.substanceName}</h4>
-          <div>Current depth: ${progress.depth} of ${MAX_RECIPE_DEPTH}</div>
-          <div>Progress: ${progress.processed.toLocaleString()} / ${progress.total.toLocaleString()}</div>
-          <div class="progress-bar-container">
-            <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+          <div class="worker-header">
+            <span class="worker-name">${progress.substanceName}</span>
+            <span class="worker-depth">Depth: ${progress.depth}/${MAX_RECIPE_DEPTH}</span>
           </div>
-          <div>${depthPercentage}% complete</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${depthPercentage}%">
+              <span class="progress-text">${depthPercentage}%</span>
+            </div>
+          </div>
         </div>
       `;
     })
     .join("");
 
-  // Calculate overall percentage
-  const overallPercentage =
-    Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
-
   progressDisplay.innerHTML = `
-    <h3>BFS Progress - ${activeWorkers} active workers</h3>
-    ${workerProgressHTML}
-    <div class="overall-progress">
-      <h4>Overall Progress</h4>
-      <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
-      <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${overallPercentage}%"></div>
-      </div>
-      <div>${overallPercentage}% complete</div>
-      <div>Execution time: ${formatTime(executionTime)}</div>
+    ${overallProgressHTML}
+    <div class="workers-container">
+      <h4>Worker Status</h4>
+      ${workerProgressHTML}
     </div>
   `;
 }
@@ -153,6 +166,91 @@ export function createProgressDisplay() {
     progressDisplay = document.createElement("div");
     progressDisplay.id = "bfsProgressDisplay";
     progressDisplay.classList.add("progress-display");
+
+    // Add CSS for progress display directly
+    const style = document.createElement("style");
+    style.textContent = `
+      .progress-display {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        max-width: 350px;
+        max-height: 80vh;
+        overflow-y: auto;
+        z-index: 1000;
+        font-size: 14px;
+      }
+      
+      .overall-progress {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eee;
+      }
+      
+      .overall-progress h4 {
+        margin-top: 0;
+        margin-bottom: 8px;
+      }
+      
+      .workers-container h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+      }
+      
+      .worker-progress {
+        margin-bottom: 5px;
+      }
+      
+      .worker-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 12px;
+      }
+      
+      .worker-name {
+        font-weight: bold;
+      }
+      
+      .progress-bar-container {
+        width: 100%;
+        height: 20px;
+        background: #eee;
+        border-radius: 4px;
+        margin: 3px 0;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .progress-bar {
+        height: 100%;
+        background: #4CAF50;
+        border-radius: 4px;
+        position: relative;
+      }
+      
+      .progress-text {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        mix-blend-mode: difference;
+        color: white;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+      }
+    `;
+
+    document.head.appendChild(style);
     document.body.appendChild(progressDisplay);
   }
 
