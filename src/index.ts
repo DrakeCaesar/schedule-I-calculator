@@ -62,19 +62,25 @@ function initializeApp() {
     });
   });
 
-  // Add BFS button and best mix display
-  const bfsButton = document.createElement("button");
-  bfsButton.id = "bfsButton";
-  bfsButton.textContent = "Start BFS";
-  document.body.appendChild(bfsButton);
+  // Add BFS button and best mix display if not already present
+  let bfsButton = document.getElementById("bfsButton");
+  if (!bfsButton) {
+    bfsButton = document.createElement("button");
+    bfsButton.id = "bfsButton";
+    bfsButton.textContent = "Start BFS";
+    document.body.appendChild(bfsButton);
 
-  const bestMixDisplay = document.createElement("div");
-  bestMixDisplay.id = "bestMixDisplay";
-  document.body.appendChild(bestMixDisplay);
+    bfsButton.addEventListener("click", () => {
+      toggleBFS();
+    });
+  }
 
-  bfsButton.addEventListener("click", () => {
-    toggleBFS();
-  });
+  let bestMixDisplay = document.getElementById("bestMixDisplay");
+  if (!bestMixDisplay) {
+    bestMixDisplay = document.createElement("div");
+    bestMixDisplay.id = "bestMixDisplay";
+    document.body.appendChild(bestMixDisplay);
+  }
 
   // Initialize display with default product.
   loadFromLocalStorage();
