@@ -47,3 +47,28 @@ $effect-colors: (
     }
   }
 }
+
+#bfsButton {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#bestMixDisplay {
+  margin: 20px auto;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-width: 600px;
+  background-color: #f9f9f9;
+}
+
+#bestMixDisplay h3 {
+  margin-top: 0;
+}
+
+#bestMixDisplay p {
+  margin: 5px 0;
+}

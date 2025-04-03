@@ -13,6 +13,11 @@ import {
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
 
+let bfsRunning = false;
+let bfsPaused = false;
+let bfsQueue: string[][] = [];
+let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
+
 // --- UI Update Functions ---
 
 // Update the product display area
@@ -196,4 +201,95 @@ export function loadFromLocalStorage() {
   } catch (error) {
     console.error("Error loading saved state:", error);
   }
+}
+
+export async function toggleBFS() {
+  const bfsButton = document.getElementById("bfsButton");
+  if (!bfsButton) return;
+
+  if (bfsRunning) {
+    bfsPaused = !bfsPaused;
+    bfsButton.textContent = bfsPaused ? "Resume BFS" : "Pause BFS";
+  } else {
+    bfsRunning = true;
+    bfsPaused = false;
+    bfsButton.textContent = "Pause BFS";
+    bestMix = { mix: [], profit: -Infinity };
+    bfsQueue = [[]]; // Start with an empty mix
+    await runBFS();
+    bfsRunning = false;
+    bfsButton.textContent = "Start BFS";
+  }
+}
+
+async function runBFS() {
+  let currentLength = 1; // Start with mixes of length 1
+  while (bfsQueue.length > 0 && !bfsPaused) {
+    const currentMix = bfsQueue.shift()!;
+
+    // Check if we need to move to the next length
+    if (currentMix.length > currentLength) {
+      currentLength++;
+      if (currentLength > 8) break; // Stop if mix length exceeds 8
+    }
+
+    const effectsList = calculateEffects(currentMix);
+    const sellPrice = calculateFinalPrice("Weed", effectsList);
+    const cost = calculateFinalCost(currentMix);
+    const profit = sellPrice - cost;
+
+    console.log(
+      `Mix: ${currentMix.join(", ")}, Sell Price: $${sellPrice.toFixed(
+        2
+      )}, Cost: $${cost.toFixed(2)}, Profit: $${profit.toFixed(2)}, 
+      Best Mix: ${bestMix.mix.join(
+        ", "
+      )}, Best Profit: $${bestMix.profit.toFixed(2)}`
+    );
+
+    if (profit > bestMix.profit) {
+      bestMix = { mix: currentMix, profit };
+      updateBestMixDisplay();
+    }
+
+    // Generate mixes of the next length
+    if (currentMix.length < 8) {
+      for (const substance of substances) {
+        bfsQueue.push([...currentMix, substance.name]);
+      }
+    }
+
+    await sleep(100); // Sleep to avoid blocking
+  }
+}
+
+function calculateEffects(mix: string[]): string[] {
+  let effectsList = [currentProduct.initialEffect];
+  mix.forEach((substanceName, index) => {
+    const substance = substances.find((s) => s.name === substanceName);
+    if (substance) {
+      effectsList = applySubstanceRules(effectsList, substance, index + 1);
+    }
+  });
+  return effectsList;
+}
+
+function updateBestMixDisplay() {
+  const bestMixDisplay = document.getElementById("bestMixDisplay");
+  if (!bestMixDisplay) return;
+
+  const effectsList = calculateEffects(bestMix.mix);
+  const effectsHTML = effectsList
+    .map((effect) => createEffectSpan(effect))
+    .join(" ");
+  bestMixDisplay.innerHTML = `
+    <h3>Best Mix</h3>
+    <p>Mix: ${bestMix.mix.join(", ")}</p>
+    <p>Effects: ${effectsHTML}</p>
+    <p>Profit: $${bestMix.profit.toFixed(2)}</p>
+  `;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

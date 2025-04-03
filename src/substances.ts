@@ -975,25 +975,25 @@ export function applySubstanceRules(
     if (conditionsMet && exclusionsMet) {
       if (rule.type === "replace" && rule.withEffect) {
         if (newEffects.has(rule.target) && !newEffects.has(rule.withEffect)) {
-          console.log(
-            `Replacing ${rule.target} with ${rule.withEffect} for ${substance.name}`
-          );
+          // console.log(
+          //   `Replacing ${rule.target} with ${rule.withEffect} for ${substance.name}`
+          // );
 
           // Remove target and add new effect
           newEffects.delete(rule.target);
           newEffects.add(rule.withEffect);
           ogEffects.add(rule.withEffect); // Add new effect to original effects for future checks
 
-          console.log(Array.from(newEffects));
+          // console.log(Array.from(newEffects));
         }
       } else if (rule.type === "add") {
         // Add new effect if not present
         if (!newEffects.has(rule.target)) {
           newEffects.add(rule.target);
-          console.log(
-            `Adding ${rule.target} for ${substance.name} (not already present)`
-          );
-          console.log(Array.from(newEffects));
+          // console.log(
+          //   `Adding ${rule.target} for ${substance.name} (not already present)`
+          // );
+          // console.log(Array.from(newEffects));
         }
       }
     }
@@ -1002,11 +1002,11 @@ export function applySubstanceRules(
   // Ensure default effect is present
 
   if (recipeLength < 8) {
-    console.log(`Adding default effect ${substance.defaultEffect}`);
+    // console.log(`Adding default effect ${substance.defaultEffect}`);
 
     newEffects.add(substance.defaultEffect);
   } else {
-    console.log("Skipping default effect addition due to recipe length");
+    // console.log("Skipping default effect addition due to recipe length");
   }
 
   // Convert back to array for return

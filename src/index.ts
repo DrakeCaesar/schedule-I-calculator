@@ -5,6 +5,7 @@ import {
   onMixDrop,
   onTrashDragOver,
   onTrashDrop,
+  toggleBFS,
   updateProductDisplay,
 } from "./gui";
 import "./style.scss";
@@ -59,6 +60,20 @@ function initializeApp() {
         updateProductDisplay();
       }
     });
+  });
+
+  // Add BFS button and best mix display
+  const bfsButton = document.createElement("button");
+  bfsButton.id = "bfsButton";
+  bfsButton.textContent = "Start BFS";
+  document.body.appendChild(bfsButton);
+
+  const bestMixDisplay = document.createElement("div");
+  bestMixDisplay.id = "bestMixDisplay";
+  document.body.appendChild(bestMixDisplay);
+
+  bfsButton.addEventListener("click", () => {
+    toggleBFS();
   });
 
   // Initialize display with default product.
