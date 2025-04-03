@@ -70,10 +70,13 @@ export function updateResult() {
   }
   const finalPrice = calculateFinalPrice("Weed", effectsList);
   const finalCost = calculateFinalCost(currentMix);
-  const finalEffectsEl = document.getElementById("finalEffects");
+  const profit = finalPrice - finalCost;
 
+  const finalEffectsEl = document.getElementById("finalEffects");
   const finalPriceEl = document.getElementById("finalPrice");
   const finalCostEl = document.getElementById("finalCost");
+  const finalProfitEl = document.getElementById("finalProfit");
+
   if (finalEffectsEl) {
     const coloredEffects = effectsList.map((effect) =>
       createEffectSpan(effect)
@@ -85,6 +88,9 @@ export function updateResult() {
   }
   if (finalCostEl) {
     finalCostEl.textContent = "Cost: $" + finalCost.toFixed(2);
+  }
+  if (finalProfitEl) {
+    finalProfitEl.textContent = "Profit: $" + profit.toFixed(2);
   }
 }
 
@@ -307,6 +313,10 @@ function updateBestMixDisplay() {
   if (!bestMixDisplay) return;
 
   const effectsList = calculateEffects(bestMix.mix);
+  const sellPrice = calculateFinalPrice("Weed", effectsList);
+  const cost = calculateFinalCost(bestMix.mix);
+  const profit = sellPrice - cost;
+
   const effectsHTML = effectsList
     .map((effect) => createEffectSpan(effect))
     .join(" ");
@@ -314,7 +324,9 @@ function updateBestMixDisplay() {
     <h3>Best Mix</h3>
     <p>Mix: ${bestMix.mix.join(", ")}</p>
     <p>Effects: ${effectsHTML}</p>
-    <p>Profit: $${bestMix.profit.toFixed(2)}</p>
+    <p>Sell Price: $${sellPrice.toFixed(2)}</p>
+    <p>Cost: $${cost.toFixed(2)}</p>
+    <p>Profit: $${profit.toFixed(2)}</p>
   `;
 }
 

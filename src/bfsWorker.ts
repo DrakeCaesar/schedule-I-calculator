@@ -28,6 +28,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
       currentLength++;
       if (currentLength > 8) break;
     }
+
     const effectsList = calculateEffects(currentMix);
     const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
     const cost = calculateFinalCost(currentMix);
@@ -35,7 +36,13 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
 
     if (profit > bestMix.profit) {
       bestMix = { mix: currentMix, profit };
-      self.postMessage({ type: "update", bestMix });
+      self.postMessage({
+        type: "update",
+        bestMix,
+        sellPrice,
+        cost,
+        profit,
+      });
     }
 
     if (currentMix.length < 8) {
