@@ -1,3 +1,4 @@
+import { MAX_RECIPE_DEPTH } from "./bfs";
 import {
   applySubstanceRules,
   calculateFinalCost,
@@ -5,7 +6,6 @@ import {
   ProductVariety,
   substances,
 } from "./substances";
-import { MAX_RECIPE_DEPTH } from "./bfs";
 
 let currentProduct: ProductVariety | null = null;
 let isPaused = false;
@@ -14,6 +14,7 @@ let maxCombinations = 0;
 let depthCombinationsProcessed = 0;
 let depthMaxCombinations = 0;
 let currentDepth = 0;
+let startTime = 0;
 
 self.onmessage = (event: MessageEvent) => {
   const { type, data } = event.data || {}; // Safely destructure event.data
@@ -24,6 +25,7 @@ self.onmessage = (event: MessageEvent) => {
     depthCombinationsProcessed = 0;
     currentDepth = 0;
     currentProduct = { ...data.product }; // Use a copy of the product to avoid changes during BFS
+    startTime = Date.now(); // Start the timer
 
     // Calculate max combinations per depth
     const substanceCount = substances.length;
@@ -103,11 +105,17 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
   if (!isPaused) {
     // Send a final progress update
     sendProgressUpdate();
-    self.postMessage({ type: "done", bestMix });
+    self.postMessage({
+      type: "done",
+      bestMix,
+      executionTime: Date.now() - startTime,
+    });
   }
 }
 
 function sendProgressUpdate() {
+  const executionTime = Date.now() - startTime;
+
   self.postMessage({
     type: "progress",
     depth: currentDepth,
@@ -115,6 +123,7 @@ function sendProgressUpdate() {
     total: depthMaxCombinations,
     totalProcessed: combinationsProcessed,
     grandTotal: maxCombinations,
+    executionTime: executionTime,
   });
 }
 

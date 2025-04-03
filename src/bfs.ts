@@ -21,6 +21,7 @@ let currentProgress = {
   total: 0,
   totalProcessed: 0,
   grandTotal: 0,
+  executionTime: 0, // Execution time in milliseconds
 };
 
 // Helper function to create effect span HTML
@@ -69,11 +70,17 @@ export function updateBestMixDisplay() {
   `;
 }
 
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000) % 60;
+  const minutes = Math.floor(ms / (1000 * 60));
+  return `${minutes}m ${seconds}s`;
+}
+
 function updateProgressDisplay() {
   const progressDisplay = document.getElementById("bfsProgressDisplay");
   if (!progressDisplay) return;
 
-  const { depth, processed, total, totalProcessed, grandTotal } =
+  const { depth, processed, total, totalProcessed, grandTotal, executionTime } =
     currentProgress;
 
   // Calculate percentage for current depth
@@ -92,6 +99,7 @@ function updateProgressDisplay() {
     </div>
     <div>${depthPercentage}% of current depth complete</div>
     <div>Overall progress: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()} (${overallPercentage}%)</div>
+    <div>Execution time: ${formatTime(executionTime)}</div>
   `;
 }
 
@@ -135,6 +143,7 @@ export async function toggleBFS(product: ProductVariety) {
       total: 0,
       totalProcessed: 0,
       grandTotal: 0,
+      executionTime: 0,
     };
     createProgressDisplay();
 
@@ -150,19 +159,28 @@ export async function toggleBFS(product: ProductVariety) {
           bestMix = updatedBestMix;
           updateBestMixDisplay();
         } else if (type === "progress") {
-          const { depth, processed, total, totalProcessed, grandTotal } =
-            event.data;
+          const {
+            depth,
+            processed,
+            total,
+            totalProcessed,
+            grandTotal,
+            executionTime,
+          } = event.data;
           currentProgress = {
             depth,
             processed,
             total,
             totalProcessed,
             grandTotal,
+            executionTime,
           };
           updateProgressDisplay();
         } else if (type === "done") {
           bfsRunning = false;
           bfsButton.textContent = "Start BFS";
+          // Final update of progress display to ensure time is shown correctly
+          updateProgressDisplay();
         }
       };
     }
