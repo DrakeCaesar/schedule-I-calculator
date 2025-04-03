@@ -9,7 +9,7 @@ import {
   updateProductDisplay,
 } from "./gui";
 import "./style.scss";
-import { ProductVariety, substances } from "./substances";
+import { products, ProductVariety, substances } from "./substances";
 
 // --- Initialization ---
 
@@ -37,6 +37,41 @@ function initializeApp() {
     });
   }
 
+  // Dynamically generate product radio buttons
+  const productSelection = document.getElementById("productSelection");
+  if (productSelection) {
+    Object.values(products).forEach((product) => {
+      if (product.varieties) {
+        product.varieties.forEach((variety, index) => {
+          const label = document.createElement("label");
+          label.innerHTML = `
+            <input
+              type="radio"
+              name="product"
+              value="${variety.name}"
+              data-initial="${variety.initialEffect}"
+              ${index === 0 && product.name === "Weed" ? "checked" : ""}
+            />
+            ${product.name} - ${variety.name} - ${variety.initialEffect}
+          `;
+          productSelection.appendChild(label);
+        });
+      } else {
+        const label = document.createElement("label");
+        label.innerHTML = `
+          <input
+            type="radio"
+            name="product"
+            value="${product.name}"
+            data-initial=""
+          />
+          ${product.name}
+        `;
+        productSelection.appendChild(label);
+      }
+    });
+  }
+
   // Set up the drop zone (mix list)
   const mixZone = document.getElementById("mixZone");
   if (mixZone) {
@@ -58,7 +93,7 @@ function initializeApp() {
       const target = e.target as HTMLInputElement;
       if (target.checked) {
         const prodName = target.value;
-        const initialEffect = target.dataset.initial || "";
+        const initialEffect = target.dataset.initial || ""; // Handle products without initial effects
         currentProduct = { name: prodName, initialEffect };
         updateProductDisplay();
       }

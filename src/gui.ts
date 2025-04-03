@@ -25,7 +25,10 @@ let bfsWorker: Worker | null = null;
 export function updateProductDisplay() {
   const productDisplay = document.getElementById("productDisplay");
   if (productDisplay) {
-    productDisplay.textContent = `Product: Weed - ${currentProduct.name} (Initial Effect: ${currentProduct.initialEffect})`;
+    const initialEffectText = currentProduct.initialEffect
+      ? ` (Initial Effect: ${currentProduct.initialEffect})`
+      : "";
+    productDisplay.textContent = `Product: ${currentProduct.name}${initialEffectText}`;
   }
   // Reset mix additives when a new product is chosen.
   // currentMix.splice(0, currentMix.length);
