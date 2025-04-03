@@ -5,6 +5,7 @@ import {
   ProductVariety,
   substances,
 } from "./substances";
+import { MAX_RECIPE_DEPTH } from "./bfs";
 
 let currentProduct: ProductVariety | null = null;
 let isPaused = false;
@@ -27,7 +28,7 @@ self.onmessage = (event: MessageEvent) => {
     // Calculate max combinations per depth
     const substanceCount = substances.length;
     maxCombinations = 0;
-    for (let i = 1; i <= 8; i++) {
+    for (let i = 1; i <= MAX_RECIPE_DEPTH; i++) {
       maxCombinations += Math.pow(substanceCount, i);
     }
     // Calculate max combinations for depth 1
@@ -65,7 +66,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
       // Send progress update when we move to next depth
       sendProgressUpdate();
 
-      if (currentDepth > 8) break; // Stop if mix length exceeds 8
+      if (currentDepth > MAX_RECIPE_DEPTH) break; // Stop if mix length exceeds MAX_RECIPE_DEPTH
     }
 
     const effectsList = calculateEffects(currentMix);
@@ -86,7 +87,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
       });
     }
 
-    if (currentMix.length < 8) {
+    if (currentMix.length < MAX_RECIPE_DEPTH) {
       for (const substance of substances) {
         queue.push([...currentMix, substance.name]);
       }

@@ -6,6 +6,9 @@ import {
   substances,
 } from "./substances";
 
+// Constants
+export const MAX_RECIPE_DEPTH = 6;
+
 // BFS state variables
 let bfsRunning = false;
 let bfsPaused = false;
@@ -82,7 +85,7 @@ function updateProgressDisplay() {
     Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
 
   progressDisplay.innerHTML = `
-    <div>Current depth: ${depth} of 8</div>
+    <div>Current depth: ${depth} of ${MAX_RECIPE_DEPTH}</div>
     <div>Current depth progress: ${processed.toLocaleString()} / ${total.toLocaleString()}</div>
     <div class="progress-bar-container">
       <div class="progress-bar" style="width: ${depthPercentage}%"></div>
