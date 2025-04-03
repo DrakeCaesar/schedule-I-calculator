@@ -116,9 +116,8 @@ function updateProgressDisplay() {
       <h4>Overall Progress - ${activeWorkers} active workers</h4>
       <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
       <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${overallPercentage}%">
-          <span class="progress-text">${overallPercentage}%</span>
-        </div>
+        <div class="progress-bar" style="width: ${overallPercentage}%"></div>
+        <span class="progress-text" data-progress="${overallPercentage}%" style="--progress-percent: ${overallPercentage}%"></span>
       </div>
       <div>Execution time: ${formatTime(executionTime)}</div>
     </div>
@@ -141,9 +140,8 @@ function updateProgressDisplay() {
             <span class="worker-depth">Depth: ${progress.depth}/${MAX_RECIPE_DEPTH}</span>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar" style="width: ${depthPercentage}%">
-              <span class="progress-text">${depthPercentage}%</span>
-            </div>
+            <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+            <span class="progress-text" data-progress="${depthPercentage}%" style="--progress-percent: ${depthPercentage}%"></span>
           </div>
         </div>
       `;
@@ -244,9 +242,50 @@ export function createProgressDisplay() {
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        mix-blend-mode: difference;
-        color: white;
-        text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+        z-index: 5;
+        /* The text is now centered in the container, not in the progress bar */
+      }
+      
+      /* Create a half-mask for the text to achieve the desired effect */
+      .progress-text::before {
+        content: attr(data-progress);
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        color: black; /* Text color for the incomplete part */
+        clip-path: polygon(
+          var(--progress-percent) 0%, 
+          100% 0%, 
+          100% 100%, 
+          var(--progress-percent) 100%
+        );
+      }
+      
+      .progress-text::after {
+        content: attr(data-progress);
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        color: white; /* Text color for the completed part */
+        clip-path: polygon(
+          0% 0%, 
+          var(--progress-percent) 0%, 
+          var(--progress-percent) 100%, 
+          0% 100%
+        );
+        filter: grayscale(1) brightness(1.6);
       }
     `;
 
