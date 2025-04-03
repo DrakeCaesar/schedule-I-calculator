@@ -15,6 +15,10 @@ const substanceMap = new Map(
 // Cache substance names array for iteration
 const substanceNames = substances.map((s) => s.name);
 
+// Configuration for progress reporting
+const PROGRESS_UPDATE_INTERVAL = 250; // How often to send progress updates (in ms)
+const BATCH_SIZE = 1000; // Process this many items before checking if we should send an update
+
 let currentProduct: ProductVariety | null = null;
 let isPaused = false;
 let combinationsProcessed = 0;
@@ -56,11 +60,13 @@ self.onmessage = (event: MessageEvent) => {
 
 function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
   let lastProgressUpdate = Date.now();
+  let itemsProcessedSinceUpdate = 0;
 
   while (queue.length > 0 && !isPaused) {
     const currentMix = queue.shift()!;
     combinationsProcessed++;
     depthCombinationsProcessed++;
+    itemsProcessedSinceUpdate++;
 
     // Check if we need to move to the next depth
     if (currentMix.length > currentDepth) {
@@ -75,6 +81,8 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
 
       // Send progress update when we move to next depth
       sendProgressUpdate();
+      lastProgressUpdate = Date.now();
+      itemsProcessedSinceUpdate = 0;
 
       if (currentDepth > MAX_RECIPE_DEPTH) break; // Stop if mix length exceeds MAX_RECIPE_DEPTH
     }
@@ -104,10 +112,15 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
       }
     }
 
-    // Send progress updates periodically (every 500ms) to avoid flooding the main thread
-    if (Date.now() - lastProgressUpdate > 500) {
-      sendProgressUpdate();
-      lastProgressUpdate = Date.now();
+    // Send progress updates periodically to avoid flooding the main thread
+    // Only check time after processing a batch of items for better performance
+    if (itemsProcessedSinceUpdate >= BATCH_SIZE) {
+      const now = Date.now();
+      if (now - lastProgressUpdate > PROGRESS_UPDATE_INTERVAL) {
+        sendProgressUpdate();
+        lastProgressUpdate = now;
+        itemsProcessedSinceUpdate = 0;
+      }
     }
   }
 
