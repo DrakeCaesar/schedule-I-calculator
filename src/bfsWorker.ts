@@ -27,26 +27,38 @@ let depthCombinationsProcessed = 0;
 let depthMaxCombinations = 0;
 let currentDepth = 0;
 let startTime = 0;
+let workerId = -1;
+let currentSubstanceName = "";
 
 self.onmessage = (event: MessageEvent) => {
-  const { type, data } = event.data || {}; // Safely destructure event.data
+  const { type, workerId: id, data } = event.data || {}; // Safely destructure event.data
 
   if (type === "start" && data) {
+    workerId = id;
     isPaused = false;
     combinationsProcessed = 0;
     depthCombinationsProcessed = 0;
-    currentDepth = 0;
-    currentProduct = { ...data.product }; // Use a copy of the product to avoid changes during BFS
-    startTime = Date.now(); // Start the timer
+    currentDepth = data.queue[0].length; // Start at depth 1 with our initial substance
+    currentProduct = { ...data.product };
+    currentSubstanceName = data.substanceName;
+    startTime = Date.now();
 
-    // Calculate max combinations per depth
+    // Calculate max combinations for this worker
+    // Starting with a specific substance, so our combinations are reduced
     const substanceCount = substances.length;
     maxCombinations = 0;
-    for (let i = 1; i <= MAX_RECIPE_DEPTH; i++) {
-      maxCombinations += Math.pow(substanceCount, i);
+
+    // We start at depth = 1 (our initial substance), and go up to MAX_RECIPE_DEPTH
+    for (let i = currentDepth; i <= MAX_RECIPE_DEPTH; i++) {
+      if (i === 1) {
+        maxCombinations += 1; // Just our one substance at depth 1
+      } else {
+        maxCombinations += Math.pow(substanceCount, i - 1); // For depths > 1
+      }
     }
-    // Calculate max combinations for depth 1
-    depthMaxCombinations = substanceCount;
+
+    // Calculate initial combinations for first depth
+    depthMaxCombinations = data.queue.length; // Just 1 at the start
 
     runBFS(data.queue, data.bestMix);
   } else if (type === "pause") {
@@ -77,7 +89,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
 
       // Calculate max combinations for this depth
       const substanceCount = substances.length;
-      depthMaxCombinations = Math.pow(substanceCount, currentDepth);
+      depthMaxCombinations = Math.pow(substanceCount, currentDepth - 1);
 
       // Send progress update when we move to next depth
       sendProgressUpdate();
@@ -102,6 +114,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
         sellPrice,
         cost,
         profit,
+        workerId,
       });
     }
 
@@ -131,6 +144,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
       type: "done",
       bestMix,
       executionTime: Date.now() - startTime,
+      workerId,
     });
   }
 }
@@ -146,6 +160,7 @@ function sendProgressUpdate() {
     totalProcessed: combinationsProcessed,
     grandTotal: maxCombinations,
     executionTime: executionTime,
+    workerId,
   });
 }
 

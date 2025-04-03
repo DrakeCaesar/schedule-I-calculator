@@ -17,16 +17,23 @@ const substanceMap = new Map(
 let bfsRunning = false;
 let bfsPaused = false;
 let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
-let bfsWorker: Worker | null = null;
+let bfsWorkers: Worker[] = [];
 let currentProduct: ProductVariety | null = null;
-let currentProgress = {
-  depth: 0,
-  processed: 0,
-  total: 0,
-  totalProcessed: 0,
-  grandTotal: 0,
-  executionTime: 0, // Execution time in milliseconds
+let activeWorkers = 0;
+
+// Track progress for each worker
+type WorkerProgress = {
+  substanceName: string;
+  depth: number;
+  processed: number;
+  total: number;
+  totalProcessed: number;
+  grandTotal: number;
+  executionTime: number;
 };
+
+let workersProgress: Map<number, WorkerProgress> = new Map();
+let startTime = 0;
 
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
@@ -87,26 +94,55 @@ function updateProgressDisplay() {
   const progressDisplay = document.getElementById("bfsProgressDisplay");
   if (!progressDisplay) return;
 
-  const { depth, processed, total, totalProcessed, grandTotal, executionTime } =
-    currentProgress;
+  // Calculate overall progress across all workers
+  let totalProcessed = 0;
+  let grandTotal = 0;
+  const now = Date.now();
+  const executionTime = now - startTime;
 
-  // Calculate percentage for current depth
-  const depthPercentage =
-    Math.min(100, Math.round((processed / total) * 100)) || 0;
+  // Create HTML for each worker's progress
+  const workerProgressHTML = Array.from(workersProgress.entries())
+    .map(([id, progress]) => {
+      totalProcessed += progress.totalProcessed;
+      grandTotal += progress.grandTotal;
+
+      // Calculate percentage for current worker's depth
+      const depthPercentage =
+        Math.min(
+          100,
+          Math.round((progress.processed / progress.total) * 100)
+        ) || 0;
+
+      return `
+        <div class="worker-progress">
+          <h4>Worker ${id + 1}: ${progress.substanceName}</h4>
+          <div>Current depth: ${progress.depth} of ${MAX_RECIPE_DEPTH}</div>
+          <div>Progress: ${progress.processed.toLocaleString()} / ${progress.total.toLocaleString()}</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+          </div>
+          <div>${depthPercentage}% complete</div>
+        </div>
+      `;
+    })
+    .join("");
 
   // Calculate overall percentage
   const overallPercentage =
     Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
 
   progressDisplay.innerHTML = `
-    <div>Current depth: ${depth} of ${MAX_RECIPE_DEPTH}</div>
-    <div>Current depth progress: ${processed.toLocaleString()} / ${total.toLocaleString()}</div>
-    <div class="progress-bar-container">
-      <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+    <h3>BFS Progress - ${activeWorkers} active workers</h3>
+    ${workerProgressHTML}
+    <div class="overall-progress">
+      <h4>Overall Progress</h4>
+      <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" style="width: ${overallPercentage}%"></div>
+      </div>
+      <div>${overallPercentage}% complete</div>
+      <div>Execution time: ${formatTime(executionTime)}</div>
     </div>
-    <div>${depthPercentage}% of current depth complete</div>
-    <div>Overall progress: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()} (${overallPercentage}%)</div>
-    <div>Execution time: ${formatTime(executionTime)}</div>
   `;
 }
 
@@ -130,77 +166,122 @@ export async function toggleBFS(product: ProductVariety) {
   if (bfsRunning) {
     bfsPaused = !bfsPaused;
     bfsButton.textContent = bfsPaused ? "Resume BFS" : "Pause BFS";
-    if (bfsPaused) {
-      bfsWorker?.postMessage({ type: "pause" });
-    } else {
-      bfsWorker?.postMessage({ type: "resume" });
-    }
+
+    // Pause or resume all workers
+    const messageType = bfsPaused ? "pause" : "resume";
+    bfsWorkers.forEach((worker) => {
+      worker.postMessage({ type: messageType });
+    });
   } else {
     bfsRunning = true;
     bfsPaused = false;
     bfsButton.textContent = "Pause BFS";
     bestMix = { mix: [], profit: -Infinity };
     currentProduct = product;
-    const bfsQueue = [[]]; // Start with an empty mix
+    startTime = Date.now();
 
-    // Reset progress
-    currentProgress = {
-      depth: 0,
-      processed: 0,
-      total: 0,
-      totalProcessed: 0,
-      grandTotal: 0,
-      executionTime: 0,
-    };
-    createProgressDisplay();
+    // Clean up any existing workers
+    bfsWorkers.forEach((worker) => worker.terminate());
+    bfsWorkers = [];
+    workersProgress = new Map();
+    activeWorkers = 0;
 
-    if (!bfsWorker) {
-      bfsWorker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
+    // Create a worker for each substance
+    for (let i = 0; i < substances.length; i++) {
+      const substanceName = substances[i].name;
+
+      // Initialize with a single substance
+      const initialQueue = [[substanceName]];
+
+      // Create worker
+      const worker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
         type: "module",
       });
-      bfsWorker.onmessage = (event: MessageEvent) => {
-        const { type } = event.data;
 
-        if (type === "update") {
-          const { bestMix: updatedBestMix } = event.data;
-          bestMix = updatedBestMix;
-          updateBestMixDisplay();
-        } else if (type === "progress") {
-          const {
-            depth,
-            processed,
-            total,
-            totalProcessed,
-            grandTotal,
-            executionTime,
-          } = event.data;
-          currentProgress = {
-            depth,
-            processed,
-            total,
-            totalProcessed,
-            grandTotal,
-            executionTime,
-          };
-          updateProgressDisplay();
-        } else if (type === "done") {
-          bfsRunning = false;
-          bfsButton.textContent = "Start BFS";
-          // Final update of progress display to ensure time is shown correctly
-          updateProgressDisplay();
-        }
-      };
+      // Set up worker message handler
+      worker.onmessage = createWorkerMessageHandler(i, substanceName);
+
+      // Store the worker
+      bfsWorkers.push(worker);
+
+      // Initialize this worker's progress
+      workersProgress.set(i, {
+        substanceName,
+        depth: 1, // Starting with one substance
+        processed: 0,
+        total: 1,
+        totalProcessed: 0,
+        grandTotal: 0,
+        executionTime: 0,
+      });
+
+      // Start the worker
+      worker.postMessage({
+        type: "start",
+        workerId: i,
+        data: {
+          product: { ...product },
+          queue: initialQueue,
+          bestMix,
+          substanceName,
+        },
+      });
+
+      activeWorkers++;
     }
 
-    bfsWorker.postMessage({
-      type: "start",
-      data: {
-        product: { ...product }, // Pass a copy of the current product
-        queue: bfsQueue,
-        bestMix,
-      },
-    });
+    createProgressDisplay();
   }
+}
+
+function createWorkerMessageHandler(workerId: number, substanceName: string) {
+  return function (event: MessageEvent) {
+    const { type } = event.data;
+
+    if (type === "update") {
+      const { bestMix: updatedBestMix } = event.data;
+
+      // Only update if this mix is better than our current best mix
+      if (updatedBestMix.profit > bestMix.profit) {
+        bestMix = updatedBestMix;
+        updateBestMixDisplay();
+      }
+    } else if (type === "progress") {
+      const {
+        depth,
+        processed,
+        total,
+        totalProcessed,
+        grandTotal,
+        executionTime,
+      } = event.data;
+
+      // Update this worker's progress
+      workersProgress.set(workerId, {
+        substanceName,
+        depth,
+        processed,
+        total,
+        totalProcessed,
+        grandTotal,
+        executionTime,
+      });
+
+      updateProgressDisplay();
+    } else if (type === "done") {
+      activeWorkers--;
+
+      // Check if this was the last worker to finish
+      if (activeWorkers === 0) {
+        bfsRunning = false;
+        const bfsButton = document.getElementById("bfsButton");
+        if (bfsButton) bfsButton.textContent = "Start BFS";
+      }
+
+      // Final update of progress display
+      updateProgressDisplay();
+    }
+  };
 }
 
 export function isBfsRunning(): boolean {
