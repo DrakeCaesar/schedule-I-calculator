@@ -160,12 +160,6 @@ export const substances: Substance[] = [
         target: "Euphoric",
         withEffect: "Laxative",
       },
-      {
-        type: "replace",
-        condition: ["Slippery", "Munchies"],
-        target: "Slippery",
-        withEffect: "Athletic",
-      },
     ],
   },
   {
@@ -244,12 +238,6 @@ export const substances: Substance[] = [
     rules: [
       {
         type: "replace",
-        condition: ["Energizing"],
-        target: "Energizing",
-        withEffect: "Euphoric",
-      },
-      {
-        type: "replace",
         condition: ["Gingeritis"],
         target: "Gingeritis",
         withEffect: "Smelly",
@@ -276,14 +264,13 @@ export const substances: Substance[] = [
         type: "replace",
         condition: ["Energizing"],
         target: "Energizing",
-        withEffect: "Spicy",
+        withEffect: "Euphoric",
       },
       {
         type: "replace",
         condition: ["Euphoric"],
-        ifNotPresent: ["Energizing"],
         target: "Euphoric",
-        withEffect: "Spicy",
+        withEffect: "Energizing",
       },
       {
         type: "replace",
@@ -324,10 +311,10 @@ export const substances: Substance[] = [
     pricing: { Weed: 45, Meth: 90, Cocaine: 192 },
     rules: [
       {
-        type: "add",
+        type: "replace",
         condition: ["Calorie-Dense"],
-        ifNotPresent: ["Explosive"],
-        target: "Explosive",
+        target: "Calorie-Dense",
+        withEffect: "Explosive",
       },
       {
         type: "replace",
@@ -405,6 +392,12 @@ export const substances: Substance[] = [
       },
       {
         type: "replace",
+        condition: ["Glowing"],
+        target: "Glowing",
+        withEffect: "Disorienting",
+      },
+      {
+        type: "replace",
         condition: ["Disorienting"],
         target: "Disorienting",
         withEffect: "Electrifying",
@@ -475,12 +468,6 @@ export const substances: Substance[] = [
       },
       {
         type: "replace",
-        condition: ["Energizing"],
-        target: "Energizing",
-        withEffect: "Schizophrenia",
-      },
-      {
-        type: "replace",
         condition: ["Euphoric"],
         target: "Euphoric",
         withEffect: "Sedating",
@@ -494,7 +481,6 @@ export const substances: Substance[] = [
       {
         type: "replace",
         condition: ["Munchies"],
-        ifNotPresent: ["Energizing"],
         target: "Munchies",
         withEffect: "Schizophrenia",
       },
@@ -509,7 +495,6 @@ export const substances: Substance[] = [
       {
         type: "replace",
         condition: ["Energizing"],
-        ifNotPresent: ["Cyclopean"],
         target: "Energizing",
         withEffect: "Thought-Provoking",
       },
@@ -660,7 +645,6 @@ export const substances: Substance[] = [
       {
         type: "replace",
         condition: ["Energizing"],
-        ifNotPresent: ["Munchies"],
         target: "Energizing",
         withEffect: "Paranoia",
       },
@@ -702,8 +686,8 @@ export const substances: Substance[] = [
       },
       {
         type: "replace",
-        condition: ["Energizing", "Paranoia"],
-        target: "Energizing",
+        condition: ["Paranoia"],
+        target: "Paranoia",
         withEffect: "Balding",
       },
       {
@@ -793,7 +777,6 @@ export const substances: Substance[] = [
       {
         type: "replace",
         condition: ["Energizing"],
-        ifNotPresent: ["Thought-Provoking"],
         target: "Energizing",
         withEffect: "Cyclopean",
       },
@@ -918,14 +901,12 @@ export const substances: Substance[] = [
       {
         type: "replace",
         condition: ["Euphoric"],
-        ifNotPresent: ["Electrifying"],
         target: "Euphoric",
         withEffect: "Zombifying",
       },
       {
         type: "replace",
         condition: ["Electrifying"],
-        ifNotPresent: ["Zombifying"],
         target: "Electrifying",
         withEffect: "Euphoric",
       },
