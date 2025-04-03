@@ -189,10 +189,10 @@ export function loadFromLocalStorage() {
     const savedProduct = localStorage.getItem(STORAGE_KEY_PRODUCT);
 
     if (savedMix) {
-      console.log("Loading saved mix:", savedMix);
-      console.log("Current mix before loading:", currentMix);
-      currentMix.splice(0, currentMix.length, ...JSON.parse(savedMix));
-      console.log("Current mix after loading:", currentMix);
+      // console.log("Loading saved mix:", savedMix);
+      // console.log("Current mix before loading:", currentMix);
+      // currentMix.splice(0, currentMix.length, ...JSON.parse(savedMix));
+      // console.log("Current mix after loading:", currentMix);
     }
 
     if (savedProduct) {
@@ -238,14 +238,14 @@ async function runBFS() {
     const cost = calculateFinalCost(currentMix);
     const profit = sellPrice - cost;
 
-    console.log(
-      `Mix: ${currentMix.join(", ")}, Sell Price: $${sellPrice.toFixed(
-        2
-      )}, Cost: $${cost.toFixed(2)}, Profit: $${profit.toFixed(2)}, 
-      Best Mix: ${bestMix.mix.join(
-        ", "
-      )}, Best Profit: $${bestMix.profit.toFixed(2)}`
-    );
+    // console.log(
+    //   `Mix: ${currentMix.join(", ")}, Sell Price: $${sellPrice.toFixed(
+    //     2
+    //   )}, Cost: $${cost.toFixed(2)}, Profit: $${profit.toFixed(2)},
+    //   Best Mix: ${bestMix.mix.join(
+    //     ", "
+    //   )}, Best Profit: $${bestMix.profit.toFixed(2)}`
+    // );
 
     if (profit > bestMix.profit) {
       bestMix = { mix: currentMix, profit };
