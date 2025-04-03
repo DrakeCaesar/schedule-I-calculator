@@ -1,7 +1,14 @@
 // Interfaces for our data structures
+export interface ProductVariety {
+  name: string;
+  initialEffect: string;
+}
+
+// Update the Product interface to include varieties
 export interface Product {
   name: string;
   basePrice: number;
+  varieties?: ProductVariety[];
 }
 
 export interface Effect {
@@ -11,7 +18,16 @@ export interface Effect {
 
 // Products with their base prices
 export const products: { [key: string]: Product } = {
-  Weed: { name: "Weed", basePrice: 35 },
+  Weed: {
+    name: "Weed",
+    basePrice: 35,
+    varieties: [
+      { name: "OG Kush", initialEffect: "Calming" },
+      { name: "Sour Diesel", initialEffect: "Refreshing" },
+      { name: "Green Crack", initialEffect: "Energizing" },
+      { name: "Granddaddy Purple", initialEffect: "Sedating" },
+    ],
+  },
   Meth: { name: "Meth", basePrice: 70 },
   Cocaine: { name: "Cocaine", basePrice: 150 },
 };
@@ -931,8 +947,14 @@ export function calculateFinalPrice(
   productName: string,
   currentEffects: string[]
 ): number {
-  const product = products[productName];
+  const baseProductName =
+    Object.keys(products).find((key) =>
+      products[key].varieties?.some((v) => v.name === productName)
+    ) || productName;
+
+  const product = products[baseProductName];
   if (!product) return 0;
+
   let totalMultiplier = 0;
   currentEffects.forEach((effectName) => {
     if (effects[effectName]) {

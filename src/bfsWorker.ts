@@ -2,16 +2,17 @@ import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
+  ProductVariety,
   substances,
 } from "./substances";
 
-let currentProduct = { name: "Weed", initialEffect: "Calming" };
+let currentProduct: ProductVariety | null = null;
 
 self.onmessage = (event: MessageEvent) => {
   const { type, data } = event.data || {}; // Safely destructure event.data
 
   if (type === "start" && data) {
-    // currentProduct = data.product;
+    currentProduct = data.product; // Dynamically set current product
     runBFS(data.queue, data.bestMix);
   } else {
     console.error("Invalid message received by worker:", event.data);
@@ -30,7 +31,9 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
     }
 
     const effectsList = calculateEffects(currentMix);
-    const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
+    const sellPrice = currentProduct
+      ? calculateFinalPrice(currentProduct.name, effectsList)
+      : 0;
     const cost = calculateFinalCost(currentMix);
     const profit = sellPrice - cost;
 
@@ -56,7 +59,7 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
 }
 
 function calculateEffects(mix: string[]): string[] {
-  let effectsList = [currentProduct.initialEffect];
+  let effectsList = currentProduct ? [currentProduct.initialEffect] : [];
   mix.forEach((substanceName, index) => {
     const substance = substances.find((s) => s.name === substanceName);
     if (substance) {

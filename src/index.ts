@@ -9,12 +9,15 @@ import {
   updateProductDisplay,
 } from "./gui";
 import "./style.scss";
-import { substances } from "./substances";
+import { ProductVariety, substances } from "./substances";
 
 // --- Initialization ---
 
 // The starting product (name and its initial effect) – chosen from the radio buttons.
-export let currentProduct = { name: "OG Kush", initialEffect: "Calming" };
+export let currentProduct: ProductVariety = {
+  name: "OG Kush",
+  initialEffect: "Calming",
+};
 // The additives (by substance name) added to the mix, in order.
 export let currentMix: string[] = [];
 
@@ -56,7 +59,7 @@ function initializeApp() {
       if (target.checked) {
         const prodName = target.value;
         const initialEffect = target.dataset.initial || "";
-        currentProduct = { name: prodName, initialEffect: initialEffect };
+        currentProduct = { name: prodName, initialEffect };
         updateProductDisplay();
       }
     });

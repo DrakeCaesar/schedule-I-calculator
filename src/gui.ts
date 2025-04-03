@@ -68,7 +68,7 @@ export function updateResult() {
       effectsList = applySubstanceRules(effectsList, substance, recipeLength);
     }
   }
-  const finalPrice = calculateFinalPrice("Weed", effectsList);
+  const finalPrice = calculateFinalPrice(currentProduct.name, effectsList);
   const finalCost = calculateFinalCost(currentMix);
   const profit = finalPrice - finalCost;
 
@@ -313,7 +313,7 @@ function updateBestMixDisplay() {
   if (!bestMixDisplay) return;
 
   const effectsList = calculateEffects(bestMix.mix);
-  const sellPrice = calculateFinalPrice("Weed", effectsList);
+  const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
   const cost = calculateFinalCost(bestMix.mix);
   const profit = sellPrice - cost;
 
