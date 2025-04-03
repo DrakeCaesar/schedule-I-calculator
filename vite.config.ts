@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/scheduleI/",
+  base: "/schedule-I-calculator/",
   build: {
     outDir: "dist",
     sourcemap: true,
