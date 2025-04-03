@@ -12,6 +12,13 @@ let bfsPaused = false;
 let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
 let bfsWorker: Worker | null = null;
 let currentProduct: ProductVariety | null = null;
+let currentProgress = {
+  depth: 0,
+  processed: 0,
+  total: 0,
+  totalProcessed: 0,
+  grandTotal: 0,
+};
 
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
@@ -59,6 +66,45 @@ export function updateBestMixDisplay() {
   `;
 }
 
+function updateProgressDisplay() {
+  const progressDisplay = document.getElementById("bfsProgressDisplay");
+  if (!progressDisplay) return;
+
+  const { depth, processed, total, totalProcessed, grandTotal } =
+    currentProgress;
+
+  // Calculate percentage for current depth
+  const depthPercentage =
+    Math.min(100, Math.round((processed / total) * 100)) || 0;
+
+  // Calculate overall percentage
+  const overallPercentage =
+    Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
+
+  progressDisplay.innerHTML = `
+    <div>Current depth: ${depth} of 8</div>
+    <div>Current depth progress: ${processed.toLocaleString()} / ${total.toLocaleString()}</div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+    </div>
+    <div>${depthPercentage}% of current depth complete</div>
+    <div>Overall progress: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()} (${overallPercentage}%)</div>
+  `;
+}
+
+export function createProgressDisplay() {
+  let progressDisplay = document.getElementById("bfsProgressDisplay");
+
+  if (!progressDisplay) {
+    progressDisplay = document.createElement("div");
+    progressDisplay.id = "bfsProgressDisplay";
+    progressDisplay.classList.add("progress-display");
+    document.body.appendChild(progressDisplay);
+  }
+
+  updateProgressDisplay();
+}
+
 export async function toggleBFS(product: ProductVariety) {
   const bfsButton = document.getElementById("bfsButton");
   if (!bfsButton) return;
@@ -79,21 +125,38 @@ export async function toggleBFS(product: ProductVariety) {
     currentProduct = product;
     const bfsQueue = [[]]; // Start with an empty mix
 
+    // Reset progress
+    currentProgress = {
+      depth: 0,
+      processed: 0,
+      total: 0,
+      totalProcessed: 0,
+      grandTotal: 0,
+    };
+    createProgressDisplay();
+
     if (!bfsWorker) {
       bfsWorker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
         type: "module",
       });
       bfsWorker.onmessage = (event: MessageEvent) => {
-        const {
-          type,
-          bestMix: updatedBestMix,
-          sellPrice,
-          cost,
-          profit,
-        } = event.data;
+        const { type } = event.data;
+
         if (type === "update") {
+          const { bestMix: updatedBestMix } = event.data;
           bestMix = updatedBestMix;
           updateBestMixDisplay();
+        } else if (type === "progress") {
+          const { depth, processed, total, totalProcessed, grandTotal } =
+            event.data;
+          currentProgress = {
+            depth,
+            processed,
+            total,
+            totalProcessed,
+            grandTotal,
+          };
+          updateProgressDisplay();
         } else if (type === "done") {
           bfsRunning = false;
           bfsButton.textContent = "Start BFS";

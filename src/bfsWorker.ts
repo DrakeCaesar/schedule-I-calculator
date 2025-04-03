@@ -7,27 +7,65 @@ import {
 } from "./substances";
 
 let currentProduct: ProductVariety | null = null;
+let isPaused = false;
+let combinationsProcessed = 0;
+let maxCombinations = 0;
+let depthCombinationsProcessed = 0;
+let depthMaxCombinations = 0;
+let currentDepth = 0;
 
 self.onmessage = (event: MessageEvent) => {
   const { type, data } = event.data || {}; // Safely destructure event.data
 
   if (type === "start" && data) {
+    isPaused = false;
+    combinationsProcessed = 0;
+    depthCombinationsProcessed = 0;
+    currentDepth = 0;
     currentProduct = { ...data.product }; // Use a copy of the product to avoid changes during BFS
+
+    // Calculate max combinations per depth
+    const substanceCount = substances.length;
+    maxCombinations = 0;
+    for (let i = 1; i <= 8; i++) {
+      maxCombinations += Math.pow(substanceCount, i);
+    }
+    // Calculate max combinations for depth 1
+    depthMaxCombinations = substanceCount;
+
     runBFS(data.queue, data.bestMix);
+  } else if (type === "pause") {
+    isPaused = true;
+  } else if (type === "resume") {
+    isPaused = false;
   } else {
     console.error("Invalid message received by worker:", event.data);
   }
 };
 
 function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
-  let currentLength = 1;
+  let lastProgressUpdate = Date.now();
 
-  while (queue.length > 0) {
+  while (queue.length > 0 && !isPaused) {
     const currentMix = queue.shift()!;
+    combinationsProcessed++;
+    depthCombinationsProcessed++;
 
-    if (currentMix.length > currentLength) {
-      currentLength++;
-      if (currentLength > 8) break;
+    // Check if we need to move to the next depth
+    if (currentMix.length > currentDepth) {
+      currentDepth = currentMix.length;
+
+      // Reset depth-specific counters
+      depthCombinationsProcessed = 1; // Start at 1 because we're processing the first item of this depth
+
+      // Calculate max combinations for this depth
+      const substanceCount = substances.length;
+      depthMaxCombinations = Math.pow(substanceCount, currentDepth);
+
+      // Send progress update when we move to next depth
+      sendProgressUpdate();
+
+      if (currentDepth > 8) break; // Stop if mix length exceeds 8
     }
 
     const effectsList = calculateEffects(currentMix);
@@ -53,9 +91,30 @@ function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
         queue.push([...currentMix, substance.name]);
       }
     }
+
+    // Send progress updates periodically (every 500ms) to avoid flooding the main thread
+    if (Date.now() - lastProgressUpdate > 500) {
+      sendProgressUpdate();
+      lastProgressUpdate = Date.now();
+    }
   }
 
-  self.postMessage({ type: "done", bestMix });
+  if (!isPaused) {
+    // Send a final progress update
+    sendProgressUpdate();
+    self.postMessage({ type: "done", bestMix });
+  }
+}
+
+function sendProgressUpdate() {
+  self.postMessage({
+    type: "progress",
+    depth: currentDepth,
+    processed: depthCombinationsProcessed,
+    total: depthMaxCombinations,
+    totalProcessed: combinationsProcessed,
+    grandTotal: maxCombinations,
+  });
 }
 
 function calculateEffects(mix: string[]): string[] {

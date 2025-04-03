@@ -1,3 +1,4 @@
+import { createProgressDisplay } from "./bfs";
 import {
   loadFromLocalStorage,
   onDragStart,
@@ -123,6 +124,9 @@ function initializeApp() {
     bestMixDisplay.id = "bestMixDisplay";
     document.body.appendChild(bestMixDisplay);
   }
+
+  // Create progress display container
+  createProgressDisplay();
 
   // Initialize display with default product.
   loadFromLocalStorage();

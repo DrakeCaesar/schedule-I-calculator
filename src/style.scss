@@ -72,3 +72,33 @@ $effect-colors: (
 #bestMixDisplay p {
   margin: 5px 0;
 }
+
+// Add progress bar styling
+.progress-display {
+  margin: 20px auto;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-width: 600px;
+  background-color: #f9f9f9;
+}
+
+.progress-display div {
+  margin: 5px 0;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  background-color: #e0e0e0;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #4caf50;
+  border-radius: 10px;
+  transition: width 0.5s ease-in-out;
+}
