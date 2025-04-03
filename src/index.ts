@@ -25,6 +25,9 @@ function initializeApp() {
   // Populate the additives list in the sidebar using our substances array.
   const additivesList = document.getElementById("additivesList");
   if (additivesList) {
+    // Clear existing items to prevent duplication on hot reload
+    additivesList.innerHTML = "";
+
     substances.forEach((substance) => {
       const div = document.createElement("div");
       div.textContent = substance.name;
@@ -130,7 +133,7 @@ document.addEventListener("DOMContentLoaded", initializeApp);
 
 // Add HMR handling
 if ((import.meta as any).hot) {
-  (import.meta as any).hot.accept(["./gui", "./substances"], () => {
+  (import.meta as any).hot.accept(["./gui", "./substances", "./bfs"], () => {
     initializeApp();
   });
 }

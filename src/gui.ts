@@ -1,23 +1,16 @@
 // --- UI State Variables ---
 
 import { currentMix, currentProduct } from ".";
+import { toggleBFS as toggleBFSSearch } from "./bfs";
 import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
   substances,
 } from "./substances";
-// Add these imports at the top
 
-// Add these constants near the top
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
-
-let bfsRunning = false;
-let bfsPaused = false;
-let bfsQueue: string[][] = [];
-let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
-let bfsWorker: Worker | null = null;
 
 // --- UI Update Functions ---
 
@@ -31,7 +24,6 @@ export function updateProductDisplay() {
     productDisplay.textContent = `Product: ${currentProduct.name}${initialEffectText}`;
   }
   // Reset mix additives when a new product is chosen.
-  // currentMix.splice(0, currentMix.length);
   updateMixListUI();
   updateResult();
   saveToLocalStorage();
@@ -99,7 +91,6 @@ export function updateResult() {
 
 // --- Drag & Drop Handlers ---
 
-// Called when a draggable item starts (from sidebar or mix list)
 export function onDragStart(e: DragEvent) {
   const target = e.target as HTMLElement;
   const source = target.dataset.source;
@@ -122,16 +113,14 @@ export function onDragStart(e: DragEvent) {
   }
 }
 
-// Handle drop event for the mix zone (to add or reorder additives)
 export function onMixDrop(e: DragEvent) {
   e.preventDefault();
   if (!e.dataTransfer) return;
   const data = e.dataTransfer.getData("text/plain");
   const dropData = JSON.parse(data);
   const mixListEl = document.getElementById("mixList");
-  let insertIndex = currentMix.length; // default insertion at the end
+  let insertIndex = currentMix.length;
 
-  // Determine insertion index by comparing mouse Y with each list item.
   if (mixListEl) {
     const rect = mixListEl.getBoundingClientRect();
     const mouseY = e.clientY;
@@ -146,12 +135,9 @@ export function onMixDrop(e: DragEvent) {
   }
 
   if (dropData.source === "sidebar") {
-    // Dragging from the additives list: insert a copy at the calculated index.
     currentMix.splice(insertIndex, 0, dropData.name);
   } else if (dropData.source === "mix") {
-    // Reordering within the mix.
     const oldIndex = parseInt(dropData.index, 10);
-    // Adjust index if item is moved downward.
     if (oldIndex < insertIndex) {
       insertIndex = insertIndex - 1;
     }
@@ -163,12 +149,10 @@ export function onMixDrop(e: DragEvent) {
   saveToLocalStorage();
 }
 
-// Allow drop on mix zone by preventing default.
 export function onMixDragOver(e: DragEvent) {
   e.preventDefault();
 }
 
-// Handle drop on the trash area (to remove an additive)
 export function onTrashDrop(e: DragEvent) {
   e.preventDefault();
   if (!e.dataTransfer) return;
@@ -183,7 +167,6 @@ export function onTrashDrop(e: DragEvent) {
   }
 }
 
-// Allow drop on trash area.
 export function onTrashDragOver(e: DragEvent) {
   e.preventDefault();
 }
@@ -213,126 +196,6 @@ export function loadFromLocalStorage() {
   }
 }
 
-export async function toggleBFS() {
-  const bfsButton = document.getElementById("bfsButton");
-  if (!bfsButton) return;
-
-  if (bfsRunning) {
-    bfsPaused = !bfsPaused;
-    bfsButton.textContent = bfsPaused ? "Resume BFS" : "Pause BFS";
-    if (bfsPaused) {
-      bfsWorker?.postMessage({ type: "pause" });
-    } else {
-      bfsWorker?.postMessage({ type: "resume" });
-    }
-  } else {
-    bfsRunning = true;
-    bfsPaused = false;
-    bfsButton.textContent = "Pause BFS";
-    bestMix = { mix: [], profit: -Infinity };
-    bfsQueue = [[]]; // Start with an empty mix
-
-    if (!bfsWorker) {
-      bfsWorker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
-        type: "module",
-      });
-      bfsWorker.onmessage = (event: MessageEvent) => {
-        const { type, bestMix: updatedBestMix } = event.data;
-        if (type === "update") {
-          bestMix = updatedBestMix;
-          updateBestMixDisplay();
-        } else if (type === "done") {
-          bfsRunning = false;
-          bfsButton.textContent = "Start BFS";
-        }
-      };
-    }
-
-    bfsWorker.postMessage({
-      type: "start",
-      data: {
-        product: { ...currentProduct }, // Pass a copy of the current product
-        queue: bfsQueue,
-        bestMix,
-      },
-    });
-  }
-}
-
-async function runBFS() {
-  let currentLength = 1; // Start with mixes of length 1
-  while (bfsQueue.length > 0 && !bfsPaused) {
-    const currentMix = bfsQueue.shift()!;
-
-    // Check if we need to move to the next length
-    if (currentMix.length > currentLength) {
-      currentLength++;
-      if (currentLength > 8) break; // Stop if mix length exceeds 8
-    }
-
-    const effectsList = calculateEffects(currentMix);
-    const sellPrice = calculateFinalPrice("Weed", effectsList);
-    const cost = calculateFinalCost(currentMix);
-    const profit = sellPrice - cost;
-
-    // console.log(
-    //   `Mix: ${currentMix.join(", ")}, Sell Price: $${sellPrice.toFixed(
-    //     2
-    //   )}, Cost: $${cost.toFixed(2)}, Profit: $${profit.toFixed(2)},
-    //   Best Mix: ${bestMix.mix.join(
-    //     ", "
-    //   )}, Best Profit: $${bestMix.profit.toFixed(2)}`
-    // );
-
-    if (profit > bestMix.profit) {
-      bestMix = { mix: currentMix, profit };
-      updateBestMixDisplay();
-    }
-
-    // Generate mixes of the next length
-    if (currentMix.length < 8) {
-      for (const substance of substances) {
-        bfsQueue.push([...currentMix, substance.name]);
-      }
-    }
-
-    await sleep(1); // Sleep to avoid blocking
-  }
-}
-
-function calculateEffects(mix: string[]): string[] {
-  let effectsList = [currentProduct.initialEffect];
-  mix.forEach((substanceName, index) => {
-    const substance = substances.find((s) => s.name === substanceName);
-    if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance, index + 1);
-    }
-  });
-  return effectsList;
-}
-
-function updateBestMixDisplay() {
-  const bestMixDisplay = document.getElementById("bestMixDisplay");
-  if (!bestMixDisplay) return;
-
-  const effectsList = calculateEffects(bestMix.mix);
-  const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
-  const cost = calculateFinalCost(bestMix.mix);
-  const profit = sellPrice - cost;
-
-  const effectsHTML = effectsList
-    .map((effect) => createEffectSpan(effect))
-    .join(" ");
-  bestMixDisplay.innerHTML = `
-    <h3>Best Mix for ${currentProduct.name}</h3>
-    <p>Mix: ${bestMix.mix.join(", ")}</p>
-    <p>Effects: ${effectsHTML}</p>
-    <p>Sell Price: $${sellPrice.toFixed(2)}</p>
-    <p>Cost: $${cost.toFixed(2)}</p>
-    <p>Profit: $${profit.toFixed(2)}</p>
-  `;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function toggleBFS() {
+  toggleBFSSearch(currentProduct);
 }
