@@ -251,7 +251,7 @@ export async function toggleBFS() {
     bfsWorker.postMessage({
       type: "start",
       data: {
-        product: currentProduct,
+        product: { ...currentProduct }, // Pass a copy of the current product
         queue: bfsQueue,
         bestMix,
       },
@@ -324,7 +324,7 @@ function updateBestMixDisplay() {
     .map((effect) => createEffectSpan(effect))
     .join(" ");
   bestMixDisplay.innerHTML = `
-    <h3>Best Mix</h3>
+    <h3>Best Mix for ${currentProduct.name}</h3>
     <p>Mix: ${bestMix.mix.join(", ")}</p>
     <p>Effects: ${effectsHTML}</p>
     <p>Sell Price: $${sellPrice.toFixed(2)}</p>

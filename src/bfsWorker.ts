@@ -12,7 +12,7 @@ self.onmessage = (event: MessageEvent) => {
   const { type, data } = event.data || {}; // Safely destructure event.data
 
   if (type === "start" && data) {
-    currentProduct = data.product; // Dynamically set current product
+    currentProduct = { ...data.product }; // Use a copy of the product to avoid changes during BFS
     runBFS(data.queue, data.bestMix);
   } else {
     console.error("Invalid message received by worker:", event.data);
