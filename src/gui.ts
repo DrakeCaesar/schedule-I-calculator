@@ -259,7 +259,7 @@ async function runBFS() {
       }
     }
 
-    await sleep(100); // Sleep to avoid blocking
+    await sleep(1); // Sleep to avoid blocking
   }
 }
 
