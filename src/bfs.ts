@@ -173,26 +173,54 @@ export async function toggleBFS(product: ProductVariety) {
   }, 100);
 
   try {
-    // Load the WASM module
+    console.log("Loading WASM module...");
     const bfsModule = await loadWasmModule();
 
-    // Prepare data for WASM
-    const wasmSubstances = prepareSubstancesForWasm();
-    const wasmEffectMultipliers = prepareEffectMultipliersForWasm(effects);
-    const wasmSubstanceRules = prepareSubstanceRulesForWasm();
+    console.log("WASM module loaded:", bfsModule);
+    console.log(
+      "findBestMixJson exists?",
+      typeof bfsModule.findBestMixJson === "function"
+    );
 
-    // Call the WASM function
-    const result = bfsModule.findBestMix(
-      product,
-      wasmSubstances,
-      wasmEffectMultipliers,
-      wasmSubstanceRules,
+    if (typeof bfsModule.findBestMixJson !== "function") {
+      throw new Error("findBestMixJson function not found in WASM module");
+    }
+
+    // Prepare data for WASM as JSON strings
+    const productJson = JSON.stringify({
+      name: product.name,
+      initialEffect: product.initialEffect,
+    });
+    const substancesJson = prepareSubstancesForWasm();
+    const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
+    const substanceRulesJson = prepareSubstanceRulesForWasm();
+
+    console.log("Data prepared as JSON strings");
+
+    // Call the WASM function with JSON strings
+    console.log("Calling findBestMixJson function...");
+    const result = bfsModule.findBestMixJson(
+      productJson,
+      substancesJson,
+      effectMultipliersJson,
+      substanceRulesJson,
       MAX_RECIPE_DEPTH
     );
 
-    // Update best mix with result
+    console.log("WASM function returned result:", result);
+
+    // Ensure the result.mix is a proper array
+    const mixArray = Array.isArray(result.mix)
+      ? result.mix
+      : result.mix
+      ? Array.from(result.mix)
+      : [];
+
+    console.log("Converted mix array:", mixArray);
+
+    // Update best mix with result, ensuring mix is a proper array
     bestMix = {
-      mix: result.mix,
+      mix: mixArray,
       profit: result.profit,
     };
 
@@ -209,7 +237,7 @@ export async function toggleBFS(product: ProductVariety) {
     updateProgressDisplay(100);
   } catch (error) {
     console.error("Error running WASM BFS:", error);
-    debugger;
+    alert(`WASM error: ${error.message}`);
   } finally {
     bfsRunning = false;
     bfsButton.textContent = "Start BFS";

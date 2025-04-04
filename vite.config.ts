@@ -1,25 +1,47 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
-  base: "/schedule-I-calculator/",
   build: {
-    outDir: "dist",
-    sourcemap: true,
     target: "esnext",
+    sourcemap: true,
+    // Set WASM as external assets
+    assetsInlineLimit: 0,
     rollupOptions: {
-      input: "index.html",
       output: {
-        entryFileNames: "index.js",
-        assetFileNames: "style.css",
-        format: "es",
+        manualChunks: {
+          wasm: ["./src/cpp/bfs.wasm.js"],
+        },
       },
     },
   },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        api: "modern-compiler", // or "modern"
-      },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Don't try to optimize WASM modules
+  optimizeDeps: {
+    exclude: ["./src/cpp/bfs.wasm.js"],
+  },
+  // Handle WebAssembly files correctly
+  assetsInclude: ["**/*.wasm"],
+  // Ensure proper file serving during development
+  server: {
+    fs: {
+      // Allow serving files from this project directory
+      allow: ["."],
+      strict: false,
+    },
+    headers: {
+      // Required for proper WASM loading
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  // Properly handle static assets
+  publicDir: "public",
 });
