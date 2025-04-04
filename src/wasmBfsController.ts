@@ -194,7 +194,7 @@ export async function startWasmBFS(product: ProductVariety) {
   wasmStartTime = Date.now();
 
   // Create worker
-  const worker = new Worker(new URL("./bfsWorkerWasm.ts", import.meta.url), {
+  const worker = new Worker(new URL("./wasmBfsWorker.ts", import.meta.url), {
     type: "module",
   });
 
