@@ -168,7 +168,10 @@ export function updateTsProgressDisplay(forceUpdate = false) {
   const currentTime = Date.now();
 
   // Only update every PROGRESS_UPDATE_INTERVAL ms, unless forceUpdate is true
-  if (!forceUpdate && currentTime - lastTsProgressUpdate < PROGRESS_UPDATE_INTERVAL) {
+  if (
+    !forceUpdate &&
+    currentTime - lastTsProgressUpdate < PROGRESS_UPDATE_INTERVAL
+  ) {
     return;
   }
 
