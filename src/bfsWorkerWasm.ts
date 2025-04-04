@@ -8,7 +8,7 @@ import {
   prepareEffectMultipliersForWasm,
   prepareSubstanceRulesForWasm,
   prepareSubstancesForWasm,
-} from "./wasm-loader";
+} from "./wasmLoader";
 
 let isPaused = false;
 let startTime = 0;

@@ -1,4 +1,4 @@
-import { Effect, substances } from "./substances";
+import { Effect, substances } from "./substances.js";
 
 // Define the type for the Emscripten module factory function
 type BFSModuleFactory = () => Promise<BFSModule>;
