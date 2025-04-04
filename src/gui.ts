@@ -182,15 +182,32 @@ export function loadFromLocalStorage() {
     const savedProduct = localStorage.getItem(STORAGE_KEY_PRODUCT);
 
     if (savedMix) {
-      // console.log("Loading saved mix:", savedMix);
-      // console.log("Current mix before loading:", currentMix);
-      // currentMix.splice(0, currentMix.length, ...JSON.parse(savedMix));
-      // console.log("Current mix after loading:", currentMix);
+      const parsedMix = JSON.parse(savedMix);
+      // Clear current mix and load saved items
+      currentMix.length = 0; // Clear the array
+      currentMix.push(...parsedMix); // Add all items from saved mix
     }
 
     if (savedProduct) {
-      Object.assign(currentProduct, JSON.parse(savedProduct));
+      const parsedProduct = JSON.parse(savedProduct);
+      Object.assign(currentProduct, parsedProduct);
+      
+      // Select the corresponding radio button
+      setTimeout(() => {
+        const productRadios = document.querySelectorAll('input[name="product"]');
+        for (const radio of productRadios) {
+          const inputRadio = radio as HTMLInputElement;
+          if (inputRadio.value === currentProduct.name) {
+            inputRadio.checked = true;
+            break;
+          }
+        }
+      }, 0);
     }
+    
+    // Update UI with loaded data
+    updateMixListUI();
+    updateResult();
   } catch (error) {
     console.error("Error loading saved state:", error);
   }
