@@ -1007,7 +1007,7 @@ export function applySubstanceRules(
           // Remove target and add new effect
           newEffects.delete(rule.target);
           newEffects.add(rule.withEffect);
-          ogEffects.add(rule.withEffect); // Add new effect to original effects for future checks
+          // ogEffects.add(rule.withEffect); // Add new effect to original effects for future checks
 
           // console.log(Array.from(newEffects));
         }
@@ -1026,7 +1026,7 @@ export function applySubstanceRules(
 
   // Ensure default effect is present
 
-  if (recipeLength < 8) {
+  if (recipeLength < 9) {
     // console.log(`Adding default effect ${substance.defaultEffect}`);
 
     newEffects.add(substance.defaultEffect);
