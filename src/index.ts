@@ -7,6 +7,8 @@ import {
   onTrashDragOver,
   onTrashDrop,
   toggleBFS,
+  toggleTS,
+  toggleWASM,
   updateProductDisplay,
 } from "./gui";
 import "./style.scss";
@@ -98,16 +100,39 @@ function initializeApp() {
     trash.addEventListener("drop", onTrashDrop);
   }
 
-  // Set up BFS button event listener
-  const bfsButton = document.getElementById("bfsButton");
-  if (bfsButton) {
-    // Remove existing listeners to prevent duplicates during hot reload
-    const newButton = bfsButton.cloneNode(true);
-    if (bfsButton.parentNode) {
-      bfsButton.parentNode.replaceChild(newButton, bfsButton);
+  // Set up both BFS button event listener
+  const bothBfsButton = document.getElementById("bothBfsButton");
+  if (bothBfsButton) {
+    const newBothButton = bothBfsButton.cloneNode(true);
+    if (bothBfsButton.parentNode) {
+      bothBfsButton.parentNode.replaceChild(newBothButton, bothBfsButton);
     }
-    newButton.addEventListener("click", () => {
-      toggleBFS();
+    newBothButton.addEventListener("click", () => {
+      toggleBFS(); // Use the existing toggleBFS function which now calls toggleBothBFS
+    });
+  }
+
+  // Set up BFS TypeScript button event listener
+  const tsBfsButton = document.getElementById("tsBfsButton");
+  if (tsBfsButton) {
+    const newTsButton = tsBfsButton.cloneNode(true);
+    if (tsBfsButton.parentNode) {
+      tsBfsButton.parentNode.replaceChild(newTsButton, tsBfsButton);
+    }
+    newTsButton.addEventListener("click", () => {
+      toggleTS(); // Call new toggleTS function
+    });
+  }
+
+  // Set up BFS WebAssembly button event listener
+  const wasmBfsButton = document.getElementById("wasmBfsButton");
+  if (wasmBfsButton) {
+    const newWasmButton = wasmBfsButton.cloneNode(true);
+    if (wasmBfsButton.parentNode) {
+      wasmBfsButton.parentNode.replaceChild(newWasmButton, wasmBfsButton);
+    }
+    newWasmButton.addEventListener("click", () => {
+      toggleWASM(); // Call new toggleWASM function
     });
   }
 

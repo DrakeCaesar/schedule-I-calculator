@@ -39,7 +39,11 @@
       <div id="bfsSection">
         <div class="bfs-controls">
           <h2>Best Mix Finder</h2>
-          <button id="bfsButton">Start BFS</button>
+          <div class="button-container">
+            <button id="bothBfsButton">Start Both BFS</button>
+            <button id="tsBfsButton">Start TS BFS</button>
+            <button id="wasmBfsButton">Start WASM BFS</button>
+          </div>
         </div>
 
         <div class="depth-control">
@@ -61,7 +65,7 @@
 
         <div id="bestMixDisplay">
           <p>
-            Click "Start BFS" to find the most profitable mix for the selected
+            Click any "Start BFS" button to find the most profitable mix for the selected
             product.
           </p>
         </div>

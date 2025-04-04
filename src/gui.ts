@@ -1,7 +1,7 @@
 // --- UI State Variables ---
 
 import { currentMix, currentProduct } from ".";
-import { toggleBFS as toggleBFSSearch } from "./bfs";
+import { toggleBothBFS, toggleTsBFS, toggleWasmBFS } from "./bfs";
 import {
   applySubstanceRules,
   calculateFinalCost,
@@ -216,5 +216,13 @@ export function loadFromLocalStorage() {
 }
 
 export function toggleBFS() {
-  toggleBFSSearch(currentProduct);
+  toggleBothBFS(currentProduct);
+}
+
+export function toggleTS() {
+  toggleTsBFS(currentProduct);
+}
+
+export function toggleWASM() {
+  toggleWasmBFS(currentProduct);
 }

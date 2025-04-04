@@ -587,5 +587,143 @@ export function getWasmBestMix(): { mix: string[]; profit: number } {
   return wasmBestMix;
 }
 
+// Function to run only the TypeScript BFS
+export async function toggleTsBFS(product: ProductVariety) {
+  const tsBfsButton = document.getElementById("tsBfsButton");
+  if (!tsBfsButton) return;
+
+  // Get the current max depth value from slider
+  const maxDepthSlider = document.getElementById(
+    "maxDepthSlider"
+  ) as HTMLInputElement;
+  if (maxDepthSlider) {
+    MAX_RECIPE_DEPTH = parseInt(maxDepthSlider.value, 10);
+  }
+
+  // Check if TS implementation is running
+  if (tsBfsRunning) {
+    tsBfsPaused = !tsBfsPaused;
+    // Pause or resume all workers
+    const messageType = tsBfsPaused ? "pause" : "resume";
+    tsBfsWorkers.forEach((worker) => {
+      worker.postMessage({ type: messageType });
+    });
+    tsBfsButton.textContent = tsBfsPaused ? "Resume TS BFS" : "Pause TS BFS";
+  } else {
+    // Create only the TS progress display
+    createTsProgressDisplay();
+    // Create only the TS result display
+    createTsResultDisplay();
+
+    // Start TypeScript BFS
+    tsBfsButton.textContent = "Pause TS BFS";
+    startTsBFS(product);
+  }
+}
+
+// Function to run only the WebAssembly BFS
+export async function toggleWasmBFS(product: ProductVariety) {
+  const wasmBfsButton = document.getElementById("wasmBfsButton");
+  if (!wasmBfsButton) return;
+
+  // Get the current max depth value from slider
+  const maxDepthSlider = document.getElementById(
+    "maxDepthSlider"
+  ) as HTMLInputElement;
+  if (maxDepthSlider) {
+    MAX_RECIPE_DEPTH = parseInt(maxDepthSlider.value, 10);
+  }
+
+  // Check if WASM implementation is running
+  if (wasmBfsRunning) {
+    // Stop the WASM BFS
+    if (wasmProgressInterval) {
+      clearInterval(wasmProgressInterval);
+      wasmProgressInterval = null;
+    }
+
+    wasmBfsRunning = false;
+    wasmBfsButton.textContent = "Start WASM BFS";
+  } else {
+    // Create only the WASM progress display
+    createWasmProgressDisplay();
+    // Create only the WASM result display
+    createWasmResultDisplay();
+
+    // Start WebAssembly BFS
+    wasmBfsButton.textContent = "Stop WASM BFS";
+    startWasmBFS(product);
+  }
+}
+
+// Add individual create functions for each display type
+function createTsProgressDisplay() {
+  let tsProgressDisplay = document.getElementById("tsBfsProgressDisplay");
+  if (!tsProgressDisplay) {
+    tsProgressDisplay = document.createElement("div");
+    tsProgressDisplay.id = "tsBfsProgressDisplay";
+    tsProgressDisplay.classList.add("progress-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(tsProgressDisplay);
+    } else {
+      document.body.appendChild(tsProgressDisplay); // Fallback
+    }
+  }
+
+  updateTsProgressDisplay();
+}
+
+function createWasmProgressDisplay() {
+  let wasmProgressDisplay = document.getElementById("wasmBfsProgressDisplay");
+  if (!wasmProgressDisplay) {
+    wasmProgressDisplay = document.createElement("div");
+    wasmProgressDisplay.id = "wasmBfsProgressDisplay";
+    wasmProgressDisplay.classList.add("progress-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(wasmProgressDisplay);
+    } else {
+      document.body.appendChild(wasmProgressDisplay); // Fallback
+    }
+  }
+
+  updateWasmProgressDisplay(0);
+}
+
+function createTsResultDisplay() {
+  let tsBestMixDisplay = document.getElementById("tsBestMixDisplay");
+  if (!tsBestMixDisplay) {
+    tsBestMixDisplay = document.createElement("div");
+    tsBestMixDisplay.id = "tsBestMixDisplay";
+    tsBestMixDisplay.classList.add("best-mix-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(tsBestMixDisplay);
+    } else {
+      document.body.appendChild(tsBestMixDisplay); // Fallback
+    }
+  }
+}
+
+function createWasmResultDisplay() {
+  let wasmBestMixDisplay = document.getElementById("wasmBestMixDisplay");
+  if (!wasmBestMixDisplay) {
+    wasmBestMixDisplay = document.createElement("div");
+    wasmBestMixDisplay.id = "wasmBestMixDisplay";
+    wasmBestMixDisplay.classList.add("best-mix-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(wasmBestMixDisplay);
+    } else {
+      document.body.appendChild(wasmBestMixDisplay); // Fallback
+    }
+  }
+}
+
 // Export the combined function to control both implementations
 export { toggleBothBFS as toggleBFS };

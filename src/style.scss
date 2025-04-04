@@ -232,6 +232,17 @@ body {
   flex: 1;
   overflow-y: auto;
   font-size: 14px;
+  min-height: 75px; /* Increased minimum height */
+  margin-bottom: 15px; /* Add more space between progress displays */
+}
+
+.best-mix-display {
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 5px;
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
 }
 
 .overall-progress {
@@ -341,4 +352,56 @@ body {
     0% 100%
   );
   filter: grayscale(1) brightness(1.6);
+}
+
+/* BFS Button container and Button styles */
+.button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+#bothBfsButton,
+#tsBfsButton,
+#wasmBfsButton {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+#bothBfsButton {
+  background-color: #4caf50; /* Green */
+
+  &:hover {
+    background-color: #3e8e41;
+  }
+}
+
+#tsBfsButton {
+  background-color: #2196f3; /* Blue */
+
+  &:hover {
+    background-color: #0b7dda;
+  }
+}
+
+#wasmBfsButton {
+  background-color: #ff9800; /* Orange */
+
+  &:hover {
+    background-color: #e68a00;
+  }
 }

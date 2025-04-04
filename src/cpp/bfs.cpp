@@ -54,6 +54,40 @@ struct JsBestMixResult
   double cost;
 };
 
+// Memory-efficient mix representation
+// Instead of storing multiple copies of string vectors, store indices
+struct MixState
+{
+  std::vector<size_t> substanceIndices; // Indices into substances vector
+
+  explicit MixState(size_t initialCapacity = 6)
+  {
+    substanceIndices.reserve(initialCapacity);
+  }
+
+  MixState(const MixState &other)
+  {
+    substanceIndices = other.substanceIndices;
+  }
+
+  void addSubstance(size_t index)
+  {
+    substanceIndices.push_back(index);
+  }
+
+  // Convert to a vector of substance names for final result
+  std::vector<std::string> toSubstanceNames(const std::vector<Substance> &substances) const
+  {
+    std::vector<std::string> names;
+    names.reserve(substanceIndices.size());
+    for (size_t idx : substanceIndices)
+    {
+      names.push_back(substances[idx].name);
+    }
+    return names;
+  }
+};
+
 // Utility functions for BFS algorithm
 std::vector<std::string> applySubstanceRules(
     const std::vector<std::string> &currentEffects,
@@ -127,12 +161,31 @@ std::vector<std::string> applySubstanceRules(
 
   // Convert back to vector
   std::vector<std::string> result;
+  result.reserve(newEffects.size()); // Pre-allocate memory
   for (const auto &pair : newEffects)
   {
     result.push_back(pair.first);
   }
 
   return result;
+}
+
+// Helper function to calculate effects for a mix (used by BFS)
+std::vector<std::string> calculateEffectsForMix(
+    const MixState &mixState,
+    const std::vector<Substance> &substances,
+    const std::string &initialEffect,
+    const std::unordered_map<std::string, bool> &effectsSet)
+{
+  std::vector<std::string> effectsList = {initialEffect};
+
+  for (size_t i = 0; i < mixState.substanceIndices.size(); ++i)
+  {
+    size_t idx = mixState.substanceIndices[i];
+    effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
+  }
+
+  return effectsList;
 }
 
 double calculateFinalPrice(
@@ -152,8 +205,7 @@ double calculateFinalPrice(
     }
   }
 
-  // For simplicity, we'll use a fixed base price of 100
-  // In a real implementation, you'd look up the actual base price
+  // Determine base price from product name
   double basePrice = 100.0;
   if (productName.find("Weed") != std::string::npos)
     basePrice = 35.0;
@@ -165,25 +217,19 @@ double calculateFinalPrice(
   return std::round(basePrice * (1.0 + totalMultiplier));
 }
 
-double calculateFinalCost(
-    const std::vector<std::string> &mix,
-    const std::unordered_map<std::string, Substance> &substancesMap)
+double calculateFinalCost(const MixState &mixState, const std::vector<Substance> &substances)
 {
   double totalCost = 0.0;
 
-  for (const auto &substanceName : mix)
+  for (size_t idx : mixState.substanceIndices)
   {
-    auto it = substancesMap.find(substanceName);
-    if (it != substancesMap.end())
-    {
-      totalCost += it->second.cost;
-    }
+    totalCost += substances[idx].cost;
   }
 
   return std::round(totalCost);
 }
 
-// BFS algorithm
+// BFS algorithm with memory optimizations
 JsBestMixResult findBestMix(
     const Product &product,
     const std::vector<Substance> &substances,
@@ -191,17 +237,10 @@ JsBestMixResult findBestMix(
     int maxDepth)
 {
   // Initialize the best mix and profit
-  std::vector<std::string> bestMix;
+  MixState bestMix(maxDepth);
   double bestProfit = -std::numeric_limits<double>::infinity();
   double bestSellPrice = 0.0;
   double bestCost = 0.0;
-
-  // Create a map for faster lookups
-  std::unordered_map<std::string, Substance> substancesMap;
-  for (const auto &substance : substances)
-  {
-    substancesMap[substance.name] = substance;
-  }
 
   // Create a set of all effect names for efficiency
   std::unordered_map<std::string, bool> effectsSet;
@@ -210,65 +249,67 @@ JsBestMixResult findBestMix(
     effectsSet[pair.first] = true;
   }
 
-  // Queue for BFS
-  std::queue<std::vector<std::string>> queue;
+  // Queue for BFS using the memory-efficient MixState
+  std::queue<MixState> queue;
 
   // Add each substance as a starting point
-  for (const auto &substance : substances)
+  for (size_t i = 0; i < substances.size(); ++i)
   {
-    std::vector<std::string> mix = {substance.name};
-    queue.push(mix);
+    MixState initialMix(maxDepth);
+    initialMix.addSubstance(i);
+    queue.push(initialMix);
   }
 
   // BFS main loop
   while (!queue.empty())
   {
-    std::vector<std::string> currentMix = queue.front();
-    queue.pop();
+    // Process in batches to reduce memory pressure
+    const size_t batchSize = 1000;
+    size_t processedInBatch = 0;
 
-    // Calculate effects for current mix
-    std::vector<std::string> effectsList = {product.initialEffect};
-    for (size_t i = 0; i < currentMix.size(); ++i)
+    while (!queue.empty() && processedInBatch < batchSize)
     {
-      const auto &substanceName = currentMix[i];
-      auto it = substancesMap.find(substanceName);
-      if (it != substancesMap.end())
+      MixState currentMix = queue.front();
+      queue.pop();
+      processedInBatch++;
+
+      // Calculate effects for current mix
+      std::vector<std::string> effectsList = calculateEffectsForMix(
+          currentMix, substances, product.initialEffect, effectsSet);
+
+      // Calculate profit
+      double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+      double cost = calculateFinalCost(currentMix, substances);
+      double profit = sellPrice - cost;
+
+      // Update best mix if this one is better
+      if (profit > bestProfit)
       {
-        effectsList = applySubstanceRules(effectsList, it->second, i + 1, effectsSet);
+        bestMix = currentMix;
+        bestProfit = profit;
+        bestSellPrice = sellPrice;
+        bestCost = cost;
       }
-    }
 
-    // Calculate profit
-    double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-    double cost = calculateFinalCost(currentMix, substancesMap);
-    double profit = sellPrice - cost;
-
-    // Update best mix if this one is better
-    if (profit > bestProfit)
-    {
-      bestMix = currentMix;
-      bestProfit = profit;
-      bestSellPrice = sellPrice;
-      bestCost = cost;
-    }
-
-    // If we haven't reached max depth, continue adding substances
-    if (currentMix.size() < static_cast<size_t>(maxDepth))
-    {
-      for (const auto &substance : substances)
+      // If we haven't reached max depth, continue adding substances
+      if (currentMix.substanceIndices.size() < static_cast<size_t>(maxDepth))
       {
-        std::vector<std::string> newMix = currentMix;
-        newMix.push_back(substance.name);
-        queue.push(newMix);
+        for (size_t i = 0; i < substances.size(); ++i)
+        {
+          MixState newMix = currentMix; // Copy is optimized due to vector of indices
+          newMix.addSubstance(i);
+          queue.push(newMix);
+        }
       }
     }
   }
 
-  // Convert best mix to a JavaScript array
+  // Convert best mix to a JavaScript array using substance names
+  std::vector<std::string> bestMixNames = bestMix.toSubstanceNames(substances);
   val jsArray = val::array();
-  for (size_t i = 0; i < bestMix.size(); ++i)
+  for (size_t i = 0; i < bestMixNames.size(); ++i)
   {
-    jsArray.set(i, val(bestMix[i]));
+    jsArray.set(i, val(bestMixNames[i]));
   }
 
   // Create and return the result
@@ -305,6 +346,8 @@ JsBestMixResult findBestMixJson(
     substancesDoc.Parse(substancesJson.c_str());
 
     std::vector<Substance> substances;
+    substances.reserve(substancesDoc.Size()); // Pre-allocate memory
+
     for (SizeType i = 0; i < substancesDoc.Size(); i++)
     {
       Substance substance;
@@ -341,6 +384,9 @@ JsBestMixResult findBestMixJson(
       {
         if (substance.name == substanceName)
         {
+          // Pre-allocate memory for rules
+          substance.rules.reserve(rules.Size());
+
           // Add rules to the substance
           for (SizeType j = 0; j < rules.Size(); j++)
           {
@@ -358,6 +404,7 @@ JsBestMixResult findBestMixJson(
 
             // Parse conditions
             const Value &conditions = rules[j]["condition"];
+            rule.condition.reserve(conditions.Size()); // Pre-allocate
             for (SizeType k = 0; k < conditions.Size(); k++)
             {
               rule.condition.push_back(conditions[k].GetString());
@@ -367,6 +414,7 @@ JsBestMixResult findBestMixJson(
             if (rules[j].HasMember("ifNotPresent"))
             {
               const Value &ifNotPresent = rules[j]["ifNotPresent"];
+              rule.ifNotPresent.reserve(ifNotPresent.Size()); // Pre-allocate
               for (SizeType k = 0; k < ifNotPresent.Size(); k++)
               {
                 rule.ifNotPresent.push_back(ifNotPresent[k].GetString());
