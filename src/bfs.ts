@@ -2,16 +2,9 @@ import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
-  effects,
   ProductVariety,
   substances,
 } from "./substances";
-import {
-  loadWasmModule,
-  prepareEffectMultipliersForWasm,
-  prepareSubstanceRulesForWasm,
-  prepareSubstancesForWasm,
-} from "./wasm-loader";
 
 // Constants
 export let MAX_RECIPE_DEPTH = 6; // Default value, can be changed via slider
@@ -22,10 +15,25 @@ const substanceMap = new Map(
 
 // BFS state variables
 let bfsRunning = false;
+let bfsPaused = false;
 let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
+let bfsWorkers: Worker[] = [];
 let currentProduct: ProductVariety | null = null;
+let activeWorkers = 0;
+
+// Track progress for each worker
+type WorkerProgress = {
+  substanceName: string;
+  depth: number;
+  processed: number;
+  total: number;
+  totalProcessed: number;
+  grandTotal: number;
+  executionTime: number;
+};
+
+let workersProgress: Map<number, WorkerProgress> = new Map();
 let startTime = 0;
-let progressInterval: NodeJS.Timeout | null = null;
 
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
@@ -34,8 +42,6 @@ function createEffectSpan(effect: string): string {
   return `<span class="effect effect-${effect}">${effect}</span>`;
 }
 
-// This function will now only be used for displaying results,
-// not for the actual BFS algorithm which runs in WASM
 export function calculateEffects(
   mix: string[],
   initialEffect: string
@@ -57,20 +63,12 @@ export function updateBestMixDisplay() {
   const bestMixDisplay = document.getElementById("bestMixDisplay");
   if (!bestMixDisplay || !currentProduct) return;
 
-  // Ensure bestMix.mix is a proper array
-  const mixArray = Array.isArray(bestMix.mix)
-    ? bestMix.mix
-    : bestMix.mix && typeof bestMix.mix === "object"
-    ? Array.from(
-        Object.values(bestMix.mix).filter((v) => typeof v === "string")
-      )
-    : ["Cuke", "Gasoline", "Banana"]; // Fallback to default values
-
-  console.log("Mix array in updateBestMixDisplay:", mixArray);
-
-  const effectsList = calculateEffects(mixArray, currentProduct.initialEffect);
+  const effectsList = calculateEffects(
+    bestMix.mix,
+    currentProduct.initialEffect
+  );
   const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
-  const cost = calculateFinalCost(mixArray);
+  const cost = calculateFinalCost(bestMix.mix);
   const profit = sellPrice - cost;
 
   const effectsHTML = effectsList
@@ -78,7 +76,7 @@ export function updateBestMixDisplay() {
     .join(" ");
   bestMixDisplay.innerHTML = `
     <h3>Best Mix for ${currentProduct.name}</h3>
-    <p>Mix: ${mixArray.join(", ")}</p>
+    <p>Mix: ${bestMix.mix.join(", ")}</p>
     <p>Effects: ${effectsHTML}</p>
     <p>Sell Price: $${sellPrice.toFixed(2)}</p>
     <p>Cost: $${cost.toFixed(2)}</p>
@@ -93,23 +91,88 @@ function formatTime(ms: number): string {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
-function updateProgressDisplay(progress: number) {
+function formatClockTime(ms: number): string {
+  const date = new Date(ms);
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const seconds = date.getSeconds().toString().padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function updateProgressDisplay() {
   const progressDisplay = document.getElementById("bfsProgressDisplay");
   if (!progressDisplay) return;
 
-  // Current execution time
+  // Calculate overall progress across all workers
+  let totalProcessed = 0;
+  let grandTotal = 0;
   const now = Date.now();
   const executionTime = startTime > 0 ? now - startTime : 0;
 
-  // Create HTML for progress
-  progressDisplay.innerHTML = `
+  // Sum up totals from all workers
+  workersProgress.forEach((progress) => {
+    totalProcessed += progress.totalProcessed;
+    grandTotal += progress.grandTotal;
+  });
+
+  // Calculate overall percentage
+  const overallPercentage =
+    Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
+
+  // Estimate remaining time
+  const remainingTime =
+    totalProcessed > 0
+      ? Math.round(
+          (executionTime / totalProcessed) * (grandTotal - totalProcessed)
+        )
+      : 0;
+  const estimatedFinishTime = now + remainingTime;
+
+  // Create HTML for overall progress
+  const overallProgressHTML = `
     <div class="overall-progress">
-      <h4>WASM BFS Progress</h4>
+      <h4>Overall Progress - ${activeWorkers} active workers</h4>
+      <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
       <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${progress}%"></div>
-        <span class="progress-text" data-progress="${progress}%" style="--progress-percent: ${progress}%"></span>
+        <div class="progress-bar" style="width: ${overallPercentage}%"></div>
+        <span class="progress-text" data-progress="${overallPercentage}%" style="--progress-percent: ${overallPercentage}%"></span>
       </div>
       <div>Execution time: ${formatTime(executionTime)}</div>
+      <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
+      <div>Estimated finish time: ${formatClockTime(estimatedFinishTime)}</div>
+    </div>
+  `;
+
+  // Create more compact HTML for each worker's progress
+  const workerProgressHTML = Array.from(workersProgress.entries())
+    .map(([id, progress]) => {
+      // Calculate percentage for current worker's depth
+      const depthPercentage =
+        Math.min(
+          100,
+          Math.round((progress.processed / progress.total) * 100)
+        ) || 0;
+
+      return `
+        <div class="worker-progress">
+          <div class="worker-header">
+            <span class="worker-name">${progress.substanceName}</span>
+            <span class="worker-depth">Depth: ${progress.depth}/${MAX_RECIPE_DEPTH}</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+            <span class="progress-text" data-progress="${depthPercentage}%" style="--progress-percent: ${depthPercentage}%"></span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  progressDisplay.innerHTML = `
+    ${overallProgressHTML}
+    <div class="workers-container">
+      <h4>Worker Status</h4>
+      ${workerProgressHTML}
     </div>
   `;
 }
@@ -131,7 +194,7 @@ export function createProgressDisplay() {
     }
   }
 
-  updateProgressDisplay(0);
+  updateProgressDisplay();
 }
 
 // Add function to update the MAX_RECIPE_DEPTH
@@ -143,21 +206,6 @@ export async function toggleBFS(product: ProductVariety) {
   const bfsButton = document.getElementById("bfsButton");
   if (!bfsButton) return;
 
-  if (bfsRunning) {
-    // Stop the BFS
-    bfsRunning = false;
-    bfsButton.textContent = "Start BFS";
-
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
-
-    updateProgressDisplay(100); // Set to 100% when stopped
-
-    return;
-  }
-
   // Get the current max depth value from slider
   const maxDepthSlider = document.getElementById(
     "maxDepthSlider"
@@ -166,119 +214,134 @@ export async function toggleBFS(product: ProductVariety) {
     MAX_RECIPE_DEPTH = parseInt(maxDepthSlider.value, 10);
   }
 
-  bfsRunning = true;
-  bfsButton.textContent = "Stop BFS";
-  bestMix = { mix: [], profit: -Infinity };
-  currentProduct = product;
-  startTime = Date.now();
+  if (bfsRunning) {
+    bfsPaused = !bfsPaused;
+    bfsButton.textContent = bfsPaused ? "Resume BFS" : "Pause BFS";
 
-  createProgressDisplay();
-
-  // Show progress updates
-  let progress = 0;
-  progressInterval = setInterval(() => {
-    // Simulate progress until the WASM module completes
-    progress = Math.min(progress + 1, 95); // Don't reach 100% until actually done
-    updateProgressDisplay(progress);
-  }, 100);
-
-  try {
-    console.log("Loading WASM module...");
-    const bfsModule = await loadWasmModule();
-
-    console.log("WASM module loaded:", bfsModule);
-    console.log(
-      "findBestMixJson exists?",
-      typeof bfsModule.findBestMixJson === "function"
-    );
-
-    if (typeof bfsModule.findBestMixJson !== "function") {
-      throw new Error("findBestMixJson function not found in WASM module");
-    }
-
-    // Prepare data for WASM as JSON strings
-    const productJson = JSON.stringify({
-      name: product.name,
-      initialEffect: product.initialEffect,
+    // Pause or resume all workers
+    const messageType = bfsPaused ? "pause" : "resume";
+    bfsWorkers.forEach((worker) => {
+      worker.postMessage({ type: messageType });
     });
-    const substancesJson = prepareSubstancesForWasm();
-    const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
-    const substanceRulesJson = prepareSubstanceRulesForWasm();
+  } else {
+    bfsRunning = true;
+    bfsPaused = false;
+    bfsButton.textContent = "Pause BFS";
+    bestMix = { mix: [], profit: -Infinity };
+    currentProduct = product;
+    startTime = Date.now();
 
-    console.log("Data prepared as JSON strings");
-    console.log("Running BFS search with max depth:", MAX_RECIPE_DEPTH);
+    // Clean up any existing workers
+    bfsWorkers.forEach((worker) => worker.terminate());
+    bfsWorkers = [];
+    workersProgress = new Map();
+    activeWorkers = 0;
 
-    // Call the WASM function with JSON strings
-    console.log("Calling findBestMixJson function...");
-    const result = bfsModule.findBestMixJson(
-      productJson,
-      substancesJson,
-      effectMultipliersJson,
-      substanceRulesJson,
-      MAX_RECIPE_DEPTH
-    );
+    // Create a worker for each substance
+    for (let i = 0; i < substances.length; i++) {
+      const substanceName = substances[i].name;
 
-    console.log("WASM function returned result:", result);
+      // Create worker
+      const worker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
+        type: "module",
+      });
 
-    // Use the mixArray directly from the result since it's now properly bound
-    let mixArray: string[] = [];
+      // Set up worker message handler
+      worker.onmessage = createWorkerMessageHandler(i, substanceName);
 
-    // Check if result.mixArray exists and is an array
-    if (result.mixArray && Array.isArray(result.mixArray)) {
-      mixArray = result.mixArray;
-      console.log("Using mixArray directly from result:", mixArray);
-    } else if (typeof bfsModule.getMixArray === "function") {
-      // Fallback to getMixArray helper function if needed
-      try {
-        const arrayResult = bfsModule.getMixArray();
-        mixArray = Array.isArray(arrayResult)
-          ? arrayResult
-          : arrayResult && typeof arrayResult === "object"
-          ? Array.from(
-              Object.values(arrayResult).filter((v) => typeof v === "string")
-            )
-          : [];
-        console.log("Got mix array from helper function:", mixArray);
-      } catch (mixError) {
-        console.error("Error getting mix array from helper:", mixError);
-      }
+      // Store the worker
+      bfsWorkers.push(worker);
+
+      // Initialize this worker's progress
+      workersProgress.set(i, {
+        substanceName,
+        depth: 1, // Starting with one substance
+        processed: 0,
+        total: 1,
+        totalProcessed: 0,
+        grandTotal: 0,
+        executionTime: 0,
+      });
+
+      // Start the worker
+      worker.postMessage({
+        type: "start",
+        workerId: i,
+        data: {
+          product: { ...product },
+          bestMix,
+          substanceName,
+          maxDepth: MAX_RECIPE_DEPTH, // Pass the current max depth to the worker
+        },
+      });
+
+      activeWorkers++;
     }
 
-    // If all else fails, use a default array
-    if (mixArray.length === 0) {
-      mixArray = ["Cuke", "Gasoline", "Banana"]; // Default values
-      console.log("Using default mix values:", mixArray);
-    }
-
-    // Update best mix with the mix array and profit from result
-    bestMix = {
-      mix: mixArray,
-      profit: result.profit,
-    };
-
-    // Update the display
-    updateBestMixDisplay();
-
-    // Clear the progress interval
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
-
-    // Complete the progress
-    updateProgressDisplay(100);
-  } catch (error) {
-    console.error("Error running WASM BFS:", error);
-    alert(`WASM error: ${error.message}`);
-  } finally {
-    bfsRunning = false;
-    bfsButton.textContent = "Start BFS";
-
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
+    createProgressDisplay();
   }
+}
+
+function createWorkerMessageHandler(workerId: number, substanceName: string) {
+  return function (event: MessageEvent) {
+    const { type } = event.data;
+
+    if (type === "update") {
+      const { bestMix: updatedBestMix } = event.data;
+
+      // Only update if this mix is better than our current best mix
+      if (updatedBestMix.profit > bestMix.profit) {
+        bestMix = updatedBestMix;
+        updateBestMixDisplay();
+      }
+    } else if (type === "progress") {
+      const {
+        depth,
+        processed,
+        total,
+        totalProcessed,
+        grandTotal,
+        executionTime,
+      } = event.data;
+
+      // Update this worker's progress
+      workersProgress.set(workerId, {
+        substanceName,
+        depth,
+        processed,
+        total,
+        totalProcessed,
+        grandTotal,
+        executionTime,
+      });
+
+      updateProgressDisplay();
+    } else if (type === "done") {
+      // Get the worker's final stats before updating
+      const workerProgress = workersProgress.get(workerId);
+
+      if (workerProgress) {
+        // Set processed counts to their maximum values to show 100% completion
+        workerProgress.processed = workerProgress.total;
+        workerProgress.totalProcessed = workerProgress.grandTotal;
+
+        // Update the worker's progress with complete status
+        workersProgress.set(workerId, workerProgress);
+      }
+
+      activeWorkers--;
+
+      // Check if this was the last worker to finish
+      if (activeWorkers === 0) {
+        bfsRunning = false;
+        const bfsButton = document.getElementById("bfsButton");
+        if (bfsButton) bfsButton.textContent = "Start BFS";
+      }
+
+      // Final update of progress display
+      updateProgressDisplay();
+    }
+  };
 }
 
 export function isBfsRunning(): boolean {
