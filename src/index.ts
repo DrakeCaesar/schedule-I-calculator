@@ -1,4 +1,4 @@
-import { createProgressDisplay, setMaxRecipeDepth } from "./bfs";
+import { createProgressDisplays, setMaxRecipeDepth } from "./bfs";
 import {
   loadFromLocalStorage,
   onDragStart,
@@ -137,7 +137,7 @@ function initializeApp() {
   }
 
   // Create progress display container in the BFS section
-  createProgressDisplay();
+  createProgressDisplays();
 
   // Initialize display with default product.
   loadFromLocalStorage();
