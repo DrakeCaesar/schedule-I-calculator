@@ -191,10 +191,12 @@ export function loadFromLocalStorage() {
     if (savedProduct) {
       const parsedProduct = JSON.parse(savedProduct);
       Object.assign(currentProduct, parsedProduct);
-      
+
       // Select the corresponding radio button
       setTimeout(() => {
-        const productRadios = document.querySelectorAll('input[name="product"]');
+        const productRadios = document.querySelectorAll(
+          'input[name="product"]'
+        );
         for (const radio of productRadios) {
           const inputRadio = radio as HTMLInputElement;
           if (inputRadio.value === currentProduct.name) {
@@ -204,7 +206,7 @@ export function loadFromLocalStorage() {
         }
       }, 0);
     }
-    
+
     // Update UI with loaded data
     updateMixListUI();
     updateResult();
