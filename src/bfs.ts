@@ -86,8 +86,17 @@ export function updateBestMixDisplay() {
 
 function formatTime(ms: number): string {
   const seconds = Math.floor(ms / 1000) % 60;
-  const minutes = Math.floor(ms / (1000 * 60));
-  return `${minutes}m ${seconds}s`;
+  const minutes = Math.floor(ms / (1000 * 60)) % 60;
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  return `${hours}h ${minutes}m ${seconds}s`;
+}
+
+function formatClockTime(ms: number): string {
+  const date = new Date(ms);
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const seconds = date.getSeconds().toString().padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function updateProgressDisplay() {
@@ -110,7 +119,16 @@ function updateProgressDisplay() {
   const overallPercentage =
     Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
 
-  // Create HTML for overall progress (now at the top)
+  // Estimate remaining time
+  const remainingTime =
+    totalProcessed > 0
+      ? Math.round(
+          (executionTime / totalProcessed) * (grandTotal - totalProcessed)
+        )
+      : 0;
+  const estimatedFinishTime = now + remainingTime;
+
+  // Create HTML for overall progress
   const overallProgressHTML = `
     <div class="overall-progress">
       <h4>Overall Progress - ${activeWorkers} active workers</h4>
@@ -120,6 +138,8 @@ function updateProgressDisplay() {
         <span class="progress-text" data-progress="${overallPercentage}%" style="--progress-percent: ${overallPercentage}%"></span>
       </div>
       <div>Execution time: ${formatTime(executionTime)}</div>
+      <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
+      <div>Estimated finish time: ${formatClockTime(estimatedFinishTime)}</div>
     </div>
   `;
 
