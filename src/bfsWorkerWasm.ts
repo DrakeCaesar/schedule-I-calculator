@@ -2,12 +2,12 @@
 // This worker runs the WASM BFS implementation to avoid blocking the UI thread
 
 import { MAX_RECIPE_DEPTH } from "./bfs";
-import { effects, ProductVariety } from "./substances";
+import { effects } from "./substances";
 import {
   loadWasmModule,
   prepareEffectMultipliersForWasm,
-  prepareSubstancesForWasm,
   prepareSubstanceRulesForWasm,
+  prepareSubstancesForWasm,
 } from "./wasm-loader";
 
 let isPaused = false;
@@ -24,15 +24,15 @@ declare global {
 }
 
 // Implementation of reportBfsProgress that the C++ code will call
-(self as any).reportBfsProgress = function(progressData: any) {
+(self as any).reportBfsProgress = function (progressData: any) {
   if (isPaused) return;
-  
+
   const currentTime = Date.now();
   // Throttle progress updates to avoid overwhelming the main thread
   if (currentTime - lastProgressUpdate < 100) return;
-  
+
   lastProgressUpdate = currentTime;
-  
+
   // Send progress update to main thread
   self.postMessage({
     type: "progress",
@@ -53,24 +53,26 @@ self.onmessage = async (event: MessageEvent) => {
     isPaused = false;
     startTime = Date.now();
     lastProgressUpdate = 0;
-    
+
     const product = data.product;
     const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
-    
+
     try {
       // Load the WebAssembly module
       const bfsModule = await loadWasmModule();
-      
+
       if (typeof bfsModule.findBestMixJsonWithProgress !== "function") {
         // Fall back to the old function if the new one isn't available
         if (typeof bfsModule.findBestMixJson !== "function") {
           throw new Error("BFS functions not found in WASM module");
         }
-        
-        console.warn("Progress reporting not available in WASM module. Falling back to simulated progress.");
+
+        console.warn(
+          "Progress reporting not available in WASM module. Falling back to simulated progress."
+        );
         simulateProgress();
       }
-      
+
       // Prepare data for WASM as JSON strings
       const productJson = JSON.stringify({
         name: product.name,
@@ -79,9 +81,9 @@ self.onmessage = async (event: MessageEvent) => {
       const substancesJson = prepareSubstancesForWasm();
       const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
       const substanceRulesJson = prepareSubstanceRulesForWasm();
-      
+
       // Call the WASM function with JSON strings and enable progress reporting
-      const result = bfsModule.findBestMixJsonWithProgress 
+      const result = bfsModule.findBestMixJsonWithProgress
         ? bfsModule.findBestMixJsonWithProgress(
             productJson,
             substancesJson,
@@ -97,10 +99,10 @@ self.onmessage = async (event: MessageEvent) => {
             substanceRulesJson,
             maxDepth
           );
-      
+
       // Extract mix array from result
       let mixArray: string[] = [];
-      
+
       if (result.mixArray && Array.isArray(result.mixArray)) {
         mixArray = result.mixArray;
       } else if (typeof bfsModule.getMixArray === "function") {
@@ -109,28 +111,28 @@ self.onmessage = async (event: MessageEvent) => {
           mixArray = Array.isArray(arrayResult)
             ? arrayResult
             : arrayResult && typeof arrayResult === "object"
-              ? Array.from(
-                  Object.values(arrayResult).filter((v) => typeof v === "string")
-                )
-              : [];
+            ? Array.from(
+                Object.values(arrayResult).filter((v) => typeof v === "string")
+              )
+            : [];
         } catch (mixError) {
           console.error("Error getting mix array from helper:", mixError);
         }
       }
-      
+
       // If all else fails, use a default array
       if (mixArray.length === 0) {
         mixArray = ["Cuke", "Gasoline", "Banana"]; // Default values
       }
-      
+
       // Create the best mix result
       const bestMix = {
         mix: mixArray,
         profit: result.profit,
         sellPrice: result.sellPrice,
-        cost: result.cost
+        cost: result.cost,
       };
-      
+
       // Send the final progress update (100%)
       self.postMessage({
         type: "progress",
@@ -138,14 +140,14 @@ self.onmessage = async (event: MessageEvent) => {
         executionTime: Date.now() - startTime,
         workerId,
       });
-      
+
       // Send the best mix result
       self.postMessage({
         type: "update",
         bestMix,
         workerId,
       });
-      
+
       // Send completion message
       self.postMessage({
         type: "done",
@@ -153,7 +155,6 @@ self.onmessage = async (event: MessageEvent) => {
         executionTime: Date.now() - startTime,
         workerId,
       });
-      
     } catch (error) {
       // Send the error to the main thread
       self.postMessage({
@@ -172,24 +173,24 @@ self.onmessage = async (event: MessageEvent) => {
 // Fallback function to simulate progress for older WASM modules
 function simulateProgress() {
   let progress = 0;
-  
+
   const progressInterval = setInterval(() => {
     if (isPaused) return;
-    
+
     progress = Math.min(progress + 1, 95);
-    
+
     self.postMessage({
       type: "progress",
       progress,
       executionTime: Date.now() - startTime,
       workerId,
     });
-    
+
     if (progress >= 95) {
       clearInterval(progressInterval);
     }
   }, 100);
-  
+
   // Clean up interval after 30 seconds to avoid memory leaks
   setTimeout(() => clearInterval(progressInterval), 30000);
 }
