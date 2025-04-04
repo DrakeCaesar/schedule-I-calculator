@@ -65,6 +65,18 @@ self.onmessage = (event: MessageEvent) => {
     // Process the initial substance
     processMix([data.substanceName]);
 
+    // Send final progress update with completed state before done message
+    self.postMessage({
+      type: "progress",
+      depth: MAX_RECIPE_DEPTH,
+      processed: depthMaxCombinations, // Set to total to show 100%
+      total: depthMaxCombinations,
+      totalProcessed: maxCombinations, // Set to total to show 100%
+      grandTotal: maxCombinations,
+      executionTime: Date.now() - startTime,
+      workerId,
+    });
+
     // Send done message when complete
     self.postMessage({
       type: "done",

@@ -98,7 +98,7 @@ function updateProgressDisplay() {
   let totalProcessed = 0;
   let grandTotal = 0;
   const now = Date.now();
-  const executionTime = now - startTime;
+  const executionTime = startTime > 0 ? now - startTime : 0;
 
   // Sum up totals from all workers
   workersProgress.forEach((progress) => {
@@ -283,6 +283,18 @@ function createWorkerMessageHandler(workerId: number, substanceName: string) {
 
       updateProgressDisplay();
     } else if (type === "done") {
+      // Get the worker's final stats before updating
+      const workerProgress = workersProgress.get(workerId);
+
+      if (workerProgress) {
+        // Set processed counts to their maximum values to show 100% completion
+        workerProgress.processed = workerProgress.total;
+        workerProgress.totalProcessed = workerProgress.grandTotal;
+
+        // Update the worker's progress with complete status
+        workersProgress.set(workerId, workerProgress);
+      }
+
       activeWorkers--;
 
       // Check if this was the last worker to finish
