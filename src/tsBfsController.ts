@@ -344,7 +344,7 @@ export async function startTsBFS(product: ProductVariety) {
     const substanceName = substances[i].name;
 
     // Create worker
-    const worker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
+    const worker = new Worker(new URL("./tsBfsWorker.ts", import.meta.url), {
       type: "module",
     });
 

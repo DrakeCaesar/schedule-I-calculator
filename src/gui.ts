@@ -1,13 +1,15 @@
 // --- UI State Variables ---
 
 import { currentMix, currentProduct } from ".";
-import { toggleBothBFS, toggleTsBFS, toggleWasmBFS } from "./bfs";
+import { toggleBothBFS } from "./bfsCommon";
 import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
   substances,
 } from "./substances";
+import { toggleTsBFS } from "./tsBfsController";
+import { toggleWasmBFS } from "./wasmBfsController";
 
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
