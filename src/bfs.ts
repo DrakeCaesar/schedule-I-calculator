@@ -34,6 +34,8 @@ function createEffectSpan(effect: string): string {
   return `<span class="effect effect-${effect}">${effect}</span>`;
 }
 
+// This function will now only be used for displaying results,
+// not for the actual BFS algorithm which runs in WASM
 export function calculateEffects(
   mix: string[],
   initialEffect: string
@@ -68,7 +70,7 @@ export function updateBestMixDisplay() {
 
   const effectsList = calculateEffects(mixArray, currentProduct.initialEffect);
   const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
-  const cost = calculateFinalCost(mixArray); // Pass the validated mixArray instead of bestMix.mix directly
+  const cost = calculateFinalCost(mixArray);
   const profit = sellPrice - cost;
 
   const effectsHTML = effectsList
@@ -204,6 +206,7 @@ export async function toggleBFS(product: ProductVariety) {
     const substanceRulesJson = prepareSubstanceRulesForWasm();
 
     console.log("Data prepared as JSON strings");
+    console.log("Running BFS search with max depth:", MAX_RECIPE_DEPTH);
 
     // Call the WASM function with JSON strings
     console.log("Calling findBestMixJson function...");
