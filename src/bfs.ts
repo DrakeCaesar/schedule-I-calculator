@@ -39,6 +39,7 @@ let tsActiveWorkers = 0;
 let wasmProgressInterval: NodeJS.Timeout | null = null;
 let wasmStartTime = 0;
 let tsStartTime = 0;
+let wasmBfsWorker: Worker | null = null;
 
 // Track progress for each worker
 type WorkerProgress = {
@@ -429,87 +430,77 @@ async function startWasmBFS(product: ProductVariety) {
   wasmCurrentProduct = product;
   wasmStartTime = Date.now();
 
-  // Show progress updates
-  let progress = 0;
-  wasmProgressInterval = setInterval(() => {
-    // Simulate progress until the WASM module completes
-    progress = Math.min(progress + 1, 95); // Don't reach 100% until actually done
-    updateWasmProgressDisplay(progress);
-  }, 100);
+  // Create worker
+  const worker = new Worker(new URL("./bfsWorker-wasm.ts", import.meta.url), {
+    type: "module",
+  });
 
-  try {
-    const bfsModule = await loadWasmModule();
+  // Set up worker message handler
+  worker.onmessage = createWasmWorkerMessageHandler();
 
-    if (typeof bfsModule.findBestMixJson !== "function") {
-      throw new Error("findBestMixJson function not found in WASM module");
-    }
+  // Start the worker
+  worker.postMessage({
+    type: "start",
+    workerId: 0, // Only one WASM worker
+    data: {
+      product: { ...product },
+      bestMix: wasmBestMix,
+      maxDepth: MAX_RECIPE_DEPTH,
+    },
+  });
 
-    // Prepare data for WASM as JSON strings
-    const productJson = JSON.stringify({
-      name: product.name,
-      initialEffect: product.initialEffect,
-    });
-    const substancesJson = prepareSubstancesForWasm();
-    const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
-    const substanceRulesJson = prepareSubstanceRulesForWasm();
+  // Store the worker reference in case we need to terminate it
+  wasmBfsWorker = worker;
+}
 
-    // Call the WASM function with JSON strings
-    const result = bfsModule.findBestMixJson(
-      productJson,
-      substancesJson,
-      effectMultipliersJson,
-      substanceRulesJson,
-      MAX_RECIPE_DEPTH
-    );
+// Create message handler for the WebAssembly worker
+function createWasmWorkerMessageHandler() {
+  return function (event: MessageEvent) {
+    const { type } = event.data;
 
-    // Extract mix array from result
-    let mixArray: string[] = [];
+    if (type === "update") {
+      const { bestMix: updatedBestMix } = event.data;
 
-    if (result.mixArray && Array.isArray(result.mixArray)) {
-      mixArray = result.mixArray;
-    } else if (typeof bfsModule.getMixArray === "function") {
-      try {
-        const arrayResult = bfsModule.getMixArray();
-        mixArray = Array.isArray(arrayResult)
-          ? arrayResult
-          : arrayResult && typeof arrayResult === "object"
-          ? Array.from(
-              Object.values(arrayResult).filter((v) => typeof v === "string")
-            )
-          : [];
-      } catch (mixError) {
-        console.error("Error getting mix array from helper:", mixError);
+      // Update our best mix with the result from the worker
+      wasmBestMix = updatedBestMix;
+      updateWasmBestMixDisplay();
+    } 
+    else if (type === "progress") {
+      const { progress, executionTime } = event.data;
+      
+      // Update the progress display with the progress from the worker
+      updateWasmProgressDisplay(progress);
+    } 
+    else if (type === "done") {
+      // Mark the WASM BFS as complete
+      wasmBfsRunning = false;
+      
+      // Update button text
+      const wasmBfsButton = document.getElementById("wasmBfsButton");
+      if (wasmBfsButton) {
+        wasmBfsButton.textContent = "Start WASM BFS";
       }
+      
+      // Clean up worker reference
+      wasmBfsWorker = null;
     }
-
-    // If all else fails, use a default array
-    if (mixArray.length === 0) {
-      mixArray = ["Cuke", "Gasoline", "Banana"]; // Default values
+    else if (type === "error") {
+      console.error("WASM BFS worker error:", event.data.error);
+      alert(`WASM BFS error: ${event.data.error}`);
+      
+      // Mark the WASM BFS as complete
+      wasmBfsRunning = false;
+      
+      // Update button text
+      const wasmBfsButton = document.getElementById("wasmBfsButton");
+      if (wasmBfsButton) {
+        wasmBfsButton.textContent = "Start WASM BFS";
+      }
+      
+      // Clean up worker reference
+      wasmBfsWorker = null;
     }
-
-    // Update best mix with the mix array and profit from result
-    wasmBestMix = {
-      mix: mixArray,
-      profit: result.profit,
-    };
-
-    // Update the display
-    updateWasmBestMixDisplay();
-
-    // Complete the progress
-    updateWasmProgressDisplay(100);
-  } catch (error) {
-    console.error("Error running WASM BFS:", error);
-    alert(`WASM error: ${error.message}`);
-  } finally {
-    wasmBfsRunning = false;
-
-    // Clear the progress interval
-    if (wasmProgressInterval) {
-      clearInterval(wasmProgressInterval);
-      wasmProgressInterval = null;
-    }
-  }
+  };
 }
 
 function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
@@ -637,12 +628,14 @@ export async function toggleWasmBFS(product: ProductVariety) {
   // Check if WASM implementation is running
   if (wasmBfsRunning) {
     // Stop the WASM BFS
-    if (wasmProgressInterval) {
-      clearInterval(wasmProgressInterval);
-      wasmProgressInterval = null;
+    wasmBfsRunning = false;
+    
+    // Terminate the worker if it exists
+    if (wasmBfsWorker) {
+      wasmBfsWorker.terminate();
+      wasmBfsWorker = null;
     }
 
-    wasmBfsRunning = false;
     wasmBfsButton.textContent = "Start WASM BFS";
   } else {
     // Create only the WASM progress display

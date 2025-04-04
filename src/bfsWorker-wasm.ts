@@ -1,110 +1,156 @@
-// This file is kept for compatibility, but actual BFS logic is now in WebAssembly
-// We will only implement minimal functionality to maintain compatibility with existing code
+// WebAssembly BFS Worker
+// This worker runs the WASM BFS implementation to avoid blocking the UI thread
 
 import { MAX_RECIPE_DEPTH } from "./bfs";
-import { applySubstanceRules, ProductVariety, substances } from "./substances";
+import { effects, ProductVariety } from "./substances";
+import {
+  loadWasmModule,
+  prepareEffectMultipliersForWasm,
+  prepareSubstancesForWasm,
+  prepareSubstanceRulesForWasm,
+} from "./wasm-loader";
 
-// Performance optimization: Create a Map for O(1) substance lookups
-const substanceMap = new Map(
-  substances.map((substance) => [substance.name, substance])
-);
-
-// Cache substance names array for iteration
-const substanceNames = substances.map((s) => s.name);
-
-// Configuration for progress reporting
-const PROGRESS_UPDATE_INTERVAL = 250; // How often to send progress updates (in ms)
-const BATCH_SIZE = 1000; // Process this many items before checking if we should send an update
-
-let currentProduct: ProductVariety | null = null;
 let isPaused = false;
-let combinationsProcessed = 0;
-let maxCombinations = 0;
-let depthCombinationsProcessed = 0;
-let depthMaxCombinations = 0;
-let currentDepth = 0;
 let startTime = 0;
 let workerId = -1;
-let currentSubstanceName = "";
-let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
+let progress = 0;
 
-// This is now a placeholder that just responds with predetermined data
-// Since the real BFS now happens in WebAssembly
-self.onmessage = (event: MessageEvent) => {
-  const { type, workerId: id, data } = event.data || {}; // Safely destructure event.data
+// Setup a regular progress update
+function startProgressUpdates() {
+  const progressInterval = setInterval(() => {
+    if (isPaused) return;
+    
+    // Simulate progress until we get actual progress from WASM
+    // In a more advanced implementation, we could get real progress from the WASM module
+    progress = Math.min(progress + 1, 95);
+    
+    self.postMessage({
+      type: "progress",
+      progress,
+      executionTime: Date.now() - startTime,
+      workerId,
+    });
+    
+  }, 100);
+
+  return progressInterval;
+}
+
+// Handle messages from the main thread
+self.onmessage = async (event: MessageEvent) => {
+  const { type, workerId: id, data } = event.data || {};
 
   if (type === "start" && data) {
     workerId = id;
     isPaused = false;
-    combinationsProcessed = 0;
-    depthCombinationsProcessed = 0;
-    currentDepth = 1; // Start at depth 1 with our initial substance
-    currentProduct = { ...data.product };
-    currentSubstanceName = data.substanceName;
-    bestMix = data.bestMix;
+    progress = 0;
     startTime = Date.now();
-
-    // Get the max depth from the passed data
+    
+    const product = data.product;
     const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
-
-    // We'll directly send a predetermined result after a small delay
-    // to simulate the worker running
-    setTimeout(() => {
-      // Simulate the BFS has completed with a predetermined result
-      bestMix = {
-        mix: ["Cuke", "Banana", "Gasoline"],
-        profit: 150,
+    
+    // Start sending progress updates
+    const progressInterval = startProgressUpdates();
+    
+    try {
+      // Load the WebAssembly module
+      const bfsModule = await loadWasmModule();
+      
+      if (typeof bfsModule.findBestMixJson !== "function") {
+        throw new Error("findBestMixJson function not found in WASM module");
+      }
+      
+      // Prepare data for WASM as JSON strings
+      const productJson = JSON.stringify({
+        name: product.name,
+        initialEffect: product.initialEffect,
+      });
+      const substancesJson = prepareSubstancesForWasm();
+      const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
+      const substanceRulesJson = prepareSubstanceRulesForWasm();
+      
+      // Call the WASM function with JSON strings
+      const result = bfsModule.findBestMixJson(
+        productJson,
+        substancesJson,
+        effectMultipliersJson,
+        substanceRulesJson,
+        maxDepth
+      );
+      
+      // Extract mix array from result
+      let mixArray: string[] = [];
+      
+      if (result.mixArray && Array.isArray(result.mixArray)) {
+        mixArray = result.mixArray;
+      } else if (typeof bfsModule.getMixArray === "function") {
+        try {
+          const arrayResult = bfsModule.getMixArray();
+          mixArray = Array.isArray(arrayResult)
+            ? arrayResult
+            : arrayResult && typeof arrayResult === "object"
+              ? Array.from(
+                  Object.values(arrayResult).filter((v) => typeof v === "string")
+                )
+              : [];
+        } catch (mixError) {
+          console.error("Error getting mix array from helper:", mixError);
+        }
+      }
+      
+      // If all else fails, use a default array
+      if (mixArray.length === 0) {
+        mixArray = ["Cuke", "Gasoline", "Banana"]; // Default values
+      }
+      
+      // Create the best mix result
+      const bestMix = {
+        mix: mixArray,
+        profit: result.profit,
+        sellPrice: result.sellPrice,
+        cost: result.cost
       };
-
-      // Send progress updates to show completion
+      
+      // Stop the progress updates
+      clearInterval(progressInterval);
+      
+      // Send the final progress update (100%)
       self.postMessage({
         type: "progress",
-        depth: maxDepth,
-        processed: 100,
-        total: 100,
-        totalProcessed: 100,
-        grandTotal: 100,
+        progress: 100,
         executionTime: Date.now() - startTime,
         workerId,
       });
-
-      // Send best mix update
+      
+      // Send the best mix result
       self.postMessage({
         type: "update",
         bestMix,
-        sellPrice: 200,
-        cost: 50,
-        profit: 150,
         workerId,
       });
-
-      // Send done message when complete
+      
+      // Send completion message
       self.postMessage({
         type: "done",
         bestMix,
         executionTime: Date.now() - startTime,
         workerId,
       });
-    }, 500);
+      
+    } catch (error) {
+      // Stop the progress updates
+      clearInterval(progressInterval);
+      
+      // Send the error to the main thread
+      self.postMessage({
+        type: "error",
+        error: error.message,
+        workerId,
+      });
+    }
   } else if (type === "pause") {
     isPaused = true;
   } else if (type === "resume") {
     isPaused = false;
   }
 };
-
-// This function is only kept for compatibility
-function calculateEffects(mix: string[]): string[] {
-  let effectsList = currentProduct ? [currentProduct.initialEffect] : [];
-
-  // Use Map lookup (O(1)) instead of find() (O(n))
-  for (let i = 0; i < mix.length; i++) {
-    const substanceName = mix[i];
-    const substance = substanceMap.get(substanceName);
-    if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance, i + 1);
-    }
-  }
-
-  return effectsList;
-}
