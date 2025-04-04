@@ -11,18 +11,42 @@
         display: flex;
         height: 100vh;
       }
+      
+      /* Main content area */
+      #mainContainer {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      
+      /* Sidebar for additives */
       #sidebar {
         width: 200px;
         border-right: 1px solid #ccc;
         padding: 10px;
         overflow-y: auto;
       }
+      
+      /* Main mixing area */
       #main {
         flex: 1;
         padding: 10px;
         display: flex;
         flex-direction: column;
+        overflow-y: auto;
       }
+      
+      /* BFS section on the right */
+      #bfsSection {
+        width: 350px;
+        border-left: 1px solid #ddd;
+        background-color: #f5f5f5;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      
       /* Additive items in the sidebar */
       .draggable {
         padding: 5px;
@@ -74,31 +98,46 @@
     </style>
   </head>
   <body>
-    <div id="sidebar">
-      <h3>Additives</h3>
-      <div id="additivesList">
-        <!-- Draggable additives will be inserted here -->
+    <!-- Main container with sidebar and main content -->
+    <div id="mainContainer">
+      <div id="sidebar">
+        <h3>Additives</h3>
+        <div id="additivesList">
+          <!-- Draggable additives will be inserted here -->
+        </div>
       </div>
-    </div>
-    <div id="main">
-      <h2>Choose Your Starting Product</h2>
-      <div id="productSelection">
-        <!-- Product radio buttons will be dynamically generated here -->
+      <div id="main">
+        <h2>Choose Your Starting Product</h2>
+        <div id="productSelection">
+          <!-- Product radio buttons will be dynamically generated here -->
+        </div>
+        <h2>Your Mix</h2>
+        <div id="mixZone">
+          <div id="productDisplay"></div>
+          <ul id="mixList">
+            <!-- Dropped additives will appear here -->
+          </ul>
+        </div>
+        <div id="trash">Drag here to remove</div>
+        <div id="result">
+          <h3>Result</h3>
+          <p id="finalEffects">Effects:</p>
+          <p id="finalPrice">Price:</p>
+          <p id="finalCost">Cost:</p>
+          <p id="finalProfit">Profit:</p>
+        </div>
       </div>
-      <h2>Your Mix</h2>
-      <div id="mixZone">
-        <div id="productDisplay"></div>
-        <ul id="mixList">
-          <!-- Dropped additives will appear here -->
-        </ul>
-      </div>
-      <div id="trash">Drag here to remove</div>
-      <div id="result">
-        <h3>Result</h3>
-        <p id="finalEffects">Effects:</p>
-        <p id="finalPrice">Price:</p>
-        <p id="finalCost">Cost:</p>
-        <p id="finalProfit">Profit:</p>
+      
+      <!-- BFS Section on the right -->
+      <div id="bfsSection">
+        <div class="bfs-controls">
+          <h2>Best Mix Finder</h2>
+          <button id="bfsButton">Start BFS</button>
+        </div>
+        <div id="bestMixDisplay">
+          <p>Click "Start BFS" to find the most profitable mix for the selected product.</p>
+        </div>
+        <!-- Progress display will be inserted here by JavaScript -->
       </div>
     </div>
     <script src="/src/index.ts" type="module"></script>

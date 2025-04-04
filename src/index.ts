@@ -98,27 +98,15 @@ function initializeApp() {
     trash.addEventListener("drop", onTrashDrop);
   }
 
-  // Add BFS button and best mix display if not already present
-  let bfsButton = document.getElementById("bfsButton");
-  if (!bfsButton) {
-    bfsButton = document.createElement("button");
-    bfsButton.id = "bfsButton";
-    bfsButton.textContent = "Start BFS";
-    document.body.appendChild(bfsButton);
-
+  // Set up BFS button event listener
+  const bfsButton = document.getElementById("bfsButton");
+  if (bfsButton) {
     bfsButton.addEventListener("click", () => {
       toggleBFS();
     });
   }
 
-  let bestMixDisplay = document.getElementById("bestMixDisplay");
-  if (!bestMixDisplay) {
-    bestMixDisplay = document.createElement("div");
-    bestMixDisplay.id = "bestMixDisplay";
-    document.body.appendChild(bestMixDisplay);
-  }
-
-  // Create progress display container
+  // Create progress display container in the BFS section
   createProgressDisplay();
 
   // Initialize display with default product.

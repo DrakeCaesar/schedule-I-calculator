@@ -164,7 +164,14 @@ export function createProgressDisplay() {
     progressDisplay = document.createElement("div");
     progressDisplay.id = "bfsProgressDisplay";
     progressDisplay.classList.add("progress-display");
-    document.body.appendChild(progressDisplay);
+
+    // Add to BFS section instead of body
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(progressDisplay);
+    } else {
+      document.body.appendChild(progressDisplay); // Fallback
+    }
   }
 
   updateProgressDisplay();
