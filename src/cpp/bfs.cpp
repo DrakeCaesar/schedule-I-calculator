@@ -1,5 +1,6 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -14,6 +15,9 @@
 
 using namespace emscripten;
 using namespace rapidjson;
+
+// Progress reporting function type
+typedef std::function<void(int, int, int)> ProgressCallback;
 
 // Data structures that mirror the TypeScript ones
 struct Effect
@@ -229,12 +233,13 @@ double calculateFinalCost(const MixState &mixState, const std::vector<Substance>
   return std::round(totalCost);
 }
 
-// BFS algorithm with memory optimizations
+// BFS algorithm with memory optimizations and progress reporting
 JsBestMixResult findBestMix(
     const Product &product,
     const std::vector<Substance> &substances,
     const std::unordered_map<std::string, double> &effectMultipliers,
-    int maxDepth)
+    int maxDepth,
+    ProgressCallback progressCallback = nullptr)
 {
   // Initialize the best mix and profit
   MixState bestMix(maxDepth);
@@ -260,7 +265,26 @@ JsBestMixResult findBestMix(
     queue.push(initialMix);
   }
 
+  // Calculate total expected combinations for progress reporting
+  int totalCombinations = 0;
+  int substanceCount = substances.size();
+  for (int i = 1; i <= maxDepth; ++i)
+  {
+    totalCombinations += pow(substanceCount, i);
+  }
+
   // BFS main loop
+  int processedCombinations = 0;
+  int currentDepth = 1;
+  int depthCombinations = 0;
+  int depthMaxCombinations = substanceCount; // Just substances.size() at depth 1
+
+  // Initial progress report
+  if (progressCallback)
+  {
+    progressCallback(currentDepth, 0, totalCombinations);
+  }
+
   while (!queue.empty())
   {
     // Process in batches to reduce memory pressure
@@ -272,6 +296,16 @@ JsBestMixResult findBestMix(
       MixState currentMix = queue.front();
       queue.pop();
       processedInBatch++;
+      processedCombinations++;
+      depthCombinations++;
+
+      // Check if we've moved to a new depth
+      if (currentMix.substanceIndices.size() > static_cast<size_t>(currentDepth))
+      {
+        currentDepth = currentMix.substanceIndices.size();
+        depthCombinations = 1;
+        depthMaxCombinations = pow(substanceCount, currentDepth);
+      }
 
       // Calculate effects for current mix
       std::vector<std::string> effectsList = calculateEffectsForMix(
@@ -301,7 +335,19 @@ JsBestMixResult findBestMix(
           queue.push(newMix);
         }
       }
+
+      // Report progress on regular intervals
+      if (progressCallback && processedCombinations % 1000 == 0)
+      {
+        progressCallback(currentDepth, processedCombinations, totalCombinations);
+      }
     }
+  }
+
+  // Final progress report
+  if (progressCallback)
+  {
+    progressCallback(maxDepth, totalCombinations, totalCombinations);
   }
 
   // Convert best mix to a JavaScript array using substance names
@@ -428,8 +474,160 @@ JsBestMixResult findBestMixJson(
       }
     }
 
-    // Run the BFS algorithm
+    // Run the BFS algorithm without progress reporting
     return findBestMix(product, substances, effectMultipliers, maxDepth);
+  }
+  catch (const std::exception &e)
+  {
+    printf("Error parsing JSON: %s\n", e.what());
+
+    // Return a default result on error
+    std::vector<std::string> defaultMix = {"Cuke", "Banana", "Gasoline"};
+
+    val jsArray = val::array();
+    for (size_t i = 0; i < defaultMix.size(); ++i)
+    {
+      jsArray.set(i, val(defaultMix[i]));
+    }
+
+    JsBestMixResult result;
+    result.mixArray = jsArray;
+    result.profit = 150.0;
+    result.sellPrice = 200.0;
+    result.cost = 50.0;
+
+    return result;
+  }
+}
+
+// JavaScript-compatible progress reporting function
+void reportProgressToJS(int depth, int processed, int total)
+{
+  val progressEvent = val::object();
+  progressEvent.set("depth", depth);
+  progressEvent.set("processed", processed);
+  progressEvent.set("total", total);
+
+  // Call JavaScript progress function
+  val::global("reportBfsProgress").call<void>("call", val::null(), progressEvent);
+}
+
+// Parse JSON input and run BFS with progress reporting
+EMSCRIPTEN_KEEPALIVE
+JsBestMixResult findBestMixJsonWithProgress(
+    std::string productJson,
+    std::string substancesJson,
+    std::string effectMultipliersJson,
+    std::string substanceRulesJson,
+    int maxDepth,
+    bool reportProgress)
+{
+  try
+  {
+    // Parse product
+    Document productDoc;
+    productDoc.Parse(productJson.c_str());
+
+    Product product;
+    product.name = productDoc["name"].GetString();
+    product.initialEffect = productDoc["initialEffect"].GetString();
+
+    // Parse substances
+    Document substancesDoc;
+    substancesDoc.Parse(substancesJson.c_str());
+
+    std::vector<Substance> substances;
+    substances.reserve(substancesDoc.Size()); // Pre-allocate memory
+
+    for (SizeType i = 0; i < substancesDoc.Size(); i++)
+    {
+      Substance substance;
+      substance.name = substancesDoc[i]["name"].GetString();
+      substance.cost = substancesDoc[i]["cost"].GetDouble();
+      substance.defaultEffect = substancesDoc[i]["defaultEffect"].GetString();
+      substances.push_back(substance);
+    }
+
+    // Parse effect multipliers
+    Document multipliersDoc;
+    multipliersDoc.Parse(effectMultipliersJson.c_str());
+
+    std::unordered_map<std::string, double> effectMultipliers;
+    for (SizeType i = 0; i < multipliersDoc.Size(); i++)
+    {
+      std::string name = multipliersDoc[i]["name"].GetString();
+      double multiplier = multipliersDoc[i]["multiplier"].GetDouble();
+      effectMultipliers[name] = multiplier;
+    }
+
+    // Parse substance rules
+    Document rulesDoc;
+    rulesDoc.Parse(substanceRulesJson.c_str());
+
+    // Apply rules to substances
+    for (SizeType i = 0; i < rulesDoc.Size(); i++)
+    {
+      std::string substanceName = rulesDoc[i]["substanceName"].GetString();
+      const Value &rules = rulesDoc[i]["rules"];
+
+      // Find the substance
+      for (auto &substance : substances)
+      {
+        if (substance.name == substanceName)
+        {
+          // Pre-allocate memory for rules
+          substance.rules.reserve(rules.Size());
+
+          // Add rules to the substance
+          for (SizeType j = 0; j < rules.Size(); j++)
+          {
+            SubstanceRule rule;
+
+            rule.type = rules[j]["action"]["type"].GetString();
+            rule.target = rules[j]["action"]["target"].GetString();
+
+            // Handle withEffect (may be missing in "add" rules)
+            if (rules[j]["action"].HasMember("withEffect") &&
+                !rules[j]["action"]["withEffect"].IsNull())
+            {
+              rule.withEffect = rules[j]["action"]["withEffect"].GetString();
+            }
+
+            // Parse conditions
+            const Value &conditions = rules[j]["condition"];
+            rule.condition.reserve(conditions.Size()); // Pre-allocate
+            for (SizeType k = 0; k < conditions.Size(); k++)
+            {
+              rule.condition.push_back(conditions[k].GetString());
+            }
+
+            // Parse ifNotPresent (may be empty)
+            if (rules[j].HasMember("ifNotPresent"))
+            {
+              const Value &ifNotPresent = rules[j]["ifNotPresent"];
+              rule.ifNotPresent.reserve(ifNotPresent.Size()); // Pre-allocate
+              for (SizeType k = 0; k < ifNotPresent.Size(); k++)
+              {
+                rule.ifNotPresent.push_back(ifNotPresent[k].GetString());
+              }
+            }
+
+            substance.rules.push_back(rule);
+          }
+          break;
+        }
+      }
+    }
+
+    // Run the BFS algorithm with progress reporting if enabled
+    if (reportProgress)
+    {
+      return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
+    }
+    else
+    {
+      return findBestMix(product, substances, effectMultipliers, maxDepth);
+    }
   }
   catch (const std::exception &e)
   {
@@ -478,4 +676,5 @@ EMSCRIPTEN_BINDINGS(bfs_module)
 
   function("getMixArray", &getMixArray);
   function("findBestMixJson", &findBestMixJson);
+  function("findBestMixJsonWithProgress", &findBestMixJsonWithProgress);
 }

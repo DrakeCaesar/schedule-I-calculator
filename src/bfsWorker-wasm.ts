@@ -13,28 +13,36 @@ import {
 let isPaused = false;
 let startTime = 0;
 let workerId = -1;
-let progress = 0;
+let lastProgressUpdate = 0;
 
-// Setup a regular progress update
-function startProgressUpdates() {
-  const progressInterval = setInterval(() => {
-    if (isPaused) return;
-    
-    // Simulate progress until we get actual progress from WASM
-    // In a more advanced implementation, we could get real progress from the WASM module
-    progress = Math.min(progress + 1, 95);
-    
-    self.postMessage({
-      type: "progress",
-      progress,
-      executionTime: Date.now() - startTime,
-      workerId,
-    });
-    
-  }, 100);
-
-  return progressInterval;
+// Setup a global reportBfsProgress function for C++ to call
+// This will be called by the C++ code when progress is made
+declare global {
+  interface Window {
+    reportBfsProgress: (progressData: any) => void;
+  }
 }
+
+// Implementation of reportBfsProgress that the C++ code will call
+(self as any).reportBfsProgress = function(progressData: any) {
+  if (isPaused) return;
+  
+  const currentTime = Date.now();
+  // Throttle progress updates to avoid overwhelming the main thread
+  if (currentTime - lastProgressUpdate < 100) return;
+  
+  lastProgressUpdate = currentTime;
+  
+  // Send progress update to main thread
+  self.postMessage({
+    type: "progress",
+    depth: progressData.depth,
+    processed: progressData.processed,
+    total: progressData.total,
+    executionTime: Date.now() - startTime,
+    workerId,
+  });
+};
 
 // Handle messages from the main thread
 self.onmessage = async (event: MessageEvent) => {
@@ -43,21 +51,24 @@ self.onmessage = async (event: MessageEvent) => {
   if (type === "start" && data) {
     workerId = id;
     isPaused = false;
-    progress = 0;
     startTime = Date.now();
+    lastProgressUpdate = 0;
     
     const product = data.product;
     const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
-    
-    // Start sending progress updates
-    const progressInterval = startProgressUpdates();
     
     try {
       // Load the WebAssembly module
       const bfsModule = await loadWasmModule();
       
-      if (typeof bfsModule.findBestMixJson !== "function") {
-        throw new Error("findBestMixJson function not found in WASM module");
+      if (typeof bfsModule.findBestMixJsonWithProgress !== "function") {
+        // Fall back to the old function if the new one isn't available
+        if (typeof bfsModule.findBestMixJson !== "function") {
+          throw new Error("BFS functions not found in WASM module");
+        }
+        
+        console.warn("Progress reporting not available in WASM module. Falling back to simulated progress.");
+        simulateProgress();
       }
       
       // Prepare data for WASM as JSON strings
@@ -69,14 +80,23 @@ self.onmessage = async (event: MessageEvent) => {
       const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
       const substanceRulesJson = prepareSubstanceRulesForWasm();
       
-      // Call the WASM function with JSON strings
-      const result = bfsModule.findBestMixJson(
-        productJson,
-        substancesJson,
-        effectMultipliersJson,
-        substanceRulesJson,
-        maxDepth
-      );
+      // Call the WASM function with JSON strings and enable progress reporting
+      const result = bfsModule.findBestMixJsonWithProgress 
+        ? bfsModule.findBestMixJsonWithProgress(
+            productJson,
+            substancesJson,
+            effectMultipliersJson,
+            substanceRulesJson,
+            maxDepth,
+            true // Enable progress reporting
+          )
+        : bfsModule.findBestMixJson(
+            productJson,
+            substancesJson,
+            effectMultipliersJson,
+            substanceRulesJson,
+            maxDepth
+          );
       
       // Extract mix array from result
       let mixArray: string[] = [];
@@ -111,9 +131,6 @@ self.onmessage = async (event: MessageEvent) => {
         cost: result.cost
       };
       
-      // Stop the progress updates
-      clearInterval(progressInterval);
-      
       // Send the final progress update (100%)
       self.postMessage({
         type: "progress",
@@ -138,9 +155,6 @@ self.onmessage = async (event: MessageEvent) => {
       });
       
     } catch (error) {
-      // Stop the progress updates
-      clearInterval(progressInterval);
-      
       // Send the error to the main thread
       self.postMessage({
         type: "error",
@@ -154,3 +168,28 @@ self.onmessage = async (event: MessageEvent) => {
     isPaused = false;
   }
 };
+
+// Fallback function to simulate progress for older WASM modules
+function simulateProgress() {
+  let progress = 0;
+  
+  const progressInterval = setInterval(() => {
+    if (isPaused) return;
+    
+    progress = Math.min(progress + 1, 95);
+    
+    self.postMessage({
+      type: "progress",
+      progress,
+      executionTime: Date.now() - startTime,
+      workerId,
+    });
+    
+    if (progress >= 95) {
+      clearInterval(progressInterval);
+    }
+  }, 100);
+  
+  // Clean up interval after 30 seconds to avoid memory leaks
+  setTimeout(() => clearInterval(progressInterval), 30000);
+}

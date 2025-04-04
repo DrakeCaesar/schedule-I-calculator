@@ -19,6 +19,21 @@ interface BFSModule {
     cost: number;
   };
 
+  // Add the new progress-enabled function
+  findBestMixJsonWithProgress?: (
+    productJson: string,
+    substancesJson: string,
+    effectMultipliersJson: string,
+    substanceRulesJson: string,
+    maxDepth: number,
+    reportProgress: boolean
+  ) => {
+    mixArray: string[];
+    profit: number;
+    sellPrice: number;
+    cost: number;
+  };
+
   // Add the new helper function
   getMixArray?: () => string[];
 }

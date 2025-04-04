@@ -27,6 +27,27 @@ let currentProduct: ProductVariety | null = null;
 let startTime = 0;
 let progressInterval: NodeJS.Timeout | null = null;
 
+// Setup a global reportBfsProgress function for C++ to call
+// This will be called directly by the C++ code in the browser context
+declare global {
+  interface Window {
+    reportBfsProgress: (progressData: any) => void;
+  }
+}
+
+// Implementation of reportBfsProgress for the browser context
+window.reportBfsProgress = function (progressData: any) {
+  if (!bfsRunning) return;
+
+  const { depth, processed, total } = progressData;
+
+  // Calculate percentage
+  const percentage = Math.min(Math.round((processed / total) * 100), 100);
+
+  // Update the progress display
+  updateProgressDisplay(percentage, depth, processed, total);
+};
+
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
   // Convert effect name to kebab case for CSS class
@@ -93,13 +114,29 @@ function formatTime(ms: number): string {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
-function updateProgressDisplay(progress: number) {
+function updateProgressDisplay(
+  progress: number,
+  depth?: number,
+  processed?: number,
+  total?: number
+) {
   const progressDisplay = document.getElementById("bfsProgressDisplay");
   if (!progressDisplay) return;
 
   // Current execution time
   const now = Date.now();
   const executionTime = startTime > 0 ? now - startTime : 0;
+
+  // Create additional detail HTML if we have the depth info
+  const detailsHtml =
+    depth && processed && total
+      ? `
+      <div class="depth-progress">
+        <div>Current depth: ${depth}</div>
+        <div>Processed: ${processed.toLocaleString()} / ${total.toLocaleString()} combinations</div>
+      </div>
+    `
+      : "";
 
   // Create HTML for progress
   progressDisplay.innerHTML = `
@@ -110,6 +147,7 @@ function updateProgressDisplay(progress: number) {
         <span class="progress-text" data-progress="${progress}%" style="--progress-percent: ${progress}%"></span>
       </div>
       <div>Execution time: ${formatTime(executionTime)}</div>
+      ${detailsHtml}
     </div>
   `;
 }
@@ -174,26 +212,25 @@ export async function toggleBFS(product: ProductVariety) {
 
   createProgressDisplay();
 
-  // Show progress updates
-  let progress = 0;
-  progressInterval = setInterval(() => {
-    // Simulate progress until the WASM module completes
-    progress = Math.min(progress + 1, 95); // Don't reach 100% until actually done
-    updateProgressDisplay(progress);
-  }, 100);
-
   try {
     console.log("Loading WASM module...");
     const bfsModule = await loadWasmModule();
 
     console.log("WASM module loaded:", bfsModule);
-    console.log(
-      "findBestMixJson exists?",
-      typeof bfsModule.findBestMixJson === "function"
-    );
 
-    if (typeof bfsModule.findBestMixJson !== "function") {
-      throw new Error("findBestMixJson function not found in WASM module");
+    // Check if we have the progress-enabled function
+    const hasProgressReporting =
+      typeof bfsModule.findBestMixJsonWithProgress === "function";
+    console.log("Progress reporting available:", hasProgressReporting);
+
+    // If we don't have progress reporting, set up simulated progress
+    if (!hasProgressReporting) {
+      let progress = 0;
+      progressInterval = setInterval(() => {
+        // Simulate progress until the WASM module completes
+        progress = Math.min(progress + 1, 95); // Don't reach 100% until actually done
+        updateProgressDisplay(progress);
+      }, 100);
     }
 
     // Prepare data for WASM as JSON strings
@@ -209,14 +246,29 @@ export async function toggleBFS(product: ProductVariety) {
     console.log("Running BFS search with max depth:", MAX_RECIPE_DEPTH);
 
     // Call the WASM function with JSON strings
-    console.log("Calling findBestMixJson function...");
-    const result = bfsModule.findBestMixJson(
-      productJson,
-      substancesJson,
-      effectMultipliersJson,
-      substanceRulesJson,
-      MAX_RECIPE_DEPTH
+    console.log(
+      `Calling ${
+        hasProgressReporting ? "findBestMixJsonWithProgress" : "findBestMixJson"
+      } function...`
     );
+
+    // Choose which function to call based on availability
+    const result = hasProgressReporting
+      ? bfsModule.findBestMixJsonWithProgress(
+          productJson,
+          substancesJson,
+          effectMultipliersJson,
+          substanceRulesJson,
+          MAX_RECIPE_DEPTH,
+          true // Enable progress reporting
+        )
+      : bfsModule.findBestMixJson(
+          productJson,
+          substancesJson,
+          effectMultipliersJson,
+          substanceRulesJson,
+          MAX_RECIPE_DEPTH
+        );
 
     console.log("WASM function returned result:", result);
 

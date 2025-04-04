@@ -1,3 +1,8 @@
 {
-  "cSpell.words": ["Addy", "Gingeritis", "Jennerising", "Zombifying"]
+  "cSpell.words": ["Addy", "Gingeritis", "Jennerising", "Zombifying"],
+  "files.associations": {
+    "*.gek": "papyrus-project",
+    "*.fsk": "json",
+    "xstring": "cpp"
+  }
 }
