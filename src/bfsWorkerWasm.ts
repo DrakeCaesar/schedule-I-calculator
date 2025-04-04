@@ -159,7 +159,7 @@ self.onmessage = async (event: MessageEvent) => {
       // Send the error to the main thread
       self.postMessage({
         type: "error",
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         workerId,
       });
     }
