@@ -95,8 +95,11 @@ import { formatTime } from "./bfsCommon";
 export function updateWasmProgressDisplay(progress: number) {
   const currentTime = Date.now();
 
-  // Only update every PROGRESS_UPDATE_INTERVAL ms
-  if (currentTime - lastWasmProgressUpdate < PROGRESS_UPDATE_INTERVAL) {
+  // Always update when progress is 100%, otherwise throttle updates
+  if (
+    progress !== 100 &&
+    currentTime - lastWasmProgressUpdate < PROGRESS_UPDATE_INTERVAL
+  ) {
     return;
   }
 
@@ -141,7 +144,8 @@ function createWasmWorkerMessageHandler() {
       let progress = 0;
       if (
         event.data.processed !== undefined &&
-        event.data.total !== undefined
+        event.data.total !== undefined &&
+        event.data.total > 0
       ) {
         // If we have processed and total values, calculate percentage
         progress = Math.min(
@@ -153,9 +157,17 @@ function createWasmWorkerMessageHandler() {
         progress = event.data.progress;
       }
 
+      // Force progress to 100% if we're done
+      if (type === "done") {
+        progress = 100;
+      }
+
       // Update the progress display with the progress from the worker
       updateWasmProgressDisplay(progress);
     } else if (type === "done") {
+      // Force a final progress update to 100% when done
+      updateWasmProgressDisplay(100);
+
       // Mark the WASM BFS as complete
       wasmBfsRunning = false;
 
