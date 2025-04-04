@@ -75,6 +75,13 @@ function initializeApp() {
         productSelection.appendChild(label);
       }
     });
+
+    // Remove any existing event listener to prevent duplicates
+    productSelection.removeEventListener(
+      "change",
+      handleProductSelectionChange
+    );
+    productSelection.addEventListener("change", handleProductSelectionChange);
   }
 
   // Set up the drop zone (mix list)
@@ -90,20 +97,6 @@ function initializeApp() {
     trash.addEventListener("dragover", onTrashDragOver);
     trash.addEventListener("drop", onTrashDrop);
   }
-
-  // Set up product selection
-  const productRadios = document.getElementsByName("product");
-  productRadios.forEach((radio) => {
-    radio.addEventListener("change", (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (target.checked) {
-        const prodName = target.value;
-        const initialEffect = target.dataset.initial || ""; // Handle products without initial effects
-        currentProduct = { name: prodName, initialEffect };
-        updateProductDisplay();
-      }
-    });
-  });
 
   // Add BFS button and best mix display if not already present
   let bfsButton = document.getElementById("bfsButton");
@@ -131,6 +124,22 @@ function initializeApp() {
   // Initialize display with default product.
   loadFromLocalStorage();
   updateProductDisplay();
+}
+
+// Separate the event handler for better control
+function handleProductSelectionChange(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (target.name === "product" && target.checked) {
+    console.log(
+      `Radio changed: ${target.value} with effect ${
+        target.dataset.initial || "none"
+      }`
+    );
+    const prodName = target.value;
+    const initialEffect = target.dataset.initial || ""; // Handle products without initial effects
+    currentProduct = { name: prodName, initialEffect };
+    updateProductDisplay();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", initializeApp);
