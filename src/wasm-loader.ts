@@ -17,7 +17,7 @@ interface BFSModule {
     sellPrice: number;
     cost: number;
   };
-  
+
   // Add the new helper function
   getMixArray?: () => string[];
 }
@@ -25,6 +25,30 @@ interface BFSModule {
 let wasmModule: BFSModule | null = null;
 let isLoading = false;
 let loadPromise: Promise<BFSModule> | null = null;
+
+/**
+ * Utility function to convert a ClassHandle to a JavaScript array
+ * This will extract string values from the ClassHandle object
+ */
+export function extractMixArrayFromClassHandle(mixHandle: any): string[] {
+  if (!mixHandle) return [];
+
+  // If it's already an array, return it
+  if (Array.isArray(mixHandle)) return mixHandle;
+
+  // If it's a ClassHandle with numeric keys, extract the string values
+  try {
+    const result: string[] = [];
+    // Look for properties that are numbers (array indices)
+    for (let i = 0; typeof mixHandle[i] === "string"; i++) {
+      result.push(mixHandle[i]);
+    }
+    return result;
+  } catch (e) {
+    console.error("Failed to extract strings from mix handle:", e);
+    return [];
+  }
+}
 
 /**
  * Loads the WebAssembly module containing the BFS algorithm

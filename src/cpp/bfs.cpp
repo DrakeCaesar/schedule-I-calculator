@@ -30,9 +30,17 @@ std::vector<std::string> getMixArray()
   return mix;
 }
 
-// Simplified function that takes JSON strings for complex data
+// Create a JS-friendly version of the result
+struct JsBestMixResult {
+  val mixArray; // Using emscripten::val to store JavaScript array
+  double profit;
+  double sellPrice;
+  double cost;
+};
+
+// Simplified function that takes JSON strings for complex data and returns JS-friendly result
 EMSCRIPTEN_KEEPALIVE
-BestMixResult findBestMixJson(
+JsBestMixResult findBestMixJson(
     std::string productJson,
     std::string substancesJson,
     std::string effectMultipliersJson,
@@ -43,14 +51,21 @@ BestMixResult findBestMixJson(
   // In a real implementation you would use a JSON parsing library
   // For this example, we'll just return a dummy result
 
-  BestMixResult result;
-  // Create a vector that will properly bind to JavaScript Array
+  // Create a regular C++ vector
   std::vector<std::string> mixArray;
   mixArray.push_back("Cuke");
   mixArray.push_back("Banana");
   mixArray.push_back("Gasoline");
 
-  result.mix = mixArray;
+  // Convert C++ vector to JavaScript array using emscripten::val
+  val jsArray = val::array();
+  for (size_t i = 0; i < mixArray.size(); ++i) {
+    jsArray.set(i, val(mixArray[i]));
+  }
+
+  // Create and return the JS-friendly result
+  JsBestMixResult result;
+  result.mixArray = jsArray;
   result.profit = 150.0;
   result.sellPrice = 200.0;
   result.cost = 50.0;
@@ -66,6 +81,12 @@ EMSCRIPTEN_BINDINGS(bfs_module)
       .field("profit", &BestMixResult::profit)
       .field("sellPrice", &BestMixResult::sellPrice)
       .field("cost", &BestMixResult::cost);
+      
+  value_object<JsBestMixResult>("JsBestMixResult")
+      .field("mixArray", &JsBestMixResult::mixArray)
+      .field("profit", &JsBestMixResult::profit)
+      .field("sellPrice", &JsBestMixResult::sellPrice)
+      .field("cost", &JsBestMixResult::cost);
 
   register_vector<std::string>("VectorString");
 
