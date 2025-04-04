@@ -2,13 +2,7 @@
 // We will only implement minimal functionality to maintain compatibility with existing code
 
 import { MAX_RECIPE_DEPTH } from "./bfs";
-import {
-  applySubstanceRules,
-  calculateFinalCost,
-  calculateFinalPrice,
-  ProductVariety,
-  substances,
-} from "./substances";
+import { applySubstanceRules, ProductVariety, substances } from "./substances";
 
 // Performance optimization: Create a Map for O(1) substance lookups
 const substanceMap = new Map(
@@ -59,7 +53,7 @@ self.onmessage = (event: MessageEvent) => {
       // Simulate the BFS has completed with a predetermined result
       bestMix = {
         mix: ["Cuke", "Banana", "Gasoline"],
-        profit: 150
+        profit: 150,
       };
 
       // Send progress updates to show completion
