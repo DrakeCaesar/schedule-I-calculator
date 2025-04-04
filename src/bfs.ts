@@ -458,7 +458,17 @@ function createWasmWorkerMessageHandler() {
       wasmBestMix = updatedBestMix;
       updateWasmBestMixDisplay();
     } else if (type === "progress") {
-      const { progress, executionTime } = event.data;
+      // Calculate progress percentage if we have the necessary data
+      let progress = 0;
+      if (event.data.processed !== undefined && event.data.total !== undefined) {
+        // If we have processed and total values, calculate percentage
+        progress = Math.min(100, Math.round((event.data.processed / event.data.total) * 100));
+      } else if (event.data.progress !== undefined) {
+        // If we already have a percentage, use that
+        progress = event.data.progress;
+      }
+      
+      const { executionTime } = event.data;
 
       // Update the progress display with the progress from the worker
       updateWasmProgressDisplay(progress);
