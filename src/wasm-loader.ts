@@ -12,7 +12,8 @@ interface BFSModule {
     substanceRulesJson: string,
     maxDepth: number
   ) => {
-    mix: any; // Using 'any' since it could be a ClassHandle
+    // Updated to match the new JsBestMixResult structure
+    mixArray: string[]; // Now this is a properly bound JavaScript array
     profit: number;
     sellPrice: number;
     cost: number;

@@ -218,22 +218,25 @@ export async function toggleBFS(product: ProductVariety) {
 
     console.log("WASM function returned result:", result);
 
-    // Try to get the mix array directly from the getMixArray function if available
+    // Use the mixArray directly from the result since it's now properly bound
     let mixArray: string[] = [];
-    if (typeof bfsModule.getMixArray === "function") {
+    
+    // Check if result.mixArray exists and is an array
+    if (result.mixArray && Array.isArray(result.mixArray)) {
+      mixArray = result.mixArray;
+      console.log("Using mixArray directly from result:", mixArray);
+    } else if (typeof bfsModule.getMixArray === "function") {
+      // Fallback to getMixArray helper function if needed
       try {
-        // Use the helper function to get the array directly
-        const result = bfsModule.getMixArray();
-        // Ensure we have an array, not a ClassHandle
-        mixArray = Array.isArray(result)
-          ? result
-          : result && typeof result === "object"
-          ? Array.from(Object.values(result).filter((v) => typeof v === "string"))
+        const arrayResult = bfsModule.getMixArray();
+        mixArray = Array.isArray(arrayResult)
+          ? arrayResult
+          : arrayResult && typeof arrayResult === "object"
+          ? Array.from(Object.values(arrayResult).filter((v) => typeof v === "string"))
           : [];
         console.log("Got mix array from helper function:", mixArray);
       } catch (mixError) {
         console.error("Error getting mix array from helper:", mixError);
-        // Fall back logic remains the same...
       }
     }
 
@@ -248,16 +251,6 @@ export async function toggleBFS(product: ProductVariety) {
       mix: mixArray,
       profit: result.profit,
     };
-
-    // Log the type and content of bestMix.mix to help debug
-    console.log(
-      "bestMix.mix type:",
-      typeof bestMix.mix,
-      "isArray:",
-      Array.isArray(bestMix.mix),
-      "content:",
-      bestMix.mix
-    );
 
     // Update the display
     updateBestMixDisplay();
