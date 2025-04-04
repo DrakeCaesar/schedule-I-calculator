@@ -76,6 +76,8 @@ self.onmessage = (event: MessageEvent) => {
       total: depthMaxCombinations,
       totalProcessed: maxCombinations, // Set to total to show 100%
       grandTotal: maxCombinations,
+      progress: 100, // Add explicit progress percentage
+      isFinal: true, // Add flag to indicate this is the final update
       executionTime: Date.now() - startTime,
       workerId,
     });

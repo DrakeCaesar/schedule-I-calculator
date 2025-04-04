@@ -164,11 +164,11 @@ export function updateTsBestMixDisplay() {
 // Utility functions for time formatting
 import { formatClockTime, formatTime } from "./bfsCommon";
 
-export function updateTsProgressDisplay() {
+export function updateTsProgressDisplay(forceUpdate = false) {
   const currentTime = Date.now();
 
-  // Only update every PROGRESS_UPDATE_INTERVAL ms
-  if (currentTime - lastTsProgressUpdate < PROGRESS_UPDATE_INTERVAL) {
+  // Only update every PROGRESS_UPDATE_INTERVAL ms, unless forceUpdate is true
+  if (!forceUpdate && currentTime - lastTsProgressUpdate < PROGRESS_UPDATE_INTERVAL) {
     return;
   }
 
@@ -281,6 +281,7 @@ function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
         totalProcessed,
         grandTotal,
         executionTime,
+        isFinal, // Check for final update flag
       } = event.data;
 
       // Update this worker's progress
@@ -294,7 +295,8 @@ function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
         executionTime,
       });
 
-      updateTsProgressDisplay();
+      // Force update if this is the final progress message
+      updateTsProgressDisplay(isFinal === true);
     } else if (type === "done") {
       // Get the worker's final stats before updating
       const workerProgress = workersProgress.get(workerId);
@@ -319,8 +321,8 @@ function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
         }
       }
 
-      // Final update of progress display
-      updateTsProgressDisplay();
+      // Final update of progress display with force update
+      updateTsProgressDisplay(true);
     }
   };
 }
