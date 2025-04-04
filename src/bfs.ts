@@ -201,9 +201,6 @@ export async function toggleBFS(product: ProductVariety) {
     for (let i = 0; i < substances.length; i++) {
       const substanceName = substances[i].name;
 
-      // Initialize with a single substance
-      const initialQueue = [[substanceName]];
-
       // Create worker
       const worker = new Worker(new URL("./bfsWorker.ts", import.meta.url), {
         type: "module",
@@ -232,7 +229,6 @@ export async function toggleBFS(product: ProductVariety) {
         workerId: i,
         data: {
           product: { ...product },
-          queue: initialQueue,
           bestMix,
           substanceName,
         },

@@ -29,6 +29,7 @@ let currentDepth = 0;
 let startTime = 0;
 let workerId = -1;
 let currentSubstanceName = "";
+let bestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
 
 self.onmessage = (event: MessageEvent) => {
   const { type, workerId: id, data } = event.data || {}; // Safely destructure event.data
@@ -38,9 +39,10 @@ self.onmessage = (event: MessageEvent) => {
     isPaused = false;
     combinationsProcessed = 0;
     depthCombinationsProcessed = 0;
-    currentDepth = data.queue[0].length; // Start at depth 1 with our initial substance
+    currentDepth = 1; // Start at depth 1 with our initial substance
     currentProduct = { ...data.product };
     currentSubstanceName = data.substanceName;
+    bestMix = data.bestMix;
     startTime = Date.now();
 
     // Calculate max combinations for this worker
@@ -58,9 +60,18 @@ self.onmessage = (event: MessageEvent) => {
     }
 
     // Calculate initial combinations for first depth
-    depthMaxCombinations = data.queue.length; // Just 1 at the start
+    depthMaxCombinations = 1; // Just 1 at the start
 
-    runBFS(data.queue, data.bestMix);
+    // Process the initial substance
+    processMix([data.substanceName]);
+
+    // Send done message when complete
+    self.postMessage({
+      type: "done",
+      bestMix,
+      executionTime: Date.now() - startTime,
+      workerId,
+    });
   } else if (type === "pause") {
     isPaused = true;
   } else if (type === "resume") {
@@ -70,82 +81,60 @@ self.onmessage = (event: MessageEvent) => {
   }
 };
 
-function runBFS(queue: string[][], bestMix: { mix: string[]; profit: number }) {
-  let lastProgressUpdate = Date.now();
-  let itemsProcessedSinceUpdate = 0;
+function processMix(currentMix: string[]) {
+  if (isPaused) return;
 
-  while (queue.length > 0 && !isPaused) {
-    const currentMix = queue.shift()!;
-    combinationsProcessed++;
-    depthCombinationsProcessed++;
-    itemsProcessedSinceUpdate++;
+  // Process the current mix
+  combinationsProcessed++;
+  depthCombinationsProcessed++;
 
-    // Check if we need to move to the next depth
-    if (currentMix.length > currentDepth) {
-      currentDepth = currentMix.length;
+  // Check if we need to move to the next depth
+  if (currentMix.length > currentDepth) {
+    currentDepth = currentMix.length;
 
-      // Reset depth-specific counters
-      depthCombinationsProcessed = 1; // Start at 1 because we're processing the first item of this depth
+    // Reset depth-specific counters
+    depthCombinationsProcessed = 1;
 
-      // Calculate max combinations for this depth
-      const substanceCount = substances.length;
-      depthMaxCombinations = Math.pow(substanceCount, currentDepth - 1);
+    // Calculate max combinations for this depth
+    const substanceCount = substances.length;
+    depthMaxCombinations = Math.pow(substanceCount, currentDepth - 1);
 
-      // Send progress update when we move to next depth
-      sendProgressUpdate();
-      lastProgressUpdate = Date.now();
-      itemsProcessedSinceUpdate = 0;
-
-      if (currentDepth > MAX_RECIPE_DEPTH) break; // Stop if mix length exceeds MAX_RECIPE_DEPTH
-    }
-
-    const effectsList = calculateEffects(currentMix);
-    const sellPrice = currentProduct
-      ? calculateFinalPrice(currentProduct.name, effectsList)
-      : 0;
-    const cost = calculateFinalCost(currentMix);
-    const profit = sellPrice - cost;
-
-    if (profit > bestMix.profit) {
-      bestMix = { mix: currentMix, profit };
-      self.postMessage({
-        type: "update",
-        bestMix,
-        sellPrice,
-        cost,
-        profit,
-        workerId,
-      });
-    }
-
-    if (currentMix.length < MAX_RECIPE_DEPTH) {
-      // Use the cached names array for faster iteration
-      for (const substanceName of substanceNames) {
-        queue.push([...currentMix, substanceName]);
-      }
-    }
-
-    // Send progress updates periodically to avoid flooding the main thread
-    // Only check time after processing a batch of items for better performance
-    if (itemsProcessedSinceUpdate >= BATCH_SIZE) {
-      const now = Date.now();
-      if (now - lastProgressUpdate > PROGRESS_UPDATE_INTERVAL) {
-        sendProgressUpdate();
-        lastProgressUpdate = now;
-        itemsProcessedSinceUpdate = 0;
-      }
-    }
+    // Send progress update when we move to next depth
+    sendProgressUpdate();
   }
 
-  if (!isPaused) {
-    // Send a final progress update
-    sendProgressUpdate();
+  // Process current combination
+  const effectsList = calculateEffects(currentMix);
+  const sellPrice = currentProduct
+    ? calculateFinalPrice(currentProduct.name, effectsList)
+    : 0;
+  const cost = calculateFinalCost(currentMix);
+  const profit = sellPrice - cost;
+
+  if (profit > bestMix.profit) {
+    bestMix = { mix: currentMix, profit };
     self.postMessage({
-      type: "done",
+      type: "update",
       bestMix,
-      executionTime: Date.now() - startTime,
+      sellPrice,
+      cost,
+      profit,
       workerId,
     });
+  }
+
+  // If we haven't reached max depth, continue adding substances
+  if (currentMix.length < MAX_RECIPE_DEPTH) {
+    // Periodically send progress updates
+    if (combinationsProcessed % BATCH_SIZE === 0) {
+      sendProgressUpdate();
+    }
+
+    // Continue to next depth with each substance
+    for (const substanceName of substanceNames) {
+      processMix([...currentMix, substanceName]);
+      if (isPaused) return;
+    }
   }
 }
 
