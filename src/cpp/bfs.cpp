@@ -99,8 +99,9 @@ std::vector<std::string> applySubstanceRules(
     int recipeLength,
     const std::unordered_map<std::string, bool> &effectsSet)
 {
-  std::unordered_map<std::string, bool> ogEffects;
-  std::unordered_map<std::string, bool> newEffects;
+  // Pre-allocate hash maps with appropriate capacity to avoid rehashing
+  std::unordered_map<std::string, bool> ogEffects(currentEffects.size() * 2);
+  std::unordered_map<std::string, bool> newEffects(currentEffects.size() * 2);
 
   // Convert input to sets for efficient lookups
   for (const auto &effect : currentEffects)
@@ -123,6 +124,9 @@ std::vector<std::string> applySubstanceRules(
       }
     }
 
+    // Only check exclusions if conditions are met (fail fast)
+    if (!conditionsMet) continue;
+    
     // Check if all exclusions are met
     bool exclusionsMet = true;
     for (const auto &np : rule.ifNotPresent)
@@ -163,9 +167,9 @@ std::vector<std::string> applySubstanceRules(
     newEffects[substance.defaultEffect] = true;
   }
 
-  // Convert back to vector
+  // Convert back to vector with pre-allocation for efficiency
   std::vector<std::string> result;
-  result.reserve(newEffects.size()); // Pre-allocate memory
+  result.reserve(newEffects.size());
   for (const auto &pair : newEffects)
   {
     result.push_back(pair.first);
@@ -181,7 +185,10 @@ std::vector<std::string> calculateEffectsForMix(
     const std::string &initialEffect,
     const std::unordered_map<std::string, bool> &effectsSet)
 {
-  std::vector<std::string> effectsList = {initialEffect};
+  // Pre-allocate with a reasonable initial capacity
+  std::vector<std::string> effectsList;
+  effectsList.reserve(10); // Start with space for ~10 effects
+  effectsList.push_back(initialEffect);
 
   for (size_t i = 0; i < mixState.substanceIndices.size(); ++i)
   {
@@ -249,6 +256,7 @@ JsBestMixResult findBestMix(
 
   // Create a set of all effect names for efficiency
   std::unordered_map<std::string, bool> effectsSet;
+  effectsSet.reserve(effectMultipliers.size() * 2); // Pre-allocate with enough capacity
   for (const auto &pair : effectMultipliers)
   {
     effectsSet[pair.first] = true;
@@ -256,6 +264,10 @@ JsBestMixResult findBestMix(
 
   // Queue for BFS using the memory-efficient MixState
   std::queue<MixState> queue;
+  
+  // Pre-calculate the number of initial states to avoid reallocations
+  queue.push(MixState(maxDepth)); // Dummy push to initialize queue
+  queue.pop(); // Remove dummy
 
   // Add each substance as a starting point
   for (size_t i = 0; i < substances.size(); ++i)
