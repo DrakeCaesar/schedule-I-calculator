@@ -59,15 +59,14 @@ export function updateBestMixDisplay() {
   const mixArray = Array.isArray(bestMix.mix)
     ? bestMix.mix
     : bestMix.mix && typeof bestMix.mix === "object"
-    ? Array.from(Object.values(bestMix.mix).filter((v) => typeof v === "string"))
+    ? Array.from(
+        Object.values(bestMix.mix).filter((v) => typeof v === "string")
+      )
     : ["Cuke", "Gasoline", "Banana"]; // Fallback to default values
 
   console.log("Mix array in updateBestMixDisplay:", mixArray);
 
-  const effectsList = calculateEffects(
-    mixArray,
-    currentProduct.initialEffect
-  );
+  const effectsList = calculateEffects(mixArray, currentProduct.initialEffect);
   const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
   const cost = calculateFinalCost(mixArray); // Pass the validated mixArray instead of bestMix.mix directly
   const profit = sellPrice - cost;
@@ -220,7 +219,7 @@ export async function toggleBFS(product: ProductVariety) {
 
     // Use the mixArray directly from the result since it's now properly bound
     let mixArray: string[] = [];
-    
+
     // Check if result.mixArray exists and is an array
     if (result.mixArray && Array.isArray(result.mixArray)) {
       mixArray = result.mixArray;
@@ -232,7 +231,9 @@ export async function toggleBFS(product: ProductVariety) {
         mixArray = Array.isArray(arrayResult)
           ? arrayResult
           : arrayResult && typeof arrayResult === "object"
-          ? Array.from(Object.values(arrayResult).filter((v) => typeof v === "string"))
+          ? Array.from(
+              Object.values(arrayResult).filter((v) => typeof v === "string")
+            )
           : [];
         console.log("Got mix array from helper function:", mixArray);
       } catch (mixError) {

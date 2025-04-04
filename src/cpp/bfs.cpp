@@ -31,7 +31,8 @@ std::vector<std::string> getMixArray()
 }
 
 // Create a JS-friendly version of the result
-struct JsBestMixResult {
+struct JsBestMixResult
+{
   val mixArray; // Using emscripten::val to store JavaScript array
   double profit;
   double sellPrice;
@@ -59,7 +60,8 @@ JsBestMixResult findBestMixJson(
 
   // Convert C++ vector to JavaScript array using emscripten::val
   val jsArray = val::array();
-  for (size_t i = 0; i < mixArray.size(); ++i) {
+  for (size_t i = 0; i < mixArray.size(); ++i)
+  {
     jsArray.set(i, val(mixArray[i]));
   }
 
@@ -81,7 +83,7 @@ EMSCRIPTEN_BINDINGS(bfs_module)
       .field("profit", &BestMixResult::profit)
       .field("sellPrice", &BestMixResult::sellPrice)
       .field("cost", &BestMixResult::cost);
-      
+
   value_object<JsBestMixResult>("JsBestMixResult")
       .field("mixArray", &JsBestMixResult::mixArray)
       .field("profit", &JsBestMixResult::profit)
