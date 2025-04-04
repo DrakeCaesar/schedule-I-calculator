@@ -7,7 +7,7 @@ import {
 } from "./substances";
 
 // Constants
-export const MAX_RECIPE_DEPTH = 6;
+export let MAX_RECIPE_DEPTH = 6; // Default value, can be changed via slider
 
 const substanceMap = new Map(
   substances.map((substance) => [substance.name, substance])
@@ -177,9 +177,22 @@ export function createProgressDisplay() {
   updateProgressDisplay();
 }
 
+// Add function to update the MAX_RECIPE_DEPTH
+export function setMaxRecipeDepth(depth: number) {
+  MAX_RECIPE_DEPTH = depth;
+}
+
 export async function toggleBFS(product: ProductVariety) {
   const bfsButton = document.getElementById("bfsButton");
   if (!bfsButton) return;
+
+  // Get the current max depth value from slider
+  const maxDepthSlider = document.getElementById(
+    "maxDepthSlider"
+  ) as HTMLInputElement;
+  if (maxDepthSlider) {
+    MAX_RECIPE_DEPTH = parseInt(maxDepthSlider.value, 10);
+  }
 
   if (bfsRunning) {
     bfsPaused = !bfsPaused;
@@ -238,6 +251,7 @@ export async function toggleBFS(product: ProductVariety) {
           product: { ...product },
           bestMix,
           substanceName,
+          maxDepth: MAX_RECIPE_DEPTH, // Pass the current max depth to the worker
         },
       });
 

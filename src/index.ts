@@ -1,4 +1,4 @@
-import { createProgressDisplay } from "./bfs";
+import { createProgressDisplay, setMaxRecipeDepth } from "./bfs";
 import {
   loadFromLocalStorage,
   onDragStart,
@@ -101,9 +101,39 @@ function initializeApp() {
   // Set up BFS button event listener
   const bfsButton = document.getElementById("bfsButton");
   if (bfsButton) {
-    bfsButton.addEventListener("click", () => {
+    // Remove existing listeners to prevent duplicates during hot reload
+    const newButton = bfsButton.cloneNode(true);
+    if (bfsButton.parentNode) {
+      bfsButton.parentNode.replaceChild(newButton, bfsButton);
+    }
+    newButton.addEventListener("click", () => {
       toggleBFS();
     });
+  }
+
+  // Set up max depth slider
+  const maxDepthSlider = document.getElementById(
+    "maxDepthSlider"
+  ) as HTMLInputElement;
+  const maxDepthValue = document.getElementById("maxDepthValue");
+
+  if (maxDepthSlider && maxDepthValue) {
+    // Remove existing listeners to prevent duplicates during hot reload
+    const newSlider = maxDepthSlider.cloneNode(true) as HTMLInputElement;
+    if (maxDepthSlider.parentNode) {
+      maxDepthSlider.parentNode.replaceChild(newSlider, maxDepthSlider);
+    }
+
+    // Add the event listener to the new element
+    newSlider.addEventListener("input", () => {
+      const depth = parseInt(newSlider.value, 10);
+      maxDepthValue.textContent = newSlider.value;
+      setMaxRecipeDepth(depth);
+    });
+
+    // Initialize with current value from DOM
+    maxDepthValue.textContent = newSlider.value;
+    setMaxRecipeDepth(parseInt(newSlider.value, 10));
   }
 
   // Create progress display container in the BFS section

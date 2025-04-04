@@ -134,6 +134,24 @@
           <h2>Best Mix Finder</h2>
           <button id="bfsButton">Start BFS</button>
         </div>
+
+        <div class="depth-control">
+          <label for="maxDepthSlider"
+            >Max Depth: <span id="maxDepthValue">6</span></label
+          >
+          <input
+            type="range"
+            id="maxDepthSlider"
+            min="1"
+            max="8"
+            value="6"
+            step="1"
+          />
+          <div class="depth-info">
+            Higher depth = more combinations to check = longer processing time
+          </div>
+        </div>
+
         <div id="bestMixDisplay">
           <p>
             Click "Start BFS" to find the most profitable mix for the selected

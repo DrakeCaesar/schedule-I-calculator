@@ -45,13 +45,16 @@ self.onmessage = (event: MessageEvent) => {
     bestMix = data.bestMix;
     startTime = Date.now();
 
+    // Get the max depth from the passed data
+    const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
+
     // Calculate max combinations for this worker
     // Starting with a specific substance, so our combinations are reduced
     const substanceCount = substances.length;
     maxCombinations = 0;
 
-    // We start at depth = 1 (our initial substance), and go up to MAX_RECIPE_DEPTH
-    for (let i = currentDepth; i <= MAX_RECIPE_DEPTH; i++) {
+    // We start at depth = 1 (our initial substance), and go up to maxDepth
+    for (let i = currentDepth; i <= maxDepth; i++) {
       if (i === 1) {
         maxCombinations += 1; // Just our one substance at depth 1
       } else {
@@ -63,12 +66,12 @@ self.onmessage = (event: MessageEvent) => {
     depthMaxCombinations = 1; // Just 1 at the start
 
     // Process the initial substance
-    processMix([data.substanceName]);
+    processMix([data.substanceName], maxDepth);
 
     // Send final progress update with completed state before done message
     self.postMessage({
       type: "progress",
-      depth: MAX_RECIPE_DEPTH,
+      depth: maxDepth,
       processed: depthMaxCombinations, // Set to total to show 100%
       total: depthMaxCombinations,
       totalProcessed: maxCombinations, // Set to total to show 100%
@@ -93,7 +96,7 @@ self.onmessage = (event: MessageEvent) => {
   }
 };
 
-function processMix(currentMix: string[]) {
+function processMix(currentMix: string[], maxDepth: number) {
   if (isPaused) return;
 
   // Process the current mix
@@ -136,7 +139,7 @@ function processMix(currentMix: string[]) {
   }
 
   // If we haven't reached max depth, continue adding substances
-  if (currentMix.length < MAX_RECIPE_DEPTH) {
+  if (currentMix.length < maxDepth) {
     // Periodically send progress updates
     if (combinationsProcessed % BATCH_SIZE === 0) {
       sendProgressUpdate();
@@ -144,7 +147,7 @@ function processMix(currentMix: string[]) {
 
     // Continue to next depth with each substance
     for (const substanceName of substanceNames) {
-      processMix([...currentMix, substanceName]);
+      processMix([...currentMix, substanceName], maxDepth);
       if (isPaused) return;
     }
   }
