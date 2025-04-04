@@ -978,7 +978,7 @@ export function calculateFinalCost(currentMix: string[]): number {
   return Math.round(totalCost);
 }
 
-// Function to apply a substance’s rules to the current list of effects.
+// Function to apply a substance's rules to the current list of effects.
 export function applySubstanceRules(
   currentEffects: string[],
   substance: Substance,
@@ -995,43 +995,27 @@ export function applySubstanceRules(
 
     // Check if all excluded effects are absent
     const exclusionsMet = rule.ifNotPresent
-      ? !rule.ifNotPresent.some((np) => new Set(ogEffects).has(np))
+      ? !rule.ifNotPresent.some((np) => ogEffects.has(np))
       : true;
     if (conditionsMet && exclusionsMet) {
       if (rule.type === "replace" && rule.withEffect) {
         if (newEffects.has(rule.target) && !newEffects.has(rule.withEffect)) {
-          // console.log(
-          //   `Replacing ${rule.target} with ${rule.withEffect} for ${substance.name}`
-          // );
-
           // Remove target and add new effect
           newEffects.delete(rule.target);
           newEffects.add(rule.withEffect);
-          // ogEffects.add(rule.withEffect); // Add new effect to original effects for future checks
-
-          // console.log(Array.from(newEffects));
         }
       } else if (rule.type === "add") {
         // Add new effect if not present
         if (!newEffects.has(rule.target)) {
           newEffects.add(rule.target);
-          // console.log(
-          //   `Adding ${rule.target} for ${substance.name} (not already present)`
-          // );
-          // console.log(Array.from(newEffects));
         }
       }
     }
   }
 
   // Ensure default effect is present
-
   if (recipeLength < 9) {
-    // console.log(`Adding default effect ${substance.defaultEffect}`);
-
     newEffects.add(substance.defaultEffect);
-  } else {
-    // console.log("Skipping default effect addition due to recipe length");
   }
 
   // Convert back to array for return

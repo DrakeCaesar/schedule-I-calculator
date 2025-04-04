@@ -1,3 +1,5 @@
 node_modules/
 debug/
 dist/
+src/cpp/bfs.wasm.wasm
+src/cpp/bfs.wasm.js
