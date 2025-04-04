@@ -2,16 +2,9 @@ import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
-  effects,
   ProductVariety,
   substances,
 } from "./substances";
-import {
-  loadWasmModule,
-  prepareEffectMultipliersForWasm,
-  prepareSubstanceRulesForWasm,
-  prepareSubstancesForWasm,
-} from "./wasm-loader";
 
 // Constants
 export let MAX_RECIPE_DEPTH = 6; // Default value, can be changed via slider
@@ -431,7 +424,7 @@ async function startWasmBFS(product: ProductVariety) {
   wasmStartTime = Date.now();
 
   // Create worker
-  const worker = new Worker(new URL("./bfsWorker-wasm.ts", import.meta.url), {
+  const worker = new Worker(new URL("./bfsWorkerWasm.ts", import.meta.url), {
     type: "module",
   });
 
@@ -464,39 +457,36 @@ function createWasmWorkerMessageHandler() {
       // Update our best mix with the result from the worker
       wasmBestMix = updatedBestMix;
       updateWasmBestMixDisplay();
-    } 
-    else if (type === "progress") {
+    } else if (type === "progress") {
       const { progress, executionTime } = event.data;
-      
+
       // Update the progress display with the progress from the worker
       updateWasmProgressDisplay(progress);
-    } 
-    else if (type === "done") {
+    } else if (type === "done") {
       // Mark the WASM BFS as complete
       wasmBfsRunning = false;
-      
+
       // Update button text
       const wasmBfsButton = document.getElementById("wasmBfsButton");
       if (wasmBfsButton) {
         wasmBfsButton.textContent = "Start WASM BFS";
       }
-      
+
       // Clean up worker reference
       wasmBfsWorker = null;
-    }
-    else if (type === "error") {
+    } else if (type === "error") {
       console.error("WASM BFS worker error:", event.data.error);
       alert(`WASM BFS error: ${event.data.error}`);
-      
+
       // Mark the WASM BFS as complete
       wasmBfsRunning = false;
-      
+
       // Update button text
       const wasmBfsButton = document.getElementById("wasmBfsButton");
       if (wasmBfsButton) {
         wasmBfsButton.textContent = "Start WASM BFS";
       }
-      
+
       // Clean up worker reference
       wasmBfsWorker = null;
     }
@@ -629,7 +619,7 @@ export async function toggleWasmBFS(product: ProductVariety) {
   if (wasmBfsRunning) {
     // Stop the WASM BFS
     wasmBfsRunning = false;
-    
+
     // Terminate the worker if it exists
     if (wasmBfsWorker) {
       wasmBfsWorker.terminate();
