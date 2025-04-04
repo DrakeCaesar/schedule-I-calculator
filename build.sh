@@ -34,6 +34,7 @@ emcc src/cpp/bfs.cpp -o src/cpp/bfs.wasm.js \
   -s EXPORT_NAME=createBfsModule \
   -s ENVIRONMENT=web \
   -s TOTAL_MEMORY=67108864 \
+  -s ASSERTIONS=2 \
   -I "$VCPKG_ROOT/installed/wasm32-emscripten/include" \
   -O3 \
   --bind \

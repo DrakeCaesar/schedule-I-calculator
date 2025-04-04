@@ -33,6 +33,7 @@ emcc src/cpp/bfs.cpp -o src/cpp/bfs.wasm.js ^
   -s USE_ES6_IMPORT_META=0 ^
   -s ENVIRONMENT=web ^
   -s TOTAL_MEMORY=67108864 ^
+  -s ASSERTIONS=2 ^
   -I "%VCPKG_ROOT%\installed\wasm32-emscripten\include" ^
   -O3 ^
   --bind ^
