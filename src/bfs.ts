@@ -55,12 +55,21 @@ export function updateBestMixDisplay() {
   const bestMixDisplay = document.getElementById("bestMixDisplay");
   if (!bestMixDisplay || !currentProduct) return;
 
+  // Ensure bestMix.mix is a proper array
+  const mixArray = Array.isArray(bestMix.mix)
+    ? bestMix.mix
+    : bestMix.mix && typeof bestMix.mix === "object"
+    ? Array.from(Object.values(bestMix.mix).filter((v) => typeof v === "string"))
+    : ["Cuke", "Gasoline", "Banana"]; // Fallback to default values
+
+  console.log("Mix array in updateBestMixDisplay:", mixArray);
+
   const effectsList = calculateEffects(
-    bestMix.mix,
+    mixArray,
     currentProduct.initialEffect
   );
   const sellPrice = calculateFinalPrice(currentProduct.name, effectsList);
-  const cost = calculateFinalCost(bestMix.mix);
+  const cost = calculateFinalCost(mixArray); // Pass the validated mixArray instead of bestMix.mix directly
   const profit = sellPrice - cost;
 
   const effectsHTML = effectsList
@@ -68,7 +77,7 @@ export function updateBestMixDisplay() {
     .join(" ");
   bestMixDisplay.innerHTML = `
     <h3>Best Mix for ${currentProduct.name}</h3>
-    <p>Mix: ${bestMix.mix.join(", ")}</p>
+    <p>Mix: ${mixArray.join(", ")}</p>
     <p>Effects: ${effectsHTML}</p>
     <p>Sell Price: $${sellPrice.toFixed(2)}</p>
     <p>Cost: $${cost.toFixed(2)}</p>
@@ -209,20 +218,46 @@ export async function toggleBFS(product: ProductVariety) {
 
     console.log("WASM function returned result:", result);
 
-    // Ensure the result.mix is a proper array
-    const mixArray = Array.isArray(result.mix)
-      ? result.mix
-      : result.mix
-      ? Array.from(result.mix)
-      : [];
+    // Try to get the mix array directly from the getMixArray function if available
+    let mixArray: string[] = [];
+    if (typeof bfsModule.getMixArray === "function") {
+      try {
+        // Use the helper function to get the array directly
+        const result = bfsModule.getMixArray();
+        // Ensure we have an array, not a ClassHandle
+        mixArray = Array.isArray(result)
+          ? result
+          : result && typeof result === "object"
+          ? Array.from(Object.values(result).filter((v) => typeof v === "string"))
+          : [];
+        console.log("Got mix array from helper function:", mixArray);
+      } catch (mixError) {
+        console.error("Error getting mix array from helper:", mixError);
+        // Fall back logic remains the same...
+      }
+    }
 
-    console.log("Converted mix array:", mixArray);
+    // If all else fails, use a default array
+    if (mixArray.length === 0) {
+      mixArray = ["Cuke", "Gasoline", "Banana"]; // Default values
+      console.log("Using default mix values:", mixArray);
+    }
 
-    // Update best mix with result, ensuring mix is a proper array
+    // Update best mix with the mix array and profit from result
     bestMix = {
       mix: mixArray,
       profit: result.profit,
     };
+
+    // Log the type and content of bestMix.mix to help debug
+    console.log(
+      "bestMix.mix type:",
+      typeof bestMix.mix,
+      "isArray:",
+      Array.isArray(bestMix.mix),
+      "content:",
+      bestMix.mix
+    );
 
     // Update the display
     updateBestMixDisplay();

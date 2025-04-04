@@ -12,11 +12,14 @@ interface BFSModule {
     substanceRulesJson: string,
     maxDepth: number
   ) => {
-    mix: string[];
+    mix: any; // Using 'any' since it could be a ClassHandle
     profit: number;
     sellPrice: number;
     cost: number;
   };
+  
+  // Add the new helper function
+  getMixArray?: () => string[];
 }
 
 let wasmModule: BFSModule | null = null;

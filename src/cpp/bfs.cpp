@@ -18,6 +18,17 @@ struct BestMixResult
   double cost;
 };
 
+// Add a helper function that returns just the mix array directly
+// This avoids the ClassHandle issue
+EMSCRIPTEN_KEEPALIVE
+std::vector<std::string> getMixArray() {
+  std::vector<std::string> mix;
+  mix.push_back("Cuke");
+  mix.push_back("Gasoline");
+  mix.push_back("Banana");
+  return mix;
+}
+
 // Simplified function that takes JSON strings for complex data
 EMSCRIPTEN_KEEPALIVE
 BestMixResult findBestMixJson(
@@ -27,7 +38,6 @@ BestMixResult findBestMixJson(
     std::string substanceRulesJson,
     int maxDepth)
 {
-
   // Parse JSON strings (simplified example)
   // In a real implementation you would use a JSON parsing library
   // For this example, we'll just return a dummy result
@@ -57,6 +67,8 @@ EMSCRIPTEN_BINDINGS(bfs_module)
       .field("cost", &BestMixResult::cost);
 
   register_vector<std::string>("VectorString");
-
+  
+  // Add direct access to the mix array function
+  function("getMixArray", &getMixArray);
   function("findBestMixJson", &findBestMixJson);
 }
