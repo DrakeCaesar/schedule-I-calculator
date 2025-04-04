@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "lint": "eslint 'src/**/*.ts'",
-    "dev": "npm run build:wasm && vite",
+    "dev": "vite",
     "build:wasm": "node build.js",
     "build": "npm run build:wasm && vite build",
     "predeploy": "npm run build",

@@ -21,11 +21,12 @@ struct BestMixResult
 // Add a helper function that returns just the mix array directly
 // This avoids the ClassHandle issue
 EMSCRIPTEN_KEEPALIVE
-std::vector<std::string> getMixArray() {
+std::vector<std::string> getMixArray()
+{
   std::vector<std::string> mix;
   mix.push_back("Cuke");
-  mix.push_back("Gasoline");
   mix.push_back("Banana");
+  mix.push_back("Gasoline");
   return mix;
 }
 
@@ -46,8 +47,8 @@ BestMixResult findBestMixJson(
   // Create a vector that will properly bind to JavaScript Array
   std::vector<std::string> mixArray;
   mixArray.push_back("Cuke");
-  mixArray.push_back("Gasoline");
   mixArray.push_back("Banana");
+  mixArray.push_back("Gasoline");
 
   result.mix = mixArray;
   result.profit = 150.0;
@@ -67,7 +68,7 @@ EMSCRIPTEN_BINDINGS(bfs_module)
       .field("cost", &BestMixResult::cost);
 
   register_vector<std::string>("VectorString");
-  
+
   // Add direct access to the mix array function
   function("getMixArray", &getMixArray);
   function("findBestMixJson", &findBestMixJson);
