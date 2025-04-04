@@ -2,15 +2,15 @@ import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
+  effects,
   ProductVariety,
   substances,
-  effects
 } from "./substances";
 import {
   loadWasmModule,
   prepareEffectMultipliersForWasm,
-  prepareSubstancesForWasm,
   prepareSubstanceRulesForWasm,
+  prepareSubstancesForWasm,
 } from "./wasm-loader";
 
 // Constants
@@ -24,8 +24,14 @@ const substanceMap = new Map(
 let tsBfsRunning = false;
 let wasmBfsRunning = false;
 let tsBfsPaused = false;
-let tsBestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
-let wasmBestMix: { mix: string[]; profit: number } = { mix: [], profit: -Infinity };
+let tsBestMix: { mix: string[]; profit: number } = {
+  mix: [],
+  profit: -Infinity,
+};
+let wasmBestMix: { mix: string[]; profit: number } = {
+  mix: [],
+  profit: -Infinity,
+};
 let tsBfsWorkers: Worker[] = [];
 let tsCurrentProduct: ProductVariety | null = null;
 let wasmCurrentProduct: ProductVariety | null = null;
@@ -109,7 +115,10 @@ export function updateWasmBestMixDisplay() {
       )
     : ["Cuke", "Gasoline", "Banana"]; // Fallback to default values
 
-  const effectsList = calculateEffects(mixArray, wasmCurrentProduct.initialEffect);
+  const effectsList = calculateEffects(
+    mixArray,
+    wasmCurrentProduct.initialEffect
+  );
   const sellPrice = calculateFinalPrice(wasmCurrentProduct.name, effectsList);
   const cost = calculateFinalCost(mixArray);
   const profit = sellPrice - cost;
@@ -349,7 +358,7 @@ export async function toggleBothBFS(product: ProductVariety) {
 
     // Start TypeScript BFS
     startTsBFS(product);
-    
+
     // Start WASM BFS
     startWasmBFS(product);
   }
@@ -556,7 +565,8 @@ function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
       if (tsActiveWorkers === 0) {
         tsBfsRunning = false;
         const bfsButton = document.getElementById("bfsButton");
-        if (bfsButton && !wasmBfsRunning) bfsButton.textContent = "Start Both BFS";
+        if (bfsButton && !wasmBfsRunning)
+          bfsButton.textContent = "Start Both BFS";
       }
 
       // Final update of progress display
