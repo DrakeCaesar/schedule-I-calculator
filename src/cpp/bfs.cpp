@@ -24,38 +24,14 @@ JsBestMixResult findBestMixJson(
     std::string substanceRulesJson,
     int maxDepth)
 {
-  try
-  {
-    // Parse JSON inputs
-    Product product = parseProductJson(productJson);
-    std::vector<Substance> substances = parseSubstancesJson(substancesJson);
-    std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
-    applySubstanceRulesJson(substances, substanceRulesJson);
+  // Parse JSON inputs
+  Product product = parseProductJson(productJson);
+  std::vector<Substance> substances = parseSubstancesJson(substancesJson);
+  std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
+  applySubstanceRulesJson(substances, substanceRulesJson);
 
-    // Run the BFS algorithm without progress reporting
-    return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
-  }
-  catch (const std::exception &e)
-  {
-    printf("Error parsing JSON: %s\n", e.what());
-
-    // Return a default result on error
-    std::vector<std::string> defaultMix = {"Cuke", "Banana", "Gasoline"};
-
-    val jsArray = val::array();
-    for (size_t i = 0; i < defaultMix.size(); ++i)
-    {
-      jsArray.set(i, val(defaultMix[i]));
-    }
-
-    JsBestMixResult result;
-    result.mixArray = jsArray;
-    result.profit = 150.0;
-    result.sellPrice = 200.0;
-    result.cost = 50.0;
-
-    return result;
-  }
+  // Run the BFS algorithm without progress reporting
+  return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
 }
 
 // Parse JSON input and run BFS with progress reporting
@@ -68,44 +44,19 @@ JsBestMixResult findBestMixJsonWithProgress(
     int maxDepth,
     bool reportProgress)
 {
-  try
-  {
-    // Parse JSON inputs
-    Product product = parseProductJson(productJson);
-    std::vector<Substance> substances = parseSubstancesJson(substancesJson);
-    std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
-    applySubstanceRulesJson(substances, substanceRulesJson);
+  Product product = parseProductJson(productJson);
+  std::vector<Substance> substances = parseSubstancesJson(substancesJson);
+  std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
+  applySubstanceRulesJson(substances, substanceRulesJson);
 
-    // Run the BFS algorithm with progress reporting if enabled
-    if (reportProgress)
-    {
-      return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
-    }
-    else
-    {
-      return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
-    }
+  // Run the BFS algorithm with progress reporting if enabled
+  if (reportProgress)
+  {
+    return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
   }
-  catch (const std::exception &e)
+  else
   {
-    printf("Error parsing JSON: %s\n", e.what());
-
-    // Return a default result on error
-    std::vector<std::string> defaultMix = {"Cuke", "Banana", "Gasoline"};
-
-    val jsArray = val::array();
-    for (size_t i = 0; i < defaultMix.size(); ++i)
-    {
-      jsArray.set(i, val(defaultMix[i]));
-    }
-
-    JsBestMixResult result;
-    result.mixArray = jsArray;
-    result.profit = 150.0;
-    result.sellPrice = 200.0;
-    result.cost = 50.0;
-
-    return result;
+    return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
   }
 }
 
