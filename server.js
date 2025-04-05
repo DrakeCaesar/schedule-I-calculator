@@ -64,15 +64,21 @@ app.post("/api/bfs", async (req, res) => {
     const substanceRulesJsonPath = path.join(tempDir, "substanceRules.json");
     const outputJsonPath = path.join(tempDir, "output.json");
 
-    fs.writeFileSync(productJsonPath, JSON.stringify(req.body.product));
-    fs.writeFileSync(substancesJsonPath, JSON.stringify(req.body.substances));
+    fs.writeFileSync(
+      productJsonPath,
+      JSON.stringify(req.body.product, null, 2)
+    );
+    fs.writeFileSync(
+      substancesJsonPath,
+      JSON.stringify(req.body.substances, null, 2)
+    );
     fs.writeFileSync(
       effectMultipliersJsonPath,
-      JSON.stringify(req.body.effectMultipliers)
+      JSON.stringify(req.body.effectMultipliers, null, 2)
     );
     fs.writeFileSync(
       substanceRulesJsonPath,
-      JSON.stringify(req.body.substanceRules)
+      JSON.stringify(req.body.substanceRules, null, 2)
     );
 
     // Determine the path of the bfs_calculator executable based on the platform

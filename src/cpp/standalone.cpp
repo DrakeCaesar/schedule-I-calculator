@@ -95,12 +95,14 @@ JsBestMixResult findBestMixJsonWithProgress(
 }
 
 // Function to read file content into a string
-std::string readFileContents(const std::string& filePath) {
+std::string readFileContents(const std::string &filePath)
+{
     std::ifstream file(filePath);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("Could not open file: " + filePath);
     }
-    
+
     std::string content((std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
     file.close();
@@ -172,13 +174,15 @@ int main(int argc, char *argv[])
 
     // Read JSON content from files
     std::string productJson, substancesJson, effectMultipliersJson, substanceRulesJson;
-    try {
+    try
+    {
         productJson = readFileContents(productJsonPath);
         substancesJson = readFileContents(substancesJsonPath);
         effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
         substanceRulesJson = readFileContents(substanceRulesJsonPath);
     }
-    catch (const std::exception &e) {
+    catch (const std::exception &e)
+    {
         std::cerr << "Error reading input files: " << e.what() << std::endl;
         return 1;
     }
