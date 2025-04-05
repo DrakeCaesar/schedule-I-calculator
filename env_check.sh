@@ -19,6 +19,18 @@ if [ -z "$VCPKG_ROOT" ]; then
   exit 1
 fi
 
+# Update vcpkg
+echo "Updating vcpkg..."
+git -C "$VCPKG_ROOT" pull
+
+# Re-run bootstrap
+echo "Running bootstrap for vcpkg..."
+"$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+# Run integrate install
+echo "Running vcpkg integrate install..."
+"$VCPKG_ROOT/vcpkg" integrate install
+
 # Install RapidJSON
 echo "Ensuring RapidJSON is installed via vcpkg..."
 "$VCPKG_ROOT/vcpkg" install rapidjson:wasm32-emscripten

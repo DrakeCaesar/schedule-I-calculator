@@ -10,6 +10,10 @@ mkdir -p src/cpp
 
 EMCC_ARGS=(
   src/cpp/bfs.cpp
+  src/cpp/effects.cpp
+  src/cpp/pricing.cpp
+  src/cpp/bfs_algorithm.cpp
+  src/cpp/json_parser.cpp
   -o src/cpp/bfs.wasm.js
   -s WASM=1
   -s ALLOW_MEMORY_GROWTH=1
