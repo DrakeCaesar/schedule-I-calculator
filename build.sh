@@ -35,7 +35,7 @@ RELEASE_ARGS=(
   -fno-rtti
   -fno-exceptions
   -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0
-  -s ASSERTIONS=0
+  -s ASSERTIONS=2
   -s INITIAL_MEMORY=16MB
   -s TOTAL_STACK=2MB
   -s MALLOC="emmalloc"
@@ -43,12 +43,9 @@ RELEASE_ARGS=(
   -s NO_FILESYSTEM=1
   -s DISABLE_EXCEPTION_CATCHING=1
   -s ELIMINATE_DUPLICATE_FUNCTIONS=1
-  -s AGGRESSIVE_VARIABLE_ELIMINATION=1 
+  -s AGGRESSIVE_VARIABLE_ELIMINATION=1
   -s ALLOW_UNIMPLEMENTED_SYSCALLS=0
   -s ERROR_ON_UNDEFINED_SYMBOLS=1
-  # Removing the MINIMAL_RUNTIME flag as it's causing issues with module loading
-  # -s MINIMAL_RUNTIME=1
-  # Using a more compatible closure compiler setting
   --closure 0
 )
 
@@ -70,17 +67,17 @@ WATCH=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --watch)
-      WATCH=true
-      shift
-      ;;
-    --debug)
-      MODE="debug"
-      shift
-      ;;
-    *)
-      shift
-      ;;
+  --watch)
+    WATCH=true
+    shift
+    ;;
+  --debug)
+    MODE="debug"
+    shift
+    ;;
+  *)
+    shift
+    ;;
   esac
 done
 
@@ -105,15 +102,15 @@ else
     # If wasm-opt tool is available (from binaryen package)
     if command -v wasm-opt >/dev/null 2>&1; then
       wasm-opt -O4 --enable-mutable-globals --enable-bulk-memory \
-        --enable-threads --enable-simd -o src/cpp/bfs.wasm.opt src/cpp/bfs.wasm.wasm && \
-      mv src/cpp/bfs.wasm.opt src/cpp/bfs.wasm.wasm
+        --enable-threads --enable-simd -o src/cpp/bfs.wasm.opt src/cpp/bfs.wasm.wasm &&
+        mv src/cpp/bfs.wasm.opt src/cpp/bfs.wasm.wasm
     fi
   fi
-  
+
   echo "✅ Build complete:"
   echo "- src/cpp/bfs.wasm.js"
   echo "- src/cpp/bfs.wasm.wasm"
-  
+
   # Show size information
   echo "📊 Build size:"
   for file in src/cpp/bfs.wasm.js src/cpp/bfs.wasm.wasm; do
