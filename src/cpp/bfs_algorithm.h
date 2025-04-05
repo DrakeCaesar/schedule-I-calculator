@@ -13,7 +13,7 @@ JsBestMixResult findBestMix(
     int maxDepth,
     ProgressCallback progressCallback = nullptr);
 
-// Recursive BFS implementation
+// Thread-safe version of recursive BFS
 void recursiveBFS(
     const Product &product,
     const std::vector<Substance> &substances,
@@ -22,13 +22,28 @@ void recursiveBFS(
     int currentDepth,
     int maxDepth,
     std::vector<MixState> &currentDepthMixes,
-    MixState &bestMix,
-    double &bestProfit,
-    double &bestSellPrice,
-    double &bestCost,
+    MixState &threadBestMix,
+    double &threadBestProfit,
+    double &threadBestSellPrice,
+    double &threadBestCost,
     int &processedCombinations,
-    int totalCombinations,
+    int expectedCombinations,
     ProgressCallback progressCallback = nullptr);
+
+// Thread worker function
+void bfsThreadWorker(
+    const Product &product,
+    const std::vector<Substance> &substances,
+    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, bool> &effectsSet,
+    size_t startSubstanceIndex,
+    int maxDepth,
+    int expectedCombinations,
+    MixState &globalBestMix,
+    double &globalBestProfit,
+    double &globalBestSellPrice,
+    double &globalBestCost,
+    ProgressCallback progressCallback);
 
 #ifdef __EMSCRIPTEN__
 // JavaScript-compatible progress reporting function (only for WebAssembly)

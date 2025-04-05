@@ -62,6 +62,10 @@ else()
     # Link with nlohmann_json
     target_link_libraries(bfs_calculator PRIVATE nlohmann_json::nlohmann_json)
 
+    # Find and link with threading library
+    find_package(Threads REQUIRED)
+    target_link_libraries(bfs_calculator PRIVATE Threads::Threads)
+
     # Set optimization flags for native build - fixed for MSVC compatibility
     if(MSVC)
         # Only apply optimizations for Release builds to avoid conflict with runtime checks
