@@ -1,6 +1,3 @@
-#include <emscripten/emscripten.h>
-#include <emscripten/bind.h>
-#include <emscripten/val.h>
 #include <string>
 #include <vector>
 #include <cmath>
@@ -13,10 +10,18 @@
 #include "bfs_algorithm.h"
 #include "json_parser.h"
 
+// Include Emscripten headers only when building for WebAssembly
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#include <emscripten/bind.h>
+#include <emscripten/val.h>
 using namespace emscripten;
+#endif
 
 // Parse JSON input and run BFS
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
+#endif
 JsBestMixResult findBestMixJson(
     std::string productJson,
     std::string substancesJson,
@@ -35,7 +40,9 @@ JsBestMixResult findBestMixJson(
 }
 
 // Parse JSON input and run BFS with progress reporting
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
+#endif
 JsBestMixResult findBestMixJsonWithProgress(
     std::string productJson,
     std::string substancesJson,
@@ -50,18 +57,28 @@ JsBestMixResult findBestMixJsonWithProgress(
   applySubstanceRulesJson(substances, substanceRulesJson);
 
   // Run the BFS algorithm with progress reporting if enabled
+#ifdef __EMSCRIPTEN__
   if (reportProgress)
   {
     return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
   }
   else
+#else
+  if (reportProgress)
+  {
+    return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr); // Replace with native progress reporting
+  }
+  else
+#endif
   {
     return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
   }
 }
 
 // Helper function that returns just the mix array directly
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
+#endif
 std::vector<std::string> getMixArray()
 {
   std::vector<std::string> mix;
@@ -71,7 +88,8 @@ std::vector<std::string> getMixArray()
   return mix;
 }
 
-// Emscripten bindings
+// Emscripten bindings - only include in WebAssembly build
+#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_BINDINGS(bfs_module)
 {
   value_object<JsBestMixResult>("JsBestMixResult")
@@ -86,3 +104,4 @@ EMSCRIPTEN_BINDINGS(bfs_module)
   function("findBestMixJson", &findBestMixJson);
   function("findBestMixJsonWithProgress", &findBestMixJsonWithProgress);
 }
+#endif

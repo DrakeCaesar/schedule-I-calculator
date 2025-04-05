@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "native",
+      "displayName": "Native Build",
+      "description": "Build native executable using vcpkg",
+      "binaryDir": "${sourceDir}/build-native",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "wasm",
+      "displayName": "WebAssembly Build",
+      "description": "Build WebAssembly module using Emscripten",
+      "binaryDir": "${sourceDir}/build-wasm",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+        "VCPKG_ROOT": "$env{VCPKG_ROOT}"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "native",
+      "configurePreset": "native",
+      "displayName": "Build Native",
+      "description": "Build native executable"
+    },
+    {
+      "name": "wasm",
+      "configurePreset": "wasm",
+      "displayName": "Build WebAssembly",
+      "description": "Build WebAssembly module"
+    }
+  ]
+}

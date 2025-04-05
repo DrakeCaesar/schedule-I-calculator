@@ -4,9 +4,11 @@
 #include <queue>
 #include <cmath>
 #include <limits>
-#include <emscripten/val.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/val.h>
 using namespace emscripten;
+#endif
 
 // Recursive BFS implementation that maintains BFS behavior
 void recursiveBFS(
@@ -156,17 +158,25 @@ JsBestMixResult findBestMix(
     progressCallback(maxDepth, totalCombinations, totalCombinations);
   }
 
-  // Convert best mix to a JavaScript array using substance names
+  // Create the result
+  JsBestMixResult result;
+
+  // Convert best mix to an array using substance names
   std::vector<std::string> bestMixNames = bestMix.toSubstanceNames(substances);
+
+#ifdef __EMSCRIPTEN__
+  // WebAssembly version: convert to JavaScript array
   val jsArray = val::array();
   for (size_t i = 0; i < bestMixNames.size(); ++i)
   {
     jsArray.set(i, val(bestMixNames[i]));
   }
-
-  // Create and return the result
-  JsBestMixResult result;
   result.mixArray = jsArray;
+#else
+  // Native version: use std::vector directly
+  result.mixArray = bestMixNames;
+#endif
+
   result.profit = bestProfit;
   result.sellPrice = bestSellPrice;
   result.cost = bestCost;
@@ -174,6 +184,7 @@ JsBestMixResult findBestMix(
   return result;
 }
 
+#ifdef __EMSCRIPTEN__
 // JavaScript-compatible progress reporting function
 void reportProgressToJS(int depth, int processed, int total)
 {
@@ -185,3 +196,4 @@ void reportProgressToJS(int depth, int processed, int total)
   // Call JavaScript progress function
   val::global("reportBfsProgress").call<void>("call", val::null(), progressEvent);
 }
+#endif

@@ -4,7 +4,11 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
+
+// Include Emscripten headers only when building for WebAssembly
+#ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
+#endif
 
 // Progress reporting function type
 typedef std::function<void(int, int, int)> ProgressCallback;
@@ -39,7 +43,9 @@ struct Product
   std::string initialEffect;
 };
 
-// Simple struct for the result
+// Define different result structs based on build type
+#ifdef __EMSCRIPTEN__
+// WebAssembly version with emscripten::val
 struct JsBestMixResult
 {
   emscripten::val mixArray; // Using emscripten::val to store JavaScript array
@@ -47,6 +53,16 @@ struct JsBestMixResult
   double sellPrice;
   double cost;
 };
+#else
+// Native version with std::vector
+struct JsBestMixResult
+{
+  std::vector<std::string> mixArray;
+  double profit;
+  double sellPrice;
+  double cost;
+};
+#endif
 
 // Memory-efficient mix representation
 // Instead of storing multiple copies of string vectors, store indices

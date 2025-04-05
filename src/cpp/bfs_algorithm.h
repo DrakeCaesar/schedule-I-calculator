@@ -30,5 +30,7 @@ void recursiveBFS(
     int totalCombinations,
     ProgressCallback progressCallback = nullptr);
 
-// JavaScript-compatible progress reporting function
+#ifdef __EMSCRIPTEN__
+// JavaScript-compatible progress reporting function (only for WebAssembly)
 void reportProgressToJS(int depth, int processed, int total);
+#endif

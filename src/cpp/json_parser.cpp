@@ -1,36 +1,31 @@
 #include "json_parser.h"
-#include <rapidjson/document.h>
+#include <nlohmann/json.hpp>
 
-using namespace rapidjson;
+using json = nlohmann::json;
 
 // Parse product from JSON
 Product parseProductJson(const std::string &productJson)
 {
-  Document doc;
-  doc.Parse(productJson.c_str());
-
   Product product;
-  product.name = doc["name"].GetString();
-  product.initialEffect = doc["initialEffect"].GetString();
-
+  json doc = json::parse(productJson);
+  product.name = doc["name"].get<std::string>();
+  product.initialEffect = doc["initialEffect"].get<std::string>();
   return product;
 }
 
 // Parse substances from JSON
 std::vector<Substance> parseSubstancesJson(const std::string &substancesJson)
 {
-  Document doc;
-  doc.Parse(substancesJson.c_str());
-
   std::vector<Substance> substances;
-  substances.reserve(doc.Size()); // Pre-allocate memory
+  json doc = json::parse(substancesJson);
+  substances.reserve(doc.size()); // Pre-allocate memory
 
-  for (SizeType i = 0; i < doc.Size(); i++)
+  for (const auto &item : doc)
   {
     Substance substance;
-    substance.name = doc[i]["name"].GetString();
-    substance.cost = doc[i]["cost"].GetDouble();
-    substance.defaultEffect = doc[i]["defaultEffect"].GetString();
+    substance.name = item["name"].get<std::string>();
+    substance.cost = item["cost"].get<double>();
+    substance.defaultEffect = item["defaultEffect"].get<std::string>();
     substances.push_back(substance);
   }
 
@@ -40,14 +35,13 @@ std::vector<Substance> parseSubstancesJson(const std::string &substancesJson)
 // Parse effect multipliers from JSON
 std::unordered_map<std::string, double> parseEffectMultipliersJson(const std::string &effectMultipliersJson)
 {
-  Document doc;
-  doc.Parse(effectMultipliersJson.c_str());
-
   std::unordered_map<std::string, double> effectMultipliers;
-  for (SizeType i = 0; i < doc.Size(); i++)
+  json doc = json::parse(effectMultipliersJson);
+
+  for (const auto &item : doc)
   {
-    std::string name = doc[i]["name"].GetString();
-    double multiplier = doc[i]["multiplier"].GetDouble();
+    std::string name = item["name"].get<std::string>();
+    double multiplier = item["multiplier"].get<double>();
     effectMultipliers[name] = multiplier;
   }
 
@@ -59,14 +53,13 @@ void applySubstanceRulesJson(
     std::vector<Substance> &substances,
     const std::string &substanceRulesJson)
 {
-  Document doc;
-  doc.Parse(substanceRulesJson.c_str());
+  json doc = json::parse(substanceRulesJson);
 
   // Apply rules to substances
-  for (SizeType i = 0; i < doc.Size(); i++)
+  for (const auto &item : doc)
   {
-    std::string substanceName = doc[i]["substanceName"].GetString();
-    const Value &rules = doc[i]["rules"];
+    std::string substanceName = item["substanceName"].get<std::string>();
+    const auto &rules = item["rules"];
 
     // Find the substance
     for (auto &substance : substances)
@@ -74,39 +67,39 @@ void applySubstanceRulesJson(
       if (substance.name == substanceName)
       {
         // Pre-allocate memory for rules
-        substance.rules.reserve(rules.Size());
+        substance.rules.reserve(rules.size());
 
         // Add rules to the substance
-        for (SizeType j = 0; j < rules.Size(); j++)
+        for (const auto &ruleItem : rules)
         {
           SubstanceRule rule;
 
-          rule.type = rules[j]["action"]["type"].GetString();
-          rule.target = rules[j]["action"]["target"].GetString();
+          rule.type = ruleItem["action"]["type"].get<std::string>();
+          rule.target = ruleItem["action"]["target"].get<std::string>();
 
           // Handle withEffect (may be missing in "add" rules)
-          if (rules[j]["action"].HasMember("withEffect") &&
-              !rules[j]["action"]["withEffect"].IsNull())
+          if (ruleItem["action"].contains("withEffect") &&
+              !ruleItem["action"]["withEffect"].is_null())
           {
-            rule.withEffect = rules[j]["action"]["withEffect"].GetString();
+            rule.withEffect = ruleItem["action"]["withEffect"].get<std::string>();
           }
 
           // Parse conditions
-          const Value &conditions = rules[j]["condition"];
-          rule.condition.reserve(conditions.Size()); // Pre-allocate
-          for (SizeType k = 0; k < conditions.Size(); k++)
+          const auto &conditions = ruleItem["condition"];
+          rule.condition.reserve(conditions.size()); // Pre-allocate
+          for (const auto &cond : conditions)
           {
-            rule.condition.push_back(conditions[k].GetString());
+            rule.condition.push_back(cond.get<std::string>());
           }
 
           // Parse ifNotPresent (may be empty)
-          if (rules[j].HasMember("ifNotPresent"))
+          if (ruleItem.contains("ifNotPresent"))
           {
-            const Value &ifNotPresent = rules[j]["ifNotPresent"];
-            rule.ifNotPresent.reserve(ifNotPresent.Size()); // Pre-allocate
-            for (SizeType k = 0; k < ifNotPresent.Size(); k++)
+            const auto &ifNotPresent = ruleItem["ifNotPresent"];
+            rule.ifNotPresent.reserve(ifNotPresent.size()); // Pre-allocate
+            for (const auto &np : ifNotPresent)
             {
-              rule.ifNotPresent.push_back(ifNotPresent[k].GetString());
+              rule.ifNotPresent.push_back(np.get<std::string>());
             }
           }
 

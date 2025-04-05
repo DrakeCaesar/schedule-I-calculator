@@ -4,3 +4,6 @@ dist/
 src/cpp/bfs.wasm.wasm
 src/cpp/bfs.wasm.js
 public/bfs.wasm
+out/
+build/
+build-native/

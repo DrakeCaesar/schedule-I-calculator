@@ -30,7 +30,3 @@ echo "Running bootstrap for vcpkg..."
 # Run integrate install
 echo "Running vcpkg integrate install..."
 "$VCPKG_ROOT/vcpkg" integrate install
-
-# Install RapidJSON
-echo "Ensuring RapidJSON is installed via vcpkg..."
-"$VCPKG_ROOT/vcpkg" install rapidjson:wasm32-emscripten

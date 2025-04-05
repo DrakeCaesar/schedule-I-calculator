@@ -65,6 +65,18 @@
     "xmemory": "cpp",
     "xtr1common": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
-  }
+    "xutility": "cpp",
+    "CMakeLists.txt": "cmake",
+    "*.cmake": "cmake",
+    "*.h": "cpp",
+    "*.cpp": "cpp"
+  },
+  "cmake.configureSettings": {
+    "CMAKE_TOOLCHAIN_FILE": "${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+  },
+  "cmake.configureEnvironment": {
+    "VCPKG_DEFAULT_TRIPLET": "x64-windows"
+  },
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "cmake.configureOnOpen": true
 }
