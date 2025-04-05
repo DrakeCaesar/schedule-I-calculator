@@ -62,7 +62,7 @@ JsBestMixResult findBestMixJson(
     // Parse JSON inputs
     Product product = parseProductJson(productJson);
     std::vector<Substance> substances = parseSubstancesJson(substancesJson);
-    std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
+    std::unordered_map<std::string, int> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
     applySubstanceRulesJson(substances, substanceRulesJson);
 
     // Run the BFS algorithm without progress reporting
@@ -80,7 +80,7 @@ JsBestMixResult findBestMixJsonWithProgress(
 {
     Product product = parseProductJson(productJson);
     std::vector<Substance> substances = parseSubstancesJson(substancesJson);
-    std::unordered_map<std::string, double> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
+    std::unordered_map<std::string, int> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
     applySubstanceRulesJson(substances, substanceRulesJson);
 
     // Run the BFS algorithm with progress reporting if enabled

@@ -9,7 +9,7 @@
 double calculateFinalPrice(
     const std::string &productName,
     const std::vector<std::string> &currentEffects,
-    const std::unordered_map<std::string, double> &effectMultipliers);
+    const std::unordered_map<std::string, int> &effectMultipliers);
 
 // Calculate the total cost of a mix
 double calculateFinalCost(

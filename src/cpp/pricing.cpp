@@ -4,9 +4,10 @@
 double calculateFinalPrice(
     const std::string &productName,
     const std::vector<std::string> &currentEffects,
-    const std::unordered_map<std::string, double> &effectMultipliers)
+    const std::unordered_map<std::string, int> &effectMultipliers)
 {
-  double totalMultiplier = 0.0;
+  // Use integer arithmetic for better performance
+  int totalMultiplier = 0;
 
   // Calculate the total multiplier from all effects
   for (const auto &effect : currentEffects)
@@ -18,16 +19,24 @@ double calculateFinalPrice(
     }
   }
 
-  // Determine base price from product name
-  double basePrice = 100.0;
-  if (productName.find("Weed") != std::string::npos)
-    basePrice = 35.0;
-  else if (productName.find("Meth") != std::string::npos)
-    basePrice = 70.0;
+  // Determine base price from product name (convert to integer cents)
+  // Default to Weed pricing (35.00)
+  int basePriceInt = 3500; // $35.00 by default
+  
+  // Check for specific product types
+  if (productName.find("Meth") != std::string::npos)
+    basePriceInt = 7000; // $70.00
   else if (productName.find("Cocaine") != std::string::npos)
-    basePrice = 150.0;
+    basePriceInt = 15000; // $150.00
+  // Otherwise keep default Weed price
 
-  return std::round(basePrice * (1.0 + totalMultiplier));
+  // Calculate final price using integer arithmetic
+  // Formula: basePrice * (1.0 + totalMultiplier/100)
+  // = (basePrice * 100 + basePrice * totalMultiplier) / 100
+  int finalPrice = basePriceInt + (basePriceInt * totalMultiplier) / 100;
+  
+  // Convert to dollars and round
+  return std::round(finalPrice / 100.0);
 }
 
 double calculateFinalCost(const MixState &mixState, const std::vector<Substance> &substances)

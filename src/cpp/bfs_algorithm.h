@@ -9,7 +9,7 @@
 JsBestMixResult findBestMix(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     int maxDepth,
     ProgressCallback progressCallback = nullptr);
 
@@ -17,7 +17,7 @@ JsBestMixResult findBestMix(
 void recursiveBFS(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     const std::unordered_map<std::string, bool> &effectsSet,
     int currentDepth,
     int maxDepth,
@@ -34,7 +34,7 @@ void recursiveBFS(
 void bfsThreadWorker(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     const std::unordered_map<std::string, bool> &effectsSet,
     size_t startSubstanceIndex,
     int maxDepth,

@@ -24,7 +24,7 @@ std::atomic<int> totalProcessedCombinations(0);
 void recursiveBFS(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     const std::unordered_map<std::string, bool> &effectsSet,
     int currentDepth,
     int maxDepth,
@@ -111,7 +111,7 @@ void recursiveBFS(
 void bfsThreadWorker(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     const std::unordered_map<std::string, bool> &effectsSet,
     size_t startSubstanceIndex,
     int maxDepth,
@@ -161,7 +161,7 @@ void bfsThreadWorker(
 JsBestMixResult findBestMix(
     const Product &product,
     const std::vector<Substance> &substances,
-    const std::unordered_map<std::string, double> &effectMultipliers,
+    const std::unordered_map<std::string, int> &effectMultipliers,
     int maxDepth,
     ProgressCallback progressCallback)
 {
@@ -184,10 +184,10 @@ JsBestMixResult findBestMix(
 
   // Calculate total expected combinations for progress reporting
   int totalCombinations = 0;
-  int substanceCount = substances.size();
-  for (int i = 1; i <= maxDepth; ++i)
+  size_t substanceCount = substances.size();
+  for (size_t i = 1; i <= static_cast<size_t>(maxDepth); ++i)
   {
-    totalCombinations += pow(substanceCount, i);
+    totalCombinations += static_cast<int>(pow(substanceCount, i));
   }
 
   // Initial progress report

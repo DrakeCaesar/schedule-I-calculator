@@ -32,16 +32,17 @@ std::vector<Substance> parseSubstancesJson(const std::string &substancesJson)
   return substances;
 }
 
-// Parse effect multipliers from JSON
-std::unordered_map<std::string, double> parseEffectMultipliersJson(const std::string &effectMultipliersJson)
+// Parse effect multipliers from JSON - using pure integers (multiplied by 100)
+std::unordered_map<std::string, int> parseEffectMultipliersJson(const std::string &effectMultipliersJson)
 {
-  std::unordered_map<std::string, double> effectMultipliers;
+  std::unordered_map<std::string, int> effectMultipliers;
   json doc = json::parse(effectMultipliersJson);
 
   for (const auto &item : doc)
   {
     std::string name = item["name"].get<std::string>();
-    double multiplier = item["multiplier"].get<double>();
+    // Multiply by 100 to convert to integer representation
+    int multiplier = static_cast<int>(std::round(item["multiplier"].get<double>() * 100.0));
     effectMultipliers[name] = multiplier;
   }
 
