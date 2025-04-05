@@ -69,7 +69,27 @@
     "CMakeLists.txt": "cmake",
     "*.cmake": "cmake",
     "*.h": "cpp",
-    "*.cpp": "cpp"
+    "*.cpp": "cpp",
+    "any": "cpp",
+    "array": "cpp",
+    "charconv": "cpp",
+    "chrono": "cpp",
+    "filesystem": "cpp",
+    "format": "cpp",
+    "forward_list": "cpp",
+    "fstream": "cpp",
+    "iomanip": "cpp",
+    "iostream": "cpp",
+    "locale": "cpp",
+    "numeric": "cpp",
+    "ostream": "cpp",
+    "ranges": "cpp",
+    "span": "cpp",
+    "valarray": "cpp",
+    "xlocbuf": "cpp",
+    "xlocmes": "cpp",
+    "xlocmon": "cpp",
+    "xloctime": "cpp"
   },
   "cmake.configureSettings": {
     "CMAKE_TOOLCHAIN_FILE": "${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
@@ -78,5 +98,17 @@
     "VCPKG_DEFAULT_TRIPLET": "x64-windows"
   },
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-  "cmake.configureOnOpen": true
+  "cmake.configureOnOpen": true,
+  "cmake.debugConfig": {
+    "args": [
+      "-p",
+      "${workspaceFolder}/temp/product.json",
+      "${workspaceFolder}/temp/substances.json",
+      "${workspaceFolder}/temp/effectMultipliers.json",
+      "${workspaceFolder}/temp/substanceRules.json",
+      "5",
+      "-o",
+      "${workspaceFolder}/temp/output.json"
+    ]
+  }
 }

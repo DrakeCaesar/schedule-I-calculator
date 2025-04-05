@@ -6,6 +6,36 @@
       "request": "launch",
       "name": "Debug",
       "url": "http://localhost:5173/schedule-I-calculator/"
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to 9229",
+      "port": 9229
+    },
+    {
+      "name": "Debug BFS Calculator",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Debug/bfs_calculator.exe",
+      "args": [
+        "-p",
+        "${workspaceFolder}/temp/product.json",
+        "${workspaceFolder}/temp/substances.json",
+        "${workspaceFolder}/temp/effectMultipliers.json",
+        "${workspaceFolder}/temp/substanceRules.json",
+        "5",
+        "-o",
+        "${workspaceFolder}/temp/output.json"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "console": "externalTerminal",
+      "logging": {
+        "moduleLoad": false,
+        "trace": true
+      }
     }
   ]
 }

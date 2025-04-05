@@ -78,7 +78,7 @@ app.post("/api/bfs", async (req, res) => {
     // Determine the path of the bfs_calculator executable based on the platform
     const isWindows = process.platform === "win32";
     const bfsExecutable = isWindows
-      ? path.join(__dirname, "build-native", "Debug", "bfs_calculator.exe")
+      ? path.join(__dirname, "build", "Release", "bfs_calculator.exe")
       : path.join(__dirname, "build", "bin", "bfs_calculator");
 
     // Prepare the command to execute
@@ -118,11 +118,11 @@ app.post("/api/bfs", async (req, res) => {
         });
 
         // Clean up temp files
-        fs.unlinkSync(productJsonPath);
-        fs.unlinkSync(substancesJsonPath);
-        fs.unlinkSync(effectMultipliersJsonPath);
-        fs.unlinkSync(substanceRulesJsonPath);
-        fs.unlinkSync(outputJsonPath);
+        // fs.unlinkSync(productJsonPath);
+        // fs.unlinkSync(substancesJsonPath);
+        // fs.unlinkSync(effectMultipliersJsonPath);
+        // fs.unlinkSync(substanceRulesJsonPath);
+        // fs.unlinkSync(outputJsonPath);
       } catch (parseError) {
         console.error(`Error parsing result: ${parseError}`);
         res.status(500).json({

@@ -94,6 +94,19 @@ JsBestMixResult findBestMixJsonWithProgress(
     }
 }
 
+// Function to read file content into a string
+std::string readFileContents(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filePath);
+    }
+    
+    std::string content((std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+    file.close();
+    return content;
+}
+
 int main(int argc, char *argv[])
 {
     bool reportProgress = false;
@@ -140,11 +153,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Extract JSON arguments and max depth
-    std::string productJson = jsonArgs[0];
-    std::string substancesJson = jsonArgs[1];
-    std::string effectMultipliersJson = jsonArgs[2];
-    std::string substanceRulesJson = jsonArgs[3];
+    // Extract JSON file paths and max depth
+    std::string productJsonPath = jsonArgs[0];
+    std::string substancesJsonPath = jsonArgs[1];
+    std::string effectMultipliersJsonPath = jsonArgs[2];
+    std::string substanceRulesJsonPath = jsonArgs[3];
     int maxDepth;
 
     try
@@ -154,6 +167,19 @@ int main(int argc, char *argv[])
     catch (const std::exception &e)
     {
         std::cerr << "Error: Invalid max depth value: " << jsonArgs[4] << std::endl;
+        return 1;
+    }
+
+    // Read JSON content from files
+    std::string productJson, substancesJson, effectMultipliersJson, substanceRulesJson;
+    try {
+        productJson = readFileContents(productJsonPath);
+        substancesJson = readFileContents(substancesJsonPath);
+        effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
+        substanceRulesJson = readFileContents(substanceRulesJsonPath);
+    }
+    catch (const std::exception &e) {
+        std::cerr << "Error reading input files: " << e.what() << std::endl;
         return 1;
     }
 
