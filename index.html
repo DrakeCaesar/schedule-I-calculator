@@ -43,6 +43,7 @@
             <button id="bothBfsButton">Start Both BFS</button>
             <button id="tsBfsButton">Start TS BFS</button>
             <button id="wasmBfsButton">Start WASM BFS</button>
+            <button id="nativeBfsButton">Start Native BFS</button>
           </div>
         </div>
 
@@ -68,6 +69,21 @@
             Click any "Start BFS" button to find the most profitable mix for the
             selected product.
           </p>
+        </div>
+
+        <!-- Native BFS results will be displayed here -->
+        <div
+          id="nativeBestMix"
+          class="best-mix-container"
+          style="display: none"
+        >
+          <h3>Native BFS Results</h3>
+          <p>Run Native BFS to see results</p>
+        </div>
+
+        <div id="nativeProgressDisplay" class="progress-display">
+          <div class="progress-indicator"></div>
+          <div class="progress-text">Ready</div>
         </div>
         <!-- Progress display will be inserted here by JavaScript -->
       </div>

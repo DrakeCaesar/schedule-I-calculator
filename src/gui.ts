@@ -1,15 +1,22 @@
 // --- UI State Variables ---
 
 import { currentMix, currentProduct } from ".";
+import { MAX_RECIPE_DEPTH } from "./bfs";
 import { toggleBothBFS } from "./bfsCommon";
 import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
+  effects,
   substances,
 } from "./substances";
 import { toggleTsBFS } from "./tsBfsController";
 import { toggleWasmBFS } from "./wasmBfsController";
+import {
+  prepareEffectMultipliersForWasm,
+  prepareSubstanceRulesForWasm,
+  prepareSubstancesForWasm,
+} from "./wasmLoader";
 
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
@@ -227,4 +234,199 @@ export function toggleTS() {
 
 export function toggleWASM() {
   toggleWasmBFS(currentProduct);
+}
+
+// Function to toggle native BFS processing via Node.js server
+export function toggleNative() {
+  const progressDisplay = document.getElementById("nativeProgressDisplay");
+  const toggleButton = document.getElementById("nativeBfsButton");
+
+  if (!progressDisplay || !toggleButton) {
+    console.error("Required DOM elements not found");
+    return;
+  }
+
+  if (progressDisplay.classList.contains("running")) {
+    // If currently running, abort and reset
+    progressDisplay.classList.remove("running");
+    progressDisplay.innerHTML =
+      '<div class="progress-indicator"></div><div class="progress-text">Ready</div>';
+    toggleButton.textContent = "Run Native BFS";
+    return;
+  }
+
+  // Start the BFS calculation
+  progressDisplay.classList.add("running");
+  toggleButton.textContent = "Cancel Native BFS";
+
+  const startTime = Date.now();
+  updateProgressDisplay(0, "Starting native calculation...");
+
+  // Prepare data for the server
+  const maxDepthEl = document.getElementById(
+    "maxDepthSlider"
+  ) as HTMLInputElement;
+  const maxDepth = maxDepthEl
+    ? parseInt(maxDepthEl.value, 10)
+    : MAX_RECIPE_DEPTH;
+
+  const productJson = {
+    name: currentProduct.name,
+    initialEffect: currentProduct.initialEffect,
+  };
+
+  // Get data in the same format as we use for WASM
+  const substancesJson = JSON.parse(prepareSubstancesForWasm());
+  const effectMultipliersJson = JSON.parse(
+    prepareEffectMultipliersForWasm(effects)
+  );
+  const substanceRulesJson = JSON.parse(prepareSubstanceRulesForWasm());
+
+  // Send the data to the server - use the full URL with port
+  fetch("http://localhost:3000/api/bfs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      product: productJson,
+      substances: substancesJson,
+      effectMultipliers: effectMultipliersJson,
+      substanceRules: substanceRulesJson,
+      maxDepth,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Server responded with ${response.status}: ${response.statusText}`
+        );
+      }
+      return response.json();
+    })
+    .then((data) => {
+      // Process successful result
+      const executionTime = Date.now() - startTime;
+      const formattedTime = (executionTime / 1000).toFixed(2);
+
+      if (!data.success) {
+        throw new Error(data.error || "Unknown server error");
+      }
+
+      // Display 100% progress
+      updateProgressDisplay(100, `Calculation complete in ${formattedTime}s`);
+
+      // Extract results and update the UI
+      const result = data.result;
+      if (!result) {
+        throw new Error("No result data received");
+      }
+
+      // Convert result format to match our UI expectations
+      const bestMix = {
+        mix: result.mixArray || [],
+        profit: result.profit || 0,
+        sellPrice: result.sellPrice || 0,
+        cost: result.cost || 0,
+      };
+
+      // Update the display
+      updateBestMixDisplay("native", bestMix);
+
+      // Show the native best mix container if it's hidden
+      const nativeBestMixEl = document.getElementById("nativeBestMix");
+      if (nativeBestMixEl && nativeBestMixEl.style.display === "none") {
+        nativeBestMixEl.style.display = "block";
+      }
+
+      // Reset the button after a small delay
+      setTimeout(() => {
+        if (progressDisplay && toggleButton) {
+          progressDisplay.classList.remove("running");
+          toggleButton.textContent = "Run Native BFS";
+        }
+      }, 3000);
+    })
+    .catch((error) => {
+      // Handle errors
+      console.error("Native BFS error:", error);
+      updateProgressDisplay(-1, `Error: ${error.message}`);
+
+      // Reset the button after a small delay
+      setTimeout(() => {
+        if (progressDisplay && toggleButton) {
+          progressDisplay.classList.remove("running");
+          toggleButton.textContent = "Run Native BFS";
+        }
+      }, 3000);
+    });
+}
+
+// Helper function to update the progress display for native BFS
+function updateProgressDisplay(progress: number, message: string) {
+  const progressDisplay = document.getElementById("nativeProgressDisplay");
+  if (!progressDisplay) return;
+
+  const progressIndicator = progressDisplay.querySelector(
+    ".progress-indicator"
+  ) as HTMLElement;
+  const progressText = progressDisplay.querySelector(
+    ".progress-text"
+  ) as HTMLElement;
+
+  if (progressIndicator && progressText) {
+    // Handle error state
+    if (progress < 0) {
+      progressIndicator.style.width = "100%";
+      progressIndicator.style.backgroundColor = "#f44336"; // Red for error
+      progressText.textContent = message;
+      return;
+    }
+
+    // Normal progress update
+    progressIndicator.style.width = `${progress}%`;
+    progressText.textContent = message;
+
+    // Change color when complete
+    if (progress >= 100) {
+      progressIndicator.style.backgroundColor = "#4CAF50"; // Green for success
+    } else {
+      progressIndicator.style.backgroundColor = ""; // Default color
+    }
+  }
+}
+
+// Helper function to update a best mix display
+function updateBestMixDisplay(
+  source: string,
+  bestMix: { mix: string[]; profit: number; sellPrice: number; cost: number }
+) {
+  const displayId =
+    source === "native"
+      ? "nativeBestMix"
+      : source === "ts"
+      ? "tsBestMix"
+      : source === "wasm"
+      ? "wasmBestMix"
+      : "bestMix";
+
+  const display = document.getElementById(displayId);
+  if (!display) return;
+
+  let html = "<h3>Best Mix:</h3>";
+  html += `<p>Profit: $${bestMix.profit.toFixed(2)}</p>`;
+  html += `<p>Sell Price: $${bestMix.sellPrice.toFixed(2)}</p>`;
+  html += `<p>Cost: $${bestMix.cost.toFixed(2)}</p>`;
+
+  if (bestMix.mix && bestMix.mix.length) {
+    html += "<ol>";
+    bestMix.mix.forEach((substance) => {
+      html += `<li>${substance}</li>`;
+    });
+    html += "</ol>";
+  } else {
+    html += "<p>No substances in mix</p>";
+  }
+
+  display.innerHTML = html;
 }

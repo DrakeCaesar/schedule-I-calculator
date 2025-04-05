@@ -7,3 +7,4 @@ public/bfs.wasm
 out/
 build/
 build-native/
+temp/

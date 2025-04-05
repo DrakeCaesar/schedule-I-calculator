@@ -7,6 +7,7 @@ import {
   onTrashDragOver,
   onTrashDrop,
   toggleBFS,
+  toggleNative,
   toggleTS,
   toggleWASM,
   updateProductDisplay,
@@ -133,6 +134,18 @@ function initializeApp() {
     }
     newWasmButton.addEventListener("click", () => {
       toggleWASM(); // Call new toggleWASM function
+    });
+  }
+
+  // Set up Native BFS button event listener
+  const nativeBfsButton = document.getElementById("nativeBfsButton");
+  if (nativeBfsButton) {
+    const newNativeButton = nativeBfsButton.cloneNode(true);
+    if (nativeBfsButton.parentNode) {
+      nativeBfsButton.parentNode.replaceChild(newNativeButton, nativeBfsButton);
+    }
+    newNativeButton.addEventListener("click", () => {
+      toggleNative(); // Call new toggleNative function
     });
   }
 

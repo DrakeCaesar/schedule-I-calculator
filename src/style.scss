@@ -364,7 +364,8 @@ body {
 
 #bothBfsButton,
 #tsBfsButton,
-#wasmBfsButton {
+#wasmBfsButton,
+#nativeBfsButton {
   padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
@@ -404,4 +405,91 @@ body {
   &:hover {
     background-color: #e68a00;
   }
+}
+
+#nativeBfsButton {
+  background-color: #9c27b0; /* Purple */
+
+  &:hover {
+    background-color: #7b1fa2;
+  }
+}
+
+/* Native BFS Progress Display */
+#nativeProgressDisplay {
+  margin-top: 15px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  position: relative;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+#nativeProgressDisplay .progress-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background-color: #9c27b0;
+  opacity: 0.3;
+  transition: width 0.3s ease-in-out;
+  z-index: 1;
+}
+
+#nativeProgressDisplay .progress-text {
+  position: relative;
+  z-index: 2;
+  color: #333;
+  margin-left: 10px;
+  font-weight: normal;
+}
+
+#nativeProgressDisplay.running .progress-indicator {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* Native BFS Results */
+#nativeBestMix {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  margin-top: 15px;
+}
+
+#nativeBestMix h3 {
+  margin-top: 0;
+  color: #9c27b0;
+}
+
+#nativeBestMix ol {
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+#nativeBestMix li {
+  margin-bottom: 4px;
+}
+
+/* Make the best mix container visible */
+.best-mix-container {
+  display: block !important;
+  margin-bottom: 15px;
 }
