@@ -66,7 +66,7 @@ body {
 
 /* BFS section on the right */
 #bfsSection {
-  width: 500px;
+  width: 1000px;
   border-left: 1px solid #ddd;
   background-color: #f5f5f5;
   padding: 15px;
@@ -415,44 +415,6 @@ body {
   }
 }
 
-/* Native BFS Progress Display */
-#nativeProgressDisplay {
-  margin-top: 15px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: #fff;
-  position: relative;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-#nativeProgressDisplay .progress-indicator {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 0;
-  background-color: #9c27b0;
-  opacity: 0.3;
-  transition: width 0.3s ease-in-out;
-  z-index: 1;
-}
-
-#nativeProgressDisplay .progress-text {
-  position: relative;
-  z-index: 2;
-  color: #333;
-  margin-left: 10px;
-  font-weight: normal;
-}
-
-#nativeProgressDisplay.running .progress-indicator {
-  animation: pulse 1.5s infinite ease-in-out;
-}
-
 @keyframes pulse {
   0% {
     opacity: 0.3;
@@ -465,31 +427,78 @@ body {
   }
 }
 
-/* Native BFS Results */
-#nativeBestMix {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #fff;
-  margin-top: 15px;
-}
-
-#nativeBestMix h3 {
-  margin-top: 0;
-  color: #9c27b0;
-}
-
-#nativeBestMix ol {
-  padding-left: 20px;
-  margin-bottom: 0;
-}
-
-#nativeBestMix li {
-  margin-bottom: 4px;
-}
-
 /* Make the best mix container visible */
 .best-mix-container {
   display: block !important;
   margin-bottom: 15px;
+}
+
+/* BFS Results Grid - Three Column Layout */
+.bfs-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.bfs-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Fix for text overflow in flex items */
+}
+
+.bfs-column h3 {
+  text-align: center;
+  margin-top: 0;
+  padding: 8px;
+  border-radius: 4px 4px 0 0;
+  color: white;
+}
+
+/* Column-specific styling */
+.ts-column h3 {
+  background-color: #2196f3; /* Blue */
+}
+
+.wasm-column h3 {
+  background-color: #ff9800; /* Orange */
+}
+
+.native-column h3 {
+  background-color: #9c27b0; /* Purple */
+}
+
+/* Make the progress displays and best mix displays adaptable to column layout */
+.bfs-column .progress-display,
+.bfs-column .best-mix-display {
+  margin-bottom: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Ensure the content doesn't overflow from the columns */
+.bfs-column .progress-display p,
+.bfs-column .best-mix-display p {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Adjust progress bar for narrower containers */
+.bfs-column .progress-bar-container {
+  width: 100%;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 1200px) {
+  .bfs-results-grid {
+    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+  }
+
+  .bfs-column {
+    margin-bottom: 15px;
+  }
 }

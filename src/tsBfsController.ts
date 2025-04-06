@@ -52,7 +52,7 @@ const PROGRESS_UPDATE_INTERVAL = 250; // ms
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
   // Convert effect name to kebab case for CSS class
-  const className = effect.toLowerCase().replace(/\s+/g, "-");
+  const className = effect.replace(/\s+/g, "-");
   return `<span class="effect effect-${className}">${effect}</span>`;
 }
 
@@ -158,6 +158,9 @@ export function updateTsBestMixDisplay() {
       <p>Cost: $${cost?.toFixed(2)}</p>
       <p>Profit: $${profit.toFixed(2)}</p>
     `;
+
+    // Make sure the display is visible
+    bestMixDisplay.style.display = "block";
   });
 }
 
@@ -396,11 +399,21 @@ export function createTsProgressDisplay() {
     tsProgressDisplay.id = "tsBfsProgressDisplay";
     tsProgressDisplay.classList.add("progress-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(tsProgressDisplay);
+    const tsColumn = document.querySelector(".ts-column");
+    if (tsColumn) {
+      // Find if there's already a progress display in this column
+      const existingDisplay = tsColumn.querySelector(".progress-display");
+      if (existingDisplay) {
+        tsColumn.replaceChild(tsProgressDisplay, existingDisplay);
+      } else {
+        tsColumn.appendChild(tsProgressDisplay);
+      }
     } else {
-      document.body.appendChild(tsProgressDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(tsProgressDisplay);
+      }
     }
   }
 
@@ -415,11 +428,22 @@ export function createTsResultDisplay() {
     tsBestMixDisplay.id = "tsBestMixDisplay";
     tsBestMixDisplay.classList.add("best-mix-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(tsBestMixDisplay);
+    const tsColumn = document.querySelector(".ts-column");
+    if (tsColumn) {
+      // Find if there's already a results display in this column
+      const existingDisplay = tsColumn.querySelector(".best-mix-display");
+      if (existingDisplay) {
+        tsColumn.replaceChild(tsBestMixDisplay, existingDisplay);
+      } else {
+        // Insert at beginning of column
+        tsColumn.insertBefore(tsBestMixDisplay, tsColumn.firstChild);
+      }
     } else {
-      document.body.appendChild(tsBestMixDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(tsBestMixDisplay);
+      }
     }
   }
 }

@@ -10,14 +10,13 @@ import {
   effects,
   substances,
 } from "./substances";
-import { toggleTsBFS } from "./tsBfsController";
+import { calculateEffects, toggleTsBFS } from "./tsBfsController";
 import { toggleWasmBFS } from "./wasmBfsController";
 import {
   prepareEffectMultipliersForWasm,
   prepareSubstanceRulesForWasm,
   prepareSubstancesForWasm,
 } from "./wasmLoader";
-import { calculateEffects } from "./tsBfsController";
 
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
@@ -57,8 +56,8 @@ export function updateMixListUI() {
 
 function createEffectSpan(effect: string): string {
   // Convert effect name to kebab case for CSS class
-  const className = effect.toLowerCase().replace(/\s+/g, "-");
-  return `<span class="effect effect-${effect}">${effect}</span>`;
+  const className = effect.replace(/\s+/g, "-");
+  return `<span class="effect effect-${className}">${effect}</span>`;
 }
 
 // Recalculate the resulting effects and price and update the result section.
@@ -245,11 +244,21 @@ export function createNativeProgressDisplay() {
     nativeProgressDisplay.id = "nativeProgressDisplay";
     nativeProgressDisplay.classList.add("progress-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(nativeProgressDisplay);
+    const nativeColumn = document.querySelector(".native-column");
+    if (nativeColumn) {
+      // Find if there's already a progress display in this column
+      const existingDisplay = nativeColumn.querySelector(".progress-display");
+      if (existingDisplay) {
+        nativeColumn.replaceChild(nativeProgressDisplay, existingDisplay);
+      } else {
+        nativeColumn.appendChild(nativeProgressDisplay);
+      }
     } else {
-      document.body.appendChild(nativeProgressDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(nativeProgressDisplay);
+      }
     }
   }
 
@@ -264,11 +273,25 @@ export function createNativeResultDisplay() {
     nativeBestMixDisplay.id = "nativeBestMix";
     nativeBestMixDisplay.classList.add("best-mix-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(nativeBestMixDisplay);
+    const nativeColumn = document.querySelector(".native-column");
+    if (nativeColumn) {
+      // Find if there's already a results display in this column
+      const existingDisplay = nativeColumn.querySelector(".best-mix-display");
+      if (existingDisplay) {
+        nativeColumn.replaceChild(nativeBestMixDisplay, existingDisplay);
+      } else {
+        // Insert at beginning of column
+        nativeColumn.insertBefore(
+          nativeBestMixDisplay,
+          nativeColumn.firstChild
+        );
+      }
     } else {
-      document.body.appendChild(nativeBestMixDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(nativeBestMixDisplay);
+      }
     }
   }
 }
@@ -283,7 +306,7 @@ function updateNativeProgressDisplay(progress: number, message: string) {
 
   // Schedule the DOM update
   const formattedProgress = Math.max(0, Math.min(100, progress));
-  
+
   // Update the DOM with progress information
   progressDisplay.innerHTML = `
     <div class="overall-progress">
@@ -298,20 +321,21 @@ function updateNativeProgressDisplay(progress: number, message: string) {
 }
 
 // Helper function to update a best mix display with consistent formatting
-function updateNativeBestMixDisplay(bestMix: { 
-  mix: string[]; 
-  profit: number; 
-  sellPrice: number; 
-  cost: number 
+function updateNativeBestMixDisplay(bestMix: {
+  mix: string[];
+  profit: number;
+  sellPrice: number;
+  cost: number;
 }) {
   const bestMixDisplay = document.getElementById("nativeBestMix");
   if (!bestMixDisplay || !currentProduct) return;
 
   // Calculate effects for display
-  const effectsList = bestMix.mix && bestMix.mix.length > 0 
-    ? calculateEffects(bestMix.mix, currentProduct.initialEffect) 
-    : [currentProduct.initialEffect];
-  
+  const effectsList =
+    bestMix.mix && bestMix.mix.length > 0
+      ? calculateEffects(bestMix.mix, currentProduct.initialEffect)
+      : [currentProduct.initialEffect];
+
   const effectsHTML = effectsList
     .map((effect) => createEffectSpan(effect))
     .join(" ");
@@ -325,7 +349,7 @@ function updateNativeBestMixDisplay(bestMix: {
     <p>Cost: $${bestMix.cost.toFixed(2)}</p>
     <p>Profit: $${bestMix.profit.toFixed(2)}</p>
   `;
-  
+
   // Make the display visible
   bestMixDisplay.style.display = "block";
 }
@@ -415,7 +439,10 @@ export function toggleNative() {
       }
 
       // Display 100% progress
-      updateNativeProgressDisplay(100, `Calculation complete in ${formattedTime}s`);
+      updateNativeProgressDisplay(
+        100,
+        `Calculation complete in ${formattedTime}s`
+      );
 
       // Extract results and update the UI
       const result = data.result;

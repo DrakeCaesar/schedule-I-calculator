@@ -31,7 +31,7 @@ const PROGRESS_UPDATE_INTERVAL = 250; // ms
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
   // Convert effect name to kebab case for CSS class
-  const className = effect.toLowerCase().replace(/\s+/g, "-");
+  const className = effect.replace(/\s+/g, "-");
   return `<span class="effect effect-${className}">${effect}</span>`;
 }
 
@@ -46,7 +46,7 @@ export function updateWasmBestMixDisplay() {
     ? Array.from(
         Object.values(wasmBestMix.mix).filter((v) => typeof v === "string")
       )
-    : ["Cuke", "Gasoline", "Banana"]; // Fallback to default values
+    : []; // Empty array as fallback
 
   // Use existing properties if available to avoid recalculation
   let sellPrice = wasmBestMix.sellPrice;
@@ -69,7 +69,7 @@ export function updateWasmBestMixDisplay() {
 
   // Schedule the DOM update
   scheduleDomUpdate(() => {
-    // Only calculate effects for display
+    // Calculate effects for display - consistent with native implementation
     const effectsList = calculateEffects(
       mixArray,
       wasmCurrentProduct?.initialEffect || ""
@@ -86,6 +86,9 @@ export function updateWasmBestMixDisplay() {
       <p>Cost: $${cost?.toFixed(2)}</p>
       <p>Profit: $${profit.toFixed(2)}</p>
     `;
+
+    // Make sure the display is visible
+    bestMixDisplay.style.display = "block";
   });
 }
 
@@ -236,11 +239,21 @@ export function createWasmProgressDisplay() {
     wasmProgressDisplay.id = "wasmBfsProgressDisplay";
     wasmProgressDisplay.classList.add("progress-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(wasmProgressDisplay);
+    const wasmColumn = document.querySelector(".wasm-column");
+    if (wasmColumn) {
+      // Find if there's already a progress display in this column
+      const existingDisplay = wasmColumn.querySelector(".progress-display");
+      if (existingDisplay) {
+        wasmColumn.replaceChild(wasmProgressDisplay, existingDisplay);
+      } else {
+        wasmColumn.appendChild(wasmProgressDisplay);
+      }
     } else {
-      document.body.appendChild(wasmProgressDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(wasmProgressDisplay);
+      }
     }
   }
 
@@ -255,11 +268,22 @@ export function createWasmResultDisplay() {
     wasmBestMixDisplay.id = "wasmBestMixDisplay";
     wasmBestMixDisplay.classList.add("best-mix-display");
 
-    const bfsSection = document.getElementById("bfsSection");
-    if (bfsSection) {
-      bfsSection.appendChild(wasmBestMixDisplay);
+    const wasmColumn = document.querySelector(".wasm-column");
+    if (wasmColumn) {
+      // Find if there's already a results display in this column
+      const existingDisplay = wasmColumn.querySelector(".best-mix-display");
+      if (existingDisplay) {
+        wasmColumn.replaceChild(wasmBestMixDisplay, existingDisplay);
+      } else {
+        // Insert at beginning of column
+        wasmColumn.insertBefore(wasmBestMixDisplay, wasmColumn.firstChild);
+      }
     } else {
-      document.body.appendChild(wasmBestMixDisplay); // Fallback
+      // Fallback - append to BFS section
+      const bfsSection = document.getElementById("bfsSection");
+      if (bfsSection) {
+        bfsSection.appendChild(wasmBestMixDisplay);
+      }
     }
   }
 }
