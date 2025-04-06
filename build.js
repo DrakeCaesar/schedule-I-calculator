@@ -23,11 +23,11 @@ const sourceFiles = [
   "effects.cpp",
   "pricing.cpp",
   "bfs_algorithm.cpp",
-  "json_parser.cpp"
-].map(file => path.join(cppDir, file).replace(/\\/g, "/"));
+  "json_parser.cpp",
+].map((file) => path.join(cppDir, file).replace(/\\/g, "/"));
 
 // Check if all source files exist
-let missingFiles = sourceFiles.filter(file => !fs.existsSync(file));
+let missingFiles = sourceFiles.filter((file) => !fs.existsSync(file));
 if (missingFiles.length > 0) {
   console.log(`Missing source files: ${missingFiles.join(", ")}`);
   process.exit(1);
@@ -46,7 +46,7 @@ const commonArgs = [
   "-s EXPORT_NAME=createBfsModule",
   "-s ENVIRONMENT=web,worker",
   "--bind",
-  "--no-entry"
+  "--no-entry",
 ];
 
 // Define debug-specific arguments
@@ -58,7 +58,7 @@ const debugArgs = [
   "-s SAFE_HEAP=1",
   "-s STACK_OVERFLOW_CHECK=2",
   "-s DEMANGLE_SUPPORT=1",
-  "-s TOTAL_MEMORY=67108864"
+  "-s TOTAL_MEMORY=67108864",
 ];
 
 // Define release-specific arguments
@@ -80,7 +80,7 @@ const releaseArgs = [
   "-s AGGRESSIVE_VARIABLE_ELIMINATION=1",
   "-s ALLOW_UNIMPLEMENTED_SYSCALLS=0",
   "-s ERROR_ON_UNDEFINED_SYMBOLS=0",
-  "--closure 0"
+  "--closure 0",
 ];
 
 // Select build arguments based on mode
@@ -93,7 +93,9 @@ if (vcpkgRoot) {
 }
 
 // Build the command
-const command = `emcc -std=c++17 ${sourceFiles.join(" ")} -o "${wasmOutputPath}" ${buildArgs.join(" ")}`;
+const command = `emcc -std=c++17 ${sourceFiles.join(
+  " "
+)} -o "${wasmOutputPath}" ${buildArgs.join(" ")}`;
 
 console.log("Compiling C++ to WebAssembly...");
 console.log(command);
@@ -130,7 +132,7 @@ try {
 
   // Display file sizes
   console.log("📊 Build size:");
-  [wasmOutputPath, wasmBinaryPath].forEach(file => {
+  [wasmOutputPath, wasmBinaryPath].forEach((file) => {
     if (fs.existsSync(file)) {
       const stats = fs.statSync(file);
       console.log(`- ${file}: ${(stats.size / 1024).toFixed(2)} KB`);
