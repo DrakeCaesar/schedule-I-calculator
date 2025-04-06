@@ -106,9 +106,15 @@ app.post("/api/mix", async (req, res) => {
     const substanceRulesJsonPath = path.join(tempDir, "substanceRules.json");
     const outputJsonPath = path.join(tempDir, "output.json");
 
+    // Add maxDepth to product object so it's available in the JSON
+    const productWithDepth = {
+      ...req.body.product,
+      maxDepth: maxDepth || 5
+    };
+
     fs.writeFileSync(
       productJsonPath,
-      JSON.stringify(req.body.product, null, 2)
+      JSON.stringify(productWithDepth, null, 2)
     );
     fs.writeFileSync(
       substancesJsonPath,
@@ -160,7 +166,7 @@ app.post("/api/mix", async (req, res) => {
 
     // Process stdout to extract progress information
     childProcess.stdout.on("data", (data) => {
-      console.log(`${algorithm.toUpperCase()} stdout: ${data}`);
+      // console.log(`${algorithm.toUpperCase()} stdout: ${data}`);
       const dataStr = data.toString();
 
       // Try to parse progress information - looking for patterns like:
@@ -195,10 +201,10 @@ app.post("/api/mix", async (req, res) => {
           // how often we send updates (avoids flooding the WebSocket)
           const lastDigit = processed % 10;
           if (lastDigit === 0) {
-            console.log(
-              "Sending periodic best mix update at progress:",
-              percentage + "%"
-            );
+            // console.log(
+            //   "Sending periodic best mix update at progress:",
+            //   percentage + "%"
+            // );
             // Emit best mix update with currentBestMix
             bfsProgressEmitter.emit("progress", {
               type: "update",

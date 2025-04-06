@@ -21,12 +21,22 @@ std::atomic<bool> g_shouldTerminate(false);
 const int MAX_SUBSTANCES = 16; // Maximum number of substances
 const int MAX_DEPTH = 10;      // Maximum depth for the mix
 
+// Add mutex for console output
+std::mutex g_consoleMutex;
+
 // Simple progress reporting to console
 void reportProgressToConsole(int depth, int processed, int total)
 {
+    // Only report progress every 10,000 combinations instead of every time
+    if (processed % 10000 != 0 && processed != total) {
+        return;
+    }
+    
+    // Lock console output to avoid garbled text from multiple threads
+    std::lock_guard<std::mutex> lock(g_consoleMutex);
     std::cout << "Progress: Depth " << depth << ", "
               << processed << "/" << total
-              << " (" << (processed * 100 / total) << "%)\r" << std::flush;
+              << " (" << (processed * 100 / total) << "%)" << std::endl; // Changed to endl for cleaner output
 }
 
 // Format result as JSON string
@@ -202,8 +212,8 @@ void dfsThreadWorker(
         // Increment processed combinations counter
         g_totalProcessedCombinations++;
 
-        // Periodically report progress
-        if (progressCallback && g_totalProcessedCombinations % 1000 == 0)
+        // Periodically report progress - changed from 1000 to 10000
+        if (progressCallback && g_totalProcessedCombinations % 10000 == 0)
         {
             progressCallback(currentDepth, g_totalProcessedCombinations.load(), expectedCombinations);
         }
@@ -234,18 +244,21 @@ void dfsThreadWorker(
                 globalBestSellPrice = threadBestSellPrice;
                 globalBestCost = threadBestCost;
 
-                // Report best mix found so far
-                std::vector<std::string> mixNames = currentState.toSubstanceNames(substances);
-                std::cout << "Best mix so far: [";
-                for (size_t i = 0; i < mixNames.size(); ++i)
+                // Report best mix found so far - now with proper locking
                 {
-                    if (i > 0)
-                        std::cout << ", ";
-                    std::cout << mixNames[i];
+                    std::lock_guard<std::mutex> consoleLock(g_consoleMutex);
+                    std::vector<std::string> mixNames = currentState.toSubstanceNames(substances);
+                    std::cout << "Best mix so far: [";
+                    for (size_t i = 0; i < mixNames.size(); ++i)
+                    {
+                        if (i > 0)
+                            std::cout << ", ";
+                        std::cout << mixNames[i];
+                    }
+                    std::cout << "] with profit " << threadBestProfit
+                              << ", price " << threadBestSellPrice
+                              << ", cost " << threadBestCost << std::endl;
                 }
-                std::cout << "] with profit " << threadBestProfit
-                          << ", price " << threadBestSellPrice
-                          << ", cost " << threadBestCost << std::endl;
             }
         }
 
@@ -398,8 +411,23 @@ int main(int argc, char *argv[])
 {
     bool reportProgress = false;
     std::string outputFile;
-    std::string algorithm = "bfs"; // Default algorithm
+    std::string algorithm = "dfs"; // Changed default to "dfs" instead of "bfs"
     std::vector<std::string> jsonArgs;
+
+    // Check if being called from server by looking for explicit algorithm flag
+    bool calledFromServer = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--algorithm") {
+            calledFromServer = true;
+            break;
+        }
+    }
+
+    // If not called from server (no -a flag), default to DFS
+    // If called from server, start with "bfs" and let -a flag override it if specified
+    if (calledFromServer) {
+        algorithm = "bfs"; // Default for server calls
+    }
 
     // Parse command line arguments
     for (int i = 1; i < argc; i++)
@@ -467,7 +495,17 @@ int main(int argc, char *argv[])
     std::string substanceRulesJsonPath = jsonArgs[3];
     int maxDepth;
 
-    maxDepth = std::stoi(jsonArgs[4]);
+    // Try to get max depth from command line first
+    if (jsonArgs.size() > 4) {
+        try {
+            maxDepth = std::stoi(jsonArgs[4]);
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing max depth from command line: " << e.what() << std::endl;
+            maxDepth = 5; // Default to 5 if parsing fails
+        }
+    } else {
+        maxDepth = 5; // Default if not provided
+    }
 
     // Read JSON content from files
     std::string productJson, substancesJson, effectMultipliersJson, substanceRulesJson;
@@ -476,18 +514,48 @@ int main(int argc, char *argv[])
     effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
     substanceRulesJson = readFileContents(substanceRulesJsonPath);
 
+    // Check if maxDepth is included in the product JSON
+    try {
+        // Quick and simple check for maxDepth in product JSON
+        // This is not a full JSON parser but should work for our needs
+        size_t maxDepthPos = productJson.find("\"maxDepth\":");
+        if (maxDepthPos != std::string::npos) {
+            // Extract the value after "maxDepth":
+            size_t valueStart = productJson.find_first_of("0123456789", maxDepthPos);
+            size_t valueEnd = productJson.find_first_not_of("0123456789", valueStart);
+            if (valueStart != std::string::npos && valueEnd != std::string::npos) {
+                std::string depthStr = productJson.substr(valueStart, valueEnd - valueStart);
+                int jsonMaxDepth = std::stoi(depthStr);
+                // Only override if we found a valid value
+                if (jsonMaxDepth > 0) {
+                    maxDepth = jsonMaxDepth;
+                    std::cout << "Using maxDepth " << maxDepth << " from product JSON" << std::endl;
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error extracting maxDepth from product JSON: " << e.what() << std::endl;
+        // Continue with the command line value
+    }
+
     // Call the appropriate algorithm based on user selection
     JsBestMixResult result;
     if (algorithm == "dfs")
     {
-        std::cout << "Running DFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(g_consoleMutex);
+            std::cout << "Running DFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        }
         result = findBestMixDFSJson(
             productJson, substancesJson, effectMultipliersJson,
             substanceRulesJson, maxDepth, reportProgress);
     }
     else
     {
-        std::cout << "Running BFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(g_consoleMutex);
+            std::cout << "Running BFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        }
         if (reportProgress)
         {
             result = findBestMixJsonWithProgress(
