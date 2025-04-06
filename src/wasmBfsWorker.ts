@@ -14,6 +14,8 @@ let isPaused = false;
 let startTime = 0;
 let workerId = -1;
 let lastProgressUpdate = 0;
+let totalTrackedProcessed = 0;
+let totalTrackedCombinations = 0;
 
 // Setup a global reportBfsProgress function for C++ to call
 // This will be called by the C++ code when progress is made
@@ -33,6 +35,14 @@ declare global {
 
   lastProgressUpdate = currentTime;
 
+  // Keep track of the maximum values we've seen
+  if (progressData.processed > totalTrackedProcessed) {
+    totalTrackedProcessed = progressData.processed;
+  }
+  if (progressData.total > totalTrackedCombinations) {
+    totalTrackedCombinations = progressData.total;
+  }
+
   // Send progress update to main thread
   self.postMessage({
     type: "progress",
@@ -44,6 +54,16 @@ declare global {
   });
 };
 
+// Define interface for WASM BFS result
+interface WasmBfsResult {
+  mixArray: string[] | Record<string, string>;
+  profit: number;
+  sellPrice: number;
+  cost: number;
+  // totalCombinations may not exist in all cases
+  totalCombinations?: number;
+}
+
 // Handle messages from the main thread
 self.onmessage = async (event: MessageEvent) => {
   const { type, workerId: id, data } = event.data || {};
@@ -53,6 +73,8 @@ self.onmessage = async (event: MessageEvent) => {
     isPaused = false;
     startTime = Date.now();
     lastProgressUpdate = 0;
+    totalTrackedProcessed = 0;
+    totalTrackedCombinations = 0;
 
     const product = data.product;
     const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
@@ -100,11 +122,14 @@ self.onmessage = async (event: MessageEvent) => {
             maxDepth
           );
 
+      // Cast result to our interface
+      const typedResult = result as WasmBfsResult;
+
       // Extract mix array from result
       let mixArray: string[] = [];
 
-      if (result.mixArray && Array.isArray(result.mixArray)) {
-        mixArray = result.mixArray;
+      if (typedResult.mixArray && Array.isArray(typedResult.mixArray)) {
+        mixArray = typedResult.mixArray;
       } else if (typeof bfsModule.getMixArray === "function") {
         try {
           const arrayResult = bfsModule.getMixArray();
@@ -128,17 +153,25 @@ self.onmessage = async (event: MessageEvent) => {
       // Create the best mix result
       const bestMix = {
         mix: mixArray,
-        profit: result.profit,
-        sellPrice: result.sellPrice,
-        cost: result.cost,
+        profit: typedResult.profit,
+        sellPrice: typedResult.sellPrice,
+        cost: typedResult.cost,
       };
 
-      // Send the final progress update (100%)
+      // Get the total combinations value, using our tracked value if available
+      let finalTotalCombinations = typedResult.totalCombinations || totalTrackedCombinations || 100;
+      let finalProcessedCombinations = finalTotalCombinations; // At completion, processed equals total
+
+      // Always send a final 100% progress update, regardless of what the C++ code reported
       self.postMessage({
         type: "progress",
-        progress: 100,
+        depth: maxDepth,
+        processed: finalProcessedCombinations,
+        total: finalTotalCombinations,
+        progress: 100, // Explicit progress percentage
         executionTime: Date.now() - startTime,
         workerId,
+        isFinal: true // Signal that this is the final progress update
       });
 
       // Send the best mix result
@@ -152,6 +185,8 @@ self.onmessage = async (event: MessageEvent) => {
       self.postMessage({
         type: "done",
         bestMix,
+        processed: finalProcessedCombinations,
+        total: finalTotalCombinations,
         executionTime: Date.now() - startTime,
         workerId,
       });
@@ -173,15 +208,18 @@ self.onmessage = async (event: MessageEvent) => {
 // Fallback function to simulate progress for older WASM modules
 function simulateProgress() {
   let progress = 0;
-
+  let estimatedTotal = 100;
+  
   const progressInterval = setInterval(() => {
     if (isPaused) return;
 
     progress = Math.min(progress + 1, 95);
-
+    
     self.postMessage({
       type: "progress",
       progress,
+      processed: Math.floor((progress / 100) * estimatedTotal),
+      total: estimatedTotal,
       executionTime: Date.now() - startTime,
       workerId,
     });

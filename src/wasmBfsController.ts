@@ -3,16 +3,18 @@
 
 import { MAX_RECIPE_DEPTH } from "./bfsCommon";
 import {
-  BfsMixResult,
   createBestMixDisplay,
   updateBestMixDisplay,
+  BfsMixResult
 } from "./bfsMixDisplay";
 import {
   createProgressDisplay,
-  ProgressData,
   updateProgressDisplay,
+  ProgressData,
+  PROGRESS_UPDATE_INTERVAL
 } from "./bfsProgress";
 import { ProductVariety } from "./substances";
+import { calculateEffects } from "./tsBfsController";
 
 // State variables for WebAssembly BFS
 let wasmBfsRunning = false;
@@ -35,7 +37,7 @@ export function updateWasmBestMixDisplay() {
   updateBestMixDisplay("wasm", wasmBestMix, wasmCurrentProduct);
 }
 
-export function updateWasmProgressDisplay(progress: number) {
+export function updateWasmProgressDisplay(progress: number, forceUpdate = false) {
   // Create a progress data object for the shared component
   const progressData: ProgressData = {
     processed: totalProcessedCombinations,
@@ -44,12 +46,17 @@ export function updateWasmProgressDisplay(progress: number) {
     executionTime: wasmStartTime > 0 ? Date.now() - wasmStartTime : 0,
   };
 
+  // If the progress is 100%, make sure processed equals total for proper display
+  if (progress >= 100) {
+    progressData.processed = progressData.total;
+  }
+
   // Use the shared progress display component
   lastWasmProgressUpdate = updateProgressDisplay(
-    "wasm",
-    progressData,
-    lastWasmProgressUpdate,
-    progress === 100 // Force update if progress is 100%
+    "wasm", 
+    progressData, 
+    lastWasmProgressUpdate, 
+    forceUpdate || progress === 100 // Force update if progress is 100%
   );
 }
 
@@ -67,19 +74,19 @@ function createWasmWorkerMessageHandler() {
     } else if (type === "progress") {
       // Calculate progress percentage if we have the necessary data
       let progress = 0;
-      if (
-        event.data.processed !== undefined &&
-        event.data.total !== undefined &&
-        event.data.total > 0
-      ) {
-        // If we have processed and total values, calculate percentage
-        progress = Math.min(
-          100,
-          Math.round((event.data.processed / event.data.total) * 100)
-        );
-        // Store the actual count values for display
+      
+      // Track combinations processed/total for display
+      if (event.data.processed !== undefined && event.data.total !== undefined) {
         totalProcessedCombinations = event.data.processed;
         totalCombinations = event.data.total;
+        
+        // Calculate percentage if total is greater than zero
+        if (totalCombinations > 0) {
+          progress = Math.min(
+            100,
+            Math.round((totalProcessedCombinations / totalCombinations) * 100)
+          );
+        }
       } else if (event.data.progress !== undefined) {
         // If we already have a percentage, use that
         progress = event.data.progress;
@@ -88,13 +95,27 @@ function createWasmWorkerMessageHandler() {
       // Force progress to 100% if we're done
       if (type === "done") {
         progress = 100;
+        // Ensure processed equals total for the final update
+        totalProcessedCombinations = totalCombinations;
       }
 
-      // Update the progress display with the progress from the worker
-      updateWasmProgressDisplay(progress);
+      // Update the progress display
+      updateWasmProgressDisplay(progress, type === "done");
     } else if (type === "done") {
+      // When the calculation is complete, make sure we show 100% progress
+      // Ensure processed equals total
+      if (totalCombinations > 0) {
+        totalProcessedCombinations = totalCombinations;
+      } else if (totalProcessedCombinations > 0) {
+        totalCombinations = totalProcessedCombinations;
+      } else {
+        // If we don't have either value, set some reasonable defaults
+        totalProcessedCombinations = 100;
+        totalCombinations = 100;
+      }
+      
       // Force a final progress update to 100% when done
-      updateWasmProgressDisplay(100);
+      updateWasmProgressDisplay(100, true);
 
       // Mark the WASM BFS as complete
       wasmBfsRunning = false;
@@ -132,10 +153,11 @@ export async function startWasmBFS(product: ProductVariety) {
   wasmBestMix = { mix: [], profit: -Infinity };
   wasmCurrentProduct = product;
   wasmStartTime = Date.now();
-
+  
   // Reset progress tracking
   totalProcessedCombinations = 0;
   totalCombinations = 0;
+  lastWasmProgressUpdate = 0;
 
   // Create worker
   const worker = new Worker(new URL("./wasmBfsWorker.ts", import.meta.url), {
