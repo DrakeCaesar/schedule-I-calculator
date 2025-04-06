@@ -5,6 +5,9 @@ import { defineConfig } from "vite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Add base URL for GitHub Pages deployment
+  base: "/schedule-I-calculator/",
+
   build: {
     target: "esnext",
     sourcemap: true,
