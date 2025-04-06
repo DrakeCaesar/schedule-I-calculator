@@ -1,22 +1,22 @@
 // WebAssembly BFS Controller
 // Manages the WebAssembly implementation of the BFS algorithm
 
-import { MAX_RECIPE_DEPTH, scheduleDomUpdate } from "./bfsCommon";
+import { MAX_RECIPE_DEPTH } from "./bfsCommon";
 import {
-  calculateFinalCost,
-  calculateFinalPrice,
-  ProductVariety,
-} from "./substances";
-import { calculateEffects } from "./tsBfsController";
+  BfsMixResult,
+  createBestMixDisplay,
+  updateBestMixDisplay,
+} from "./bfsMixDisplay";
+import {
+  createProgressDisplay,
+  ProgressData,
+  updateProgressDisplay,
+} from "./bfsProgress";
+import { ProductVariety } from "./substances";
 
 // State variables for WebAssembly BFS
 let wasmBfsRunning = false;
-let wasmBestMix: {
-  mix: string[];
-  profit: number;
-  sellPrice?: number;
-  cost?: number;
-} = {
+let wasmBestMix: BfsMixResult = {
   mix: [],
   profit: -Infinity,
 };
@@ -26,126 +26,31 @@ let wasmBfsWorker: Worker | null = null;
 
 // Progress tracking
 let lastWasmProgressUpdate = 0;
-const PROGRESS_UPDATE_INTERVAL = 250; // ms
 // Add variables to track processed combinations
 let totalProcessedCombinations = 0;
 let totalCombinations = 0;
 
-// Helper function to create effect span HTML
-function createEffectSpan(effect: string): string {
-  // Convert effect name to kebab case for CSS class
-  const className = effect.replace(/\s+/g, "-");
-  return `<span class="effect effect-${className}">${effect}</span>`;
-}
-
 export function updateWasmBestMixDisplay() {
-  const bestMixDisplay = document.getElementById("wasmBestMixDisplay");
-  if (!bestMixDisplay || !wasmCurrentProduct) return;
-
-  // Ensure bestMix.mix is a proper array
-  const mixArray = Array.isArray(wasmBestMix.mix)
-    ? wasmBestMix.mix
-    : wasmBestMix.mix && typeof wasmBestMix.mix === "object"
-    ? Array.from(
-        Object.values(wasmBestMix.mix).filter((v) => typeof v === "string")
-      )
-    : []; // Empty array as fallback
-
-  // Use existing properties if available to avoid recalculation
-  let sellPrice = wasmBestMix.sellPrice;
-  let cost = wasmBestMix.cost;
-
-  if (sellPrice === undefined || cost === undefined) {
-    const effectsList = calculateEffects(
-      mixArray,
-      wasmCurrentProduct.initialEffect
-    );
-    sellPrice = calculateFinalPrice(wasmCurrentProduct.name, effectsList);
-    cost = calculateFinalCost(mixArray);
-
-    // Cache values for future use
-    wasmBestMix.sellPrice = sellPrice;
-    wasmBestMix.cost = cost;
-  }
-
-  const profit = sellPrice - cost;
-
-  // Schedule the DOM update
-  scheduleDomUpdate(() => {
-    // Calculate effects for display - consistent with native implementation
-    const effectsList = calculateEffects(
-      mixArray,
-      wasmCurrentProduct?.initialEffect || ""
-    );
-    const effectsHTML = effectsList
-      .map((effect) => createEffectSpan(effect))
-      .join(" ");
-
-    bestMixDisplay.innerHTML = `
-      <h3>WebAssembly BFS Result for ${wasmCurrentProduct?.name}</h3>
-      <p>Mix: ${mixArray.join(", ")}</p>
-      <p>Effects: ${effectsHTML}</p>
-      <p>Sell Price: $${sellPrice?.toFixed(2)}</p>
-      <p>Cost: $${cost?.toFixed(2)}</p>
-      <p>Profit: $${profit.toFixed(2)}</p>
-    `;
-
-    // Make sure the display is visible
-    bestMixDisplay.style.display = "block";
-  });
+  if (!wasmCurrentProduct) return;
+  updateBestMixDisplay("wasm", wasmBestMix, wasmCurrentProduct);
 }
-
-// Utility functions for time formatting
-import { formatClockTime, formatTime } from "./bfsCommon";
 
 export function updateWasmProgressDisplay(progress: number) {
-  const currentTime = Date.now();
+  // Create a progress data object for the shared component
+  const progressData: ProgressData = {
+    processed: totalProcessedCombinations,
+    total: totalCombinations || 100, // Avoid division by zero
+    depth: 0, // WASM doesn't always provide depth info
+    executionTime: wasmStartTime > 0 ? Date.now() - wasmStartTime : 0,
+  };
 
-  // Always update when progress is 100%, otherwise throttle updates
-  if (
-    progress !== 100 &&
-    currentTime - lastWasmProgressUpdate < PROGRESS_UPDATE_INTERVAL
-  ) {
-    return;
-  }
-
-  lastWasmProgressUpdate = currentTime;
-
-  const progressDisplay = document.getElementById("wasmBfsProgressDisplay");
-  if (!progressDisplay) return;
-
-  // Current execution time
-  const now = Date.now();
-  const executionTime = wasmStartTime > 0 ? now - wasmStartTime : 0;
-
-  // Calculate estimated remaining time based on progress
-  let remainingTime = 0;
-  if (progress > 0 && progress < 100) {
-    remainingTime = Math.round((executionTime / progress) * (100 - progress));
-  }
-
-  // Calculate estimated finish time
-  const estimatedFinishTime = now + remainingTime;
-
-  // Schedule the DOM update
-  scheduleDomUpdate(() => {
-    // Create HTML for progress to match TypeScript BFS format
-    progressDisplay.innerHTML = `
-      <div class="overall-progress">
-        <h4>WebAssembly BFS Progress</h4>
-        <div>Total processed: ${totalProcessedCombinations.toLocaleString()} / ${totalCombinations.toLocaleString()}</div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" style="width: ${progress}%"></div>
-          <span class="progress-text" data-progress="${progress}%" style="--progress-percent: ${progress}%"></span>
-        </div>
-        <div>Execution time: ${formatTime(executionTime)}</div>
-        <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
-        <div>Estimated finish time: ${formatClockTime(
-          estimatedFinishTime
-        )}</div>
-      </div>
-    `;
-  });
+  // Use the shared progress display component
+  lastWasmProgressUpdate = updateProgressDisplay(
+    "wasm",
+    progressData,
+    lastWasmProgressUpdate,
+    progress === 100 // Force update if progress is 100%
+  );
 }
 
 // Create message handler for the WebAssembly worker
@@ -228,6 +133,10 @@ export async function startWasmBFS(product: ProductVariety) {
   wasmCurrentProduct = product;
   wasmStartTime = Date.now();
 
+  // Reset progress tracking
+  totalProcessedCombinations = 0;
+  totalCombinations = 0;
+
   // Create worker
   const worker = new Worker(new URL("./wasmBfsWorker.ts", import.meta.url), {
     type: "module",
@@ -251,75 +160,10 @@ export async function startWasmBFS(product: ProductVariety) {
   wasmBfsWorker = worker;
 }
 
-// Function to create WebAssembly progress display
-export function createWasmProgressDisplay() {
-  let wasmProgressDisplay = document.getElementById("wasmBfsProgressDisplay");
-  if (!wasmProgressDisplay) {
-    wasmProgressDisplay = document.createElement("div");
-    wasmProgressDisplay.id = "wasmBfsProgressDisplay";
-    wasmProgressDisplay.classList.add("progress-display");
-
-    const wasmColumn = document.querySelector(".wasm-column");
-    if (wasmColumn) {
-      // Find if there's already a progress display in this column
-      const existingDisplay = wasmColumn.querySelector(".progress-display");
-      if (existingDisplay) {
-        wasmColumn.replaceChild(wasmProgressDisplay, existingDisplay);
-      } else {
-        wasmColumn.appendChild(wasmProgressDisplay);
-      }
-    } else {
-      // Fallback - append to BFS section
-      const bfsSection = document.getElementById("bfsSection");
-      if (bfsSection) {
-        bfsSection.appendChild(wasmProgressDisplay);
-      }
-    }
-  }
-
-  updateWasmProgressDisplay(0);
-}
-
-// Function to create WebAssembly result display
-export function createWasmResultDisplay() {
-  let wasmBestMixDisplay = document.getElementById("wasmBestMixDisplay");
-  if (!wasmBestMixDisplay) {
-    wasmBestMixDisplay = document.createElement("div");
-    wasmBestMixDisplay.id = "wasmBestMixDisplay";
-    wasmBestMixDisplay.classList.add("best-mix-display");
-
-    const wasmColumn = document.querySelector(".wasm-column");
-    if (wasmColumn) {
-      // Find if there's already a results display in this column
-      const existingDisplay = wasmColumn.querySelector(".best-mix-display");
-      if (existingDisplay) {
-        wasmColumn.replaceChild(wasmBestMixDisplay, existingDisplay);
-      } else {
-        // Insert at beginning of column
-        wasmColumn.insertBefore(wasmBestMixDisplay, wasmColumn.firstChild);
-      }
-    } else {
-      // Fallback - append to BFS section
-      const bfsSection = document.getElementById("bfsSection");
-      if (bfsSection) {
-        bfsSection.appendChild(wasmBestMixDisplay);
-      }
-    }
-  }
-}
-
 // Function to run only the WebAssembly BFS
 export async function toggleWasmBFS(product: ProductVariety) {
   const wasmBfsButton = document.getElementById("wasmBfsButton");
   if (!wasmBfsButton) return;
-
-  // Get the current max depth value from slider
-  const maxDepthSlider = document.getElementById(
-    "maxDepthSlider"
-  ) as HTMLInputElement;
-  if (maxDepthSlider) {
-    // Using the imported MAX_RECIPE_DEPTH from common
-  }
 
   // Check if WASM implementation is running
   if (wasmBfsRunning) {
@@ -334,10 +178,9 @@ export async function toggleWasmBFS(product: ProductVariety) {
 
     wasmBfsButton.textContent = "Start WASM BFS";
   } else {
-    // Create only the WASM progress display
-    createWasmProgressDisplay();
-    // Create only the WASM result display
-    createWasmResultDisplay();
+    // Create displays using the shared components
+    createProgressDisplay("wasm");
+    createBestMixDisplay("wasm");
 
     // Start WebAssembly BFS
     wasmBfsButton.textContent = "Stop WASM BFS";
@@ -350,11 +193,6 @@ export function isWasmBfsRunning(): boolean {
   return wasmBfsRunning;
 }
 
-export function getWasmBestMix(): {
-  mix: string[];
-  profit: number;
-  sellPrice?: number;
-  cost?: number;
-} {
+export function getWasmBestMix(): BfsMixResult {
   return wasmBestMix;
 }

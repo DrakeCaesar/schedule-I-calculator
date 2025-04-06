@@ -1,21 +1,12 @@
 // Common BFS Utilities and Constants
-// Contains shared functions and variables used by both TS and WASM controllers
+// Contains shared functions and variables used by all BFS controllers
 
+import { createBestMixDisplay } from "./bfsMixDisplay";
+import { createProgressDisplay } from "./bfsProgress";
+import { isNativeBfsRunning } from "./nativeBfsController";
 import { ProductVariety } from "./substances";
-import {
-  createTsProgressDisplay,
-  createTsResultDisplay,
-  isTsBfsRunning,
-  startTsBFS,
-  updateTsProgressDisplay,
-} from "./tsBfsController";
-import {
-  createWasmProgressDisplay,
-  createWasmResultDisplay,
-  isWasmBfsRunning,
-  startWasmBFS,
-  updateWasmProgressDisplay,
-} from "./wasmBfsController";
+import { isTsBfsRunning, startTsBFS } from "./tsBfsController";
+import { isWasmBfsRunning, startWasmBFS } from "./wasmBfsController";
 
 // Constants
 export let MAX_RECIPE_DEPTH = 5; // Default value, can be changed via slider
@@ -57,16 +48,17 @@ export function formatClockTime(ms: number): string {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-// Create both progress displays
+// Create all progress displays
 export function createProgressDisplays() {
-  createTsProgressDisplay();
-  createWasmProgressDisplay();
-  createTsResultDisplay();
-  createWasmResultDisplay();
+  // Create progress displays for each implementation
+  createProgressDisplay("ts");
+  createProgressDisplay("wasm");
+  createProgressDisplay("native");
 
-  // Initialize progress displays
-  updateTsProgressDisplay();
-  updateWasmProgressDisplay(0);
+  // Create result displays for each implementation
+  createBestMixDisplay("ts");
+  createBestMixDisplay("wasm");
+  createBestMixDisplay("native");
 }
 
 // Add function to update the MAX_RECIPE_DEPTH
@@ -76,8 +68,8 @@ export function setMaxRecipeDepth(depth: number) {
 
 // Function to start both implementations
 export async function toggleBothBFS(product: ProductVariety) {
-  const bfsButton = document.getElementById("bfsButton");
-  if (!bfsButton) return;
+  const bothBfsButton = document.getElementById("bothBfsButton");
+  if (!bothBfsButton) return;
 
   // Get the current max depth value from slider
   const maxDepthSlider = document.getElementById(
@@ -90,10 +82,10 @@ export async function toggleBothBFS(product: ProductVariety) {
   // Check if either implementation is running
   if (isTsBfsRunning() || isWasmBfsRunning()) {
     // Stop both implementations
-    bfsButton.textContent = "Start Both BFS";
+    bothBfsButton.textContent = "Start Both BFS";
   } else {
     // Start both implementations
-    bfsButton.textContent = "Stop Both BFS";
+    bothBfsButton.textContent = "Stop Both BFS";
     createProgressDisplays();
 
     // Start TypeScript BFS
@@ -106,7 +98,7 @@ export async function toggleBothBFS(product: ProductVariety) {
 
 // Check if any BFS is running
 export function isBfsRunning(): boolean {
-  return isTsBfsRunning() || isWasmBfsRunning();
+  return isTsBfsRunning() || isWasmBfsRunning() || isNativeBfsRunning();
 }
 
 // Export the combined function to control both implementations

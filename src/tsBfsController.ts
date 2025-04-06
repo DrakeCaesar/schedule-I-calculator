@@ -1,7 +1,16 @@
 // TypeScript BFS Controller
 // Manages the TypeScript implementation of the BFS algorithm
 
-import { MAX_RECIPE_DEPTH, scheduleDomUpdate } from "./bfsCommon";
+import { MAX_RECIPE_DEPTH } from "./bfsCommon";
+import {
+  BfsMixResult,
+  createBestMixDisplay,
+  updateBestMixDisplay,
+} from "./bfsMixDisplay";
+import {
+  createProgressDisplay,
+  updateTsProgressDisplayWithWorkers,
+} from "./bfsProgress";
 import {
   calculateFinalCost,
   calculateFinalPrice,
@@ -12,12 +21,7 @@ import {
 // State variables for TypeScript BFS
 let tsBfsRunning = false;
 let tsBfsPaused = false;
-let tsBestMix: {
-  mix: string[];
-  profit: number;
-  sellPrice?: number;
-  cost?: number;
-} = {
+let tsBestMix: BfsMixResult = {
   mix: [],
   profit: -Infinity,
 };
@@ -47,14 +51,6 @@ let workersProgress: Map<number, WorkerProgress> = new Map();
 
 // Throttled progress updates
 let lastTsProgressUpdate = 0;
-const PROGRESS_UPDATE_INTERVAL = 250; // ms
-
-// Helper function to create effect span HTML
-function createEffectSpan(effect: string): string {
-  // Convert effect name to kebab case for CSS class
-  const className = effect.replace(/\s+/g, "-");
-  return `<span class="effect effect-${className}">${effect}</span>`;
-}
 
 // Memory-optimized version of calculateEffects
 // Uses Sets for faster lookup
@@ -117,8 +113,7 @@ export function calculateEffects(
 }
 
 export function updateTsBestMixDisplay() {
-  const bestMixDisplay = document.getElementById("tsBestMixDisplay");
-  if (!bestMixDisplay || !tsCurrentProduct) return;
+  if (!tsCurrentProduct) return;
 
   // Use existing properties if available to avoid recalculation
   let sellPrice = tsBestMix.sellPrice;
@@ -137,52 +132,10 @@ export function updateTsBestMixDisplay() {
     tsBestMix.cost = cost;
   }
 
-  const profit = sellPrice - cost;
-
-  // Schedule the DOM update to avoid layout thrashing
-  scheduleDomUpdate(() => {
-    // Only calculate effects for display
-    const effectsList = calculateEffects(
-      tsBestMix.mix,
-      tsCurrentProduct?.initialEffect || ""
-    );
-    const effectsHTML = effectsList
-      .map((effect) => createEffectSpan(effect))
-      .join(" ");
-
-    bestMixDisplay.innerHTML = `
-      <h3>TypeScript BFS Result for ${tsCurrentProduct?.name}</h3>
-      <p>Mix: ${tsBestMix.mix.join(", ")}</p>
-      <p>Effects: ${effectsHTML}</p>
-      <p>Sell Price: $${sellPrice?.toFixed(2)}</p>
-      <p>Cost: $${cost?.toFixed(2)}</p>
-      <p>Profit: $${profit.toFixed(2)}</p>
-    `;
-
-    // Make sure the display is visible
-    bestMixDisplay.style.display = "block";
-  });
+  updateBestMixDisplay("ts", tsBestMix, tsCurrentProduct);
 }
 
-// Utility functions for time formatting
-import { formatClockTime, formatTime } from "./bfsCommon";
-
 export function updateTsProgressDisplay(forceUpdate = false) {
-  const currentTime = Date.now();
-
-  // Only update every PROGRESS_UPDATE_INTERVAL ms, unless forceUpdate is true
-  if (
-    !forceUpdate &&
-    currentTime - lastTsProgressUpdate < PROGRESS_UPDATE_INTERVAL
-  ) {
-    return;
-  }
-
-  lastTsProgressUpdate = currentTime;
-
-  const progressDisplay = document.getElementById("tsBfsProgressDisplay");
-  if (!progressDisplay) return;
-
   // Calculate overall progress across all workers
   let totalProcessed = 0;
   let grandTotal = 0;
@@ -195,71 +148,16 @@ export function updateTsProgressDisplay(forceUpdate = false) {
     grandTotal += progress.grandTotal;
   });
 
-  // Calculate overall percentage
-  const overallPercentage =
-    Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
-
-  // Estimate remaining time
-  const remainingTime =
-    totalProcessed > 0
-      ? Math.round(
-          (executionTime / totalProcessed) * (grandTotal - totalProcessed)
-        )
-      : 0;
-  const estimatedFinishTime = now + remainingTime;
-
-  // Schedule the DOM update
-  scheduleDomUpdate(() => {
-    // Create HTML for overall progress
-    const overallProgressHTML = `
-      <div class="overall-progress">
-        <h4>TypeScript BFS Progress</h4>
-        <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" style="width: ${overallPercentage}%"></div>
-          <span class="progress-text" data-progress="${overallPercentage}%" style="--progress-percent: ${overallPercentage}%"></span>
-        </div>
-        <div>Execution time: ${formatTime(executionTime)}</div>
-        <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
-        <div>Estimated finish time: ${formatClockTime(
-          estimatedFinishTime
-        )}</div>
-      </div>
-    `;
-
-    // Create more compact HTML for each worker's progress
-    const workerProgressHTML = Array.from(workersProgress.entries())
-      .map(([id, progress]) => {
-        // Calculate percentage for current worker's depth
-        const depthPercentage =
-          Math.min(
-            100,
-            Math.round((progress.processed / progress.total) * 100)
-          ) || 0;
-
-        return `
-          <div class="worker-progress">
-            <div class="worker-header">
-              <span class="worker-name">${progress.substanceName}</span>
-              <span class="worker-depth">Depth: ${progress.depth}/${MAX_RECIPE_DEPTH}</span>
-            </div>
-            <div class="progress-bar-container">
-              <div class="progress-bar" style="width: ${depthPercentage}%"></div>
-              <span class="progress-text" data-progress="${depthPercentage}%" style="--progress-percent: ${depthPercentage}%"></span>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    progressDisplay.innerHTML = `
-      ${overallProgressHTML}
-      <div class="workers-container">
-        <h4>Worker Status</h4>
-        ${workerProgressHTML}
-      </div>
-    `;
-  });
+  // Update the progress display with worker-specific information
+  lastTsProgressUpdate = updateTsProgressDisplayWithWorkers(
+    totalProcessed,
+    grandTotal,
+    executionTime,
+    workersProgress,
+    MAX_RECIPE_DEPTH,
+    lastTsProgressUpdate,
+    forceUpdate
+  );
 }
 
 // Optimize worker message handler to reduce memory allocations
@@ -321,9 +219,9 @@ function createTsWorkerMessageHandler(workerId: number, substanceName: string) {
       // Check if this was the last worker to finish
       if (tsActiveWorkers === 0) {
         tsBfsRunning = false;
-        const bfsButton = document.getElementById("bfsButton");
-        if (bfsButton) {
-          bfsButton.textContent = "Start Both BFS";
+        const tsBfsButton = document.getElementById("tsBfsButton");
+        if (tsBfsButton) {
+          tsBfsButton.textContent = "Start TS BFS";
         }
       }
 
@@ -391,75 +289,10 @@ export async function startTsBFS(product: ProductVariety) {
   updateTsProgressDisplay();
 }
 
-// Function to create TypeScript progress display
-export function createTsProgressDisplay() {
-  let tsProgressDisplay = document.getElementById("tsBfsProgressDisplay");
-  if (!tsProgressDisplay) {
-    tsProgressDisplay = document.createElement("div");
-    tsProgressDisplay.id = "tsBfsProgressDisplay";
-    tsProgressDisplay.classList.add("progress-display");
-
-    const tsColumn = document.querySelector(".ts-column");
-    if (tsColumn) {
-      // Find if there's already a progress display in this column
-      const existingDisplay = tsColumn.querySelector(".progress-display");
-      if (existingDisplay) {
-        tsColumn.replaceChild(tsProgressDisplay, existingDisplay);
-      } else {
-        tsColumn.appendChild(tsProgressDisplay);
-      }
-    } else {
-      // Fallback - append to BFS section
-      const bfsSection = document.getElementById("bfsSection");
-      if (bfsSection) {
-        bfsSection.appendChild(tsProgressDisplay);
-      }
-    }
-  }
-
-  updateTsProgressDisplay();
-}
-
-// Function to create TypeScript result display
-export function createTsResultDisplay() {
-  let tsBestMixDisplay = document.getElementById("tsBestMixDisplay");
-  if (!tsBestMixDisplay) {
-    tsBestMixDisplay = document.createElement("div");
-    tsBestMixDisplay.id = "tsBestMixDisplay";
-    tsBestMixDisplay.classList.add("best-mix-display");
-
-    const tsColumn = document.querySelector(".ts-column");
-    if (tsColumn) {
-      // Find if there's already a results display in this column
-      const existingDisplay = tsColumn.querySelector(".best-mix-display");
-      if (existingDisplay) {
-        tsColumn.replaceChild(tsBestMixDisplay, existingDisplay);
-      } else {
-        // Insert at beginning of column
-        tsColumn.insertBefore(tsBestMixDisplay, tsColumn.firstChild);
-      }
-    } else {
-      // Fallback - append to BFS section
-      const bfsSection = document.getElementById("bfsSection");
-      if (bfsSection) {
-        bfsSection.appendChild(tsBestMixDisplay);
-      }
-    }
-  }
-}
-
 // Function to run only the TypeScript BFS
 export async function toggleTsBFS(product: ProductVariety) {
   const tsBfsButton = document.getElementById("tsBfsButton");
   if (!tsBfsButton) return;
-
-  // Get the current max depth value from slider
-  const maxDepthSlider = document.getElementById(
-    "maxDepthSlider"
-  ) as HTMLInputElement;
-  if (maxDepthSlider) {
-    // Using the imported MAX_RECIPE_DEPTH from common
-  }
 
   // Check if TS implementation is running
   if (tsBfsRunning) {
@@ -471,10 +304,9 @@ export async function toggleTsBFS(product: ProductVariety) {
     });
     tsBfsButton.textContent = tsBfsPaused ? "Resume TS BFS" : "Pause TS BFS";
   } else {
-    // Create only the TS progress display
-    createTsProgressDisplay();
-    // Create only the TS result display
-    createTsResultDisplay();
+    // Create the progress and result displays
+    createProgressDisplay("ts");
+    createBestMixDisplay("ts");
 
     // Start TypeScript BFS
     tsBfsButton.textContent = "Pause TS BFS";
@@ -487,11 +319,6 @@ export function isTsBfsRunning(): boolean {
   return tsBfsRunning;
 }
 
-export function getTsBestMix(): {
-  mix: string[];
-  profit: number;
-  sellPrice?: number;
-  cost?: number;
-} {
+export function getTsBestMix(): BfsMixResult {
   return tsBestMix;
 }

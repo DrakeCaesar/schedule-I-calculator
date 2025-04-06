@@ -44,6 +44,16 @@ declare global {
   });
 };
 
+// Define interface for WASM BFS result
+interface WasmBfsResult {
+  mixArray: string[] | Record<string, string>;
+  profit: number;
+  sellPrice: number;
+  cost: number;
+  // totalCombinations may not exist in all cases
+  totalCombinations?: number;
+}
+
 // Handle messages from the main thread
 self.onmessage = async (event: MessageEvent) => {
   const { type, workerId: id, data } = event.data || {};
@@ -100,11 +110,14 @@ self.onmessage = async (event: MessageEvent) => {
             maxDepth
           );
 
+      // Cast result to our interface
+      const typedResult = result as WasmBfsResult;
+
       // Extract mix array from result
       let mixArray: string[] = [];
 
-      if (result.mixArray && Array.isArray(result.mixArray)) {
-        mixArray = result.mixArray;
+      if (typedResult.mixArray && Array.isArray(typedResult.mixArray)) {
+        mixArray = typedResult.mixArray;
       } else if (typeof bfsModule.getMixArray === "function") {
         try {
           const arrayResult = bfsModule.getMixArray();
@@ -128,17 +141,20 @@ self.onmessage = async (event: MessageEvent) => {
       // Create the best mix result
       const bestMix = {
         mix: mixArray,
-        profit: result.profit,
-        sellPrice: result.sellPrice,
-        cost: result.cost,
+        profit: typedResult.profit,
+        sellPrice: typedResult.sellPrice,
+        cost: typedResult.cost,
       };
+
+      // Get the total combinations value or use a default
+      const totalCombinations = typedResult.totalCombinations || 100;
 
       // Always send a final 100% progress update, regardless of what the C++ code reported
       self.postMessage({
         type: "progress",
         depth: maxDepth,
-        processed: result.totalCombinations || 100, // If totalCombinations is not available, use 100
-        total: result.totalCombinations || 100,
+        processed: totalCombinations,
+        total: totalCombinations,
         progress: 100, // Explicit progress percentage
         executionTime: Date.now() - startTime,
         workerId,
