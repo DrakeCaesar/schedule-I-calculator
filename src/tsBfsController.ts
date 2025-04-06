@@ -213,7 +213,7 @@ export function updateTsProgressDisplay(forceUpdate = false) {
     // Create HTML for overall progress
     const overallProgressHTML = `
       <div class="overall-progress">
-        <h4>TypeScript BFS Progress - ${tsActiveWorkers} active workers</h4>
+        <h4>TypeScript BFS Progress</h4>
         <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
         <div class="progress-bar-container">
           <div class="progress-bar" style="width: ${overallPercentage}%"></div>

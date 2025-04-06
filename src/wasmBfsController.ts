@@ -93,7 +93,7 @@ export function updateWasmBestMixDisplay() {
 }
 
 // Utility functions for time formatting
-import { formatTime } from "./bfsCommon";
+import { formatClockTime, formatTime } from "./bfsCommon";
 
 export function updateWasmProgressDisplay(progress: number) {
   const currentTime = Date.now();
@@ -115,17 +115,31 @@ export function updateWasmProgressDisplay(progress: number) {
   const now = Date.now();
   const executionTime = wasmStartTime > 0 ? now - wasmStartTime : 0;
 
+  // Calculate estimated remaining time based on progress
+  let remainingTime = 0;
+  if (progress > 0 && progress < 100) {
+    remainingTime = Math.round((executionTime / progress) * (100 - progress));
+  }
+
+  // Calculate estimated finish time
+  const estimatedFinishTime = now + remainingTime;
+
   // Schedule the DOM update
   scheduleDomUpdate(() => {
-    // Create HTML for progress
+    // Create HTML for progress to match TypeScript BFS format
     progressDisplay.innerHTML = `
       <div class="overall-progress">
         <h4>WebAssembly BFS Progress</h4>
+        <div>Total processed: ${progress}%</div>
         <div class="progress-bar-container">
           <div class="progress-bar" style="width: ${progress}%"></div>
           <span class="progress-text" data-progress="${progress}%" style="--progress-percent: ${progress}%"></span>
         </div>
         <div>Execution time: ${formatTime(executionTime)}</div>
+        <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
+        <div>Estimated finish time: ${formatClockTime(
+          estimatedFinishTime
+        )}</div>
       </div>
     `;
   });

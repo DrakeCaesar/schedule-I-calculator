@@ -2,7 +2,7 @@
 
 import { currentMix, currentProduct } from ".";
 import { MAX_RECIPE_DEPTH } from "./bfs";
-import { toggleBothBFS } from "./bfsCommon";
+import { formatClockTime, formatTime, toggleBothBFS } from "./bfsCommon";
 import {
   applySubstanceRules,
   calculateFinalCost,
@@ -301,24 +301,40 @@ function updateNativeProgressDisplay(progress: number, message: string) {
   const progressDisplay = document.getElementById("nativeProgressDisplay");
   if (!progressDisplay) return;
 
-  // Calculate formatted execution time if provided
+  // Calculate current execution time
   const now = Date.now();
+  const executionTime = nativeStartTime > 0 ? now - nativeStartTime : 0;
 
-  // Schedule the DOM update
+  // Calculate estimated remaining time based on progress
+  let remainingTime = 0;
+  if (progress > 0 && progress < 100) {
+    remainingTime = Math.round((executionTime / progress) * (100 - progress));
+  }
+
+  // Calculate estimated finish time
+  const estimatedFinishTime = now + remainingTime;
+
+  // Format progress percentage
   const formattedProgress = Math.max(0, Math.min(100, progress));
 
-  // Update the DOM with progress information
+  // Update the DOM with progress information to match TypeScript BFS format
   progressDisplay.innerHTML = `
     <div class="overall-progress">
       <h4>Native BFS Progress</h4>
+      <div>Status: ${message}</div>
       <div class="progress-bar-container">
         <div class="progress-bar" style="width: ${formattedProgress}%"></div>
         <span class="progress-text" data-progress="${formattedProgress}%" style="--progress-percent: ${formattedProgress}%"></span>
       </div>
-      <div>${message}</div>
+      <div>Execution time: ${formatTime(executionTime)}</div>
+      <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
+      <div>Estimated finish time: ${formatClockTime(estimatedFinishTime)}</div>
     </div>
   `;
 }
+
+// Add a variable to track native BFS start time
+let nativeStartTime = 0;
 
 // Helper function to update a best mix display with consistent formatting
 function updateNativeBestMixDisplay(bestMix: {
@@ -378,13 +394,15 @@ export function toggleNative() {
   // Create only the Native result display
   createNativeResultDisplay();
 
+  // Set start time for execution time calculation
+  nativeStartTime = Date.now();
+
   // Start the BFS calculation
   if (progressDisplay) {
     progressDisplay.classList.add("running");
   }
   nativeBfsButton.textContent = "Stop Native BFS";
 
-  const startTime = Date.now();
   updateNativeProgressDisplay(0, "Starting native calculation...");
 
   // Prepare data for the server
@@ -431,7 +449,7 @@ export function toggleNative() {
     })
     .then((data) => {
       // Process successful result
-      const executionTime = Date.now() - startTime;
+      const executionTime = Date.now() - nativeStartTime;
       const formattedTime = (executionTime / 1000).toFixed(2);
 
       if (!data.success) {
