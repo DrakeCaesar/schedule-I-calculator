@@ -68,15 +68,23 @@ app.use(express.json());
 // Serve static files from the project directory
 app.use(express.static("./"));
 
-// API endpoint for BFS calculations
-app.post("/api/bfs", async (req, res) => {
+// API endpoint for mix calculations - supports both BFS and DFS
+app.post("/api/mix", async (req, res) => {
   try {
-    const { product, maxDepth } = req.body;
+    const { product, maxDepth, algorithm = "bfs" } = req.body;
 
     if (!product || !product.name) {
       return res.status(400).json({
         success: false,
         error: "Invalid product data",
+      });
+    }
+
+    // Validate algorithm selection
+    if (algorithm !== "bfs" && algorithm !== "dfs") {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid algorithm. Use 'bfs' or 'dfs'",
       });
     }
 
@@ -117,12 +125,12 @@ app.post("/api/bfs", async (req, res) => {
 
     // Determine the path of the bfs_calculator executable based on the platform
     const isWindows = process.platform === "win32";
-    const bfsExecutable = isWindows
+    const calculatorExecutable = isWindows
       ? path.join(__dirname, "build", "Release", "bfs_calculator.exe")
       : path.join(__dirname, "build", "bin", "bfs_calculator");
 
-    // Prepare the command to execute
-    let command = `"${bfsExecutable}" -p "${productJsonPath}" "${substancesJsonPath}" "${effectMultipliersJsonPath}" "${substanceRulesJsonPath}" ${
+    // Prepare the command to execute with algorithm choice
+    let command = `"${calculatorExecutable}" -a ${algorithm} -p "${productJsonPath}" "${substancesJsonPath}" "${effectMultipliersJsonPath}" "${substanceRulesJsonPath}" ${
       maxDepth || 5
     } -o "${outputJsonPath}"`;
 
@@ -143,21 +151,23 @@ app.post("/api/bfs", async (req, res) => {
       processed: 0,
       total: 100, // Initial estimate
       depth: 1,
-      message: "Starting calculation...",
+      message: `Starting ${algorithm.toUpperCase()} calculation...`,
       executionTime: 0,
     });
 
-    // Execute the native BFS calculator
+    // Execute the native calculator
     const childProcess = exec(command);
 
     // Process stdout to extract progress information
     childProcess.stdout.on("data", (data) => {
-      console.log(`BFS stdout: ${data}`);
+      console.log(`${algorithm.toUpperCase()} stdout: ${data}`);
       const dataStr = data.toString();
 
       // Try to parse progress information - looking for patterns like:
       // Progress: Depth 3, 456/1000 (45%)
-      const progressMatch = dataStr.match(/Progress: Depth (\d+), (\d+)\/(\d+)/);
+      const progressMatch = dataStr.match(
+        /Progress: Depth (\d+), (\d+)\/(\d+)/
+      );
       if (progressMatch) {
         const depth = parseInt(progressMatch[1], 10);
         const processed = parseInt(progressMatch[2], 10);
@@ -185,7 +195,10 @@ app.post("/api/bfs", async (req, res) => {
           // how often we send updates (avoids flooding the WebSocket)
           const lastDigit = processed % 10;
           if (lastDigit === 0) {
-            console.log("Sending periodic best mix update at progress:", percentage + "%");
+            console.log(
+              "Sending periodic best mix update at progress:",
+              percentage + "%"
+            );
             // Emit best mix update with currentBestMix
             bfsProgressEmitter.emit("progress", {
               type: "update",
@@ -241,7 +254,7 @@ app.post("/api/bfs", async (req, res) => {
 
     // Process stderr
     childProcess.stderr.on("data", (data) => {
-      console.log(`BFS stderr: ${data}`);
+      console.log(`${algorithm.toUpperCase()} stderr: ${data}`);
 
       // Emit error information
       bfsProgressEmitter.emit("progress", {
@@ -263,7 +276,7 @@ app.post("/api/bfs", async (req, res) => {
 
         return res.status(500).json({
           success: false,
-          error: `Error executing BFS calculator, exit code: ${code}`,
+          error: `Error executing ${algorithm.toUpperCase()} calculator, exit code: ${code}`,
         });
       }
 
@@ -337,6 +350,13 @@ app.post("/api/bfs", async (req, res) => {
       error: `Server error: ${error.message}`,
     });
   }
+});
+
+// Keep the old /api/bfs endpoint for backward compatibility
+app.post("/api/bfs", async (req, res) => {
+  // Force the algorithm to be BFS and delegate to the new endpoint
+  req.body.algorithm = "bfs";
+  app.handle(req, res, "/api/mix");
 });
 
 // Start the server

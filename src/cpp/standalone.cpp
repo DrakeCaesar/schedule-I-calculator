@@ -2,11 +2,24 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <cmath>
+#include <limits>
+#include <algorithm>
 #include "types.h"
 #include "effects.h"
 #include "pricing.h"
 #include "bfs_algorithm.h"
 #include "json_parser.h"
+
+// Global variables for thread synchronization in DFS algorithm
+std::mutex g_bestMixMutex;
+std::atomic<int> g_totalProcessedCombinations(0);
+std::atomic<bool> g_shouldTerminate(false);
+const int MAX_SUBSTANCES = 16; // Maximum number of substances
+const int MAX_DEPTH = 10;      // Maximum depth for the mix
 
 // Simple progress reporting to console
 void reportProgressToConsole(int depth, int processed, int total)
@@ -41,34 +54,6 @@ std::string formatResultAsJson(const JsBestMixResult &result)
     return json;
 }
 
-// Print usage information
-void printUsage(const char *programName)
-{
-    std::cerr << "Usage: " << programName << " [options] <product_json> <substances_json> <effect_multipliers_json> <substance_rules_json> <max_depth>\n"
-              << "Options:\n"
-              << "  -p, --progress  Enable progress reporting\n"
-              << "  -o, --output    Output file (if not specified, prints to stdout)\n"
-              << "  -h, --help      Show this help message\n";
-}
-
-// Parse JSON input and run BFS
-JsBestMixResult findBestMixJson(
-    std::string productJson,
-    std::string substancesJson,
-    std::string effectMultipliersJson,
-    std::string substanceRulesJson,
-    int maxDepth)
-{
-    // Parse JSON inputs
-    Product product = parseProductJson(productJson);
-    std::vector<Substance> substances = parseSubstancesJson(substancesJson);
-    std::unordered_map<std::string, int> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
-    applySubstanceRulesJson(substances, substanceRulesJson);
-
-    // Run the BFS algorithm without progress reporting
-    return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
-}
-
 // Parse JSON input and run BFS with progress reporting
 JsBestMixResult findBestMixJsonWithProgress(
     std::string productJson,
@@ -94,6 +79,306 @@ JsBestMixResult findBestMixJsonWithProgress(
     }
 }
 
+// Parse JSON input and run BFS without progress reporting
+JsBestMixResult findBestMixJson(
+    std::string productJson,
+    std::string substancesJson,
+    std::string effectMultipliersJson,
+    std::string substanceRulesJson,
+    int maxDepth)
+{
+    return findBestMixJsonWithProgress(
+        productJson,
+        substancesJson,
+        effectMultipliersJson,
+        substanceRulesJson,
+        maxDepth,
+        false);
+}
+
+// DFS State struct with static memory allocation
+struct DFSState
+{
+    int substanceIndices[MAX_DEPTH]; // Fixed-size array for the current path
+    int depth;                       // Current depth in the search
+
+    DFSState() : depth(0)
+    {
+        // Initialize all indices to -1 (not used)
+        for (int i = 0; i < MAX_DEPTH; ++i)
+        {
+            substanceIndices[i] = -1;
+        }
+    }
+
+    // Add a substance to the current state
+    void addSubstance(int index)
+    {
+        if (depth < MAX_DEPTH)
+        {
+            substanceIndices[depth] = index;
+            depth++;
+        }
+    }
+
+    // Remove the last substance added (backtrack)
+    void removeLastSubstance()
+    {
+        if (depth > 0)
+        {
+            substanceIndices[depth - 1] = -1;
+            depth--;
+        }
+    }
+
+    // Convert to a vector of substance names for result reporting
+    std::vector<std::string> toSubstanceNames(const std::vector<Substance> &substances) const
+    {
+        std::vector<std::string> names;
+        names.reserve(depth);
+        for (int i = 0; i < depth; ++i)
+        {
+            names.push_back(substances[substanceIndices[i]].name);
+        }
+        return names;
+    }
+
+    // Copy the current state to a MixState for compatibility with existing code
+    MixState toMixState() const
+    {
+        MixState mix(MAX_DEPTH);
+        for (int i = 0; i < depth; ++i)
+        {
+            if (substanceIndices[i] >= 0)
+            {
+                mix.addSubstance(substanceIndices[i]);
+            }
+        }
+        return mix;
+    }
+};
+
+// DFS Worker function for each thread
+void dfsThreadWorker(
+    const Product &product,
+    const std::vector<Substance> &substances,
+    const std::unordered_map<std::string, int> &effectMultipliers,
+    int startSubstanceIndex,
+    int maxDepth,
+    int expectedCombinations,
+    MixState &globalBestMix,
+    double &globalBestProfit,
+    double &globalBestSellPrice,
+    double &globalBestCost,
+    ProgressCallback progressCallback)
+{
+    // Initialize thread-local best mix data
+    DFSState currentState;
+    MixState threadBestMix(maxDepth);
+    double threadBestProfit = -std::numeric_limits<double>::infinity();
+    double threadBestSellPrice = 0.0;
+    double threadBestCost = 0.0;
+
+    // Initialize with the starting substance
+    currentState.addSubstance(startSubstanceIndex);
+
+    // Create a set of all effect names for efficiency
+    std::unordered_map<std::string, bool> effectsSet;
+    effectsSet.reserve(effectMultipliers.size() * 2);
+    for (const auto &pair : effectMultipliers)
+    {
+        effectsSet[pair.first] = true;
+    }
+
+    // Stack-based DFS implementation using recursion
+    std::function<void(int)> dfs = [&](int currentDepth)
+    {
+        // Check if we should terminate early
+        if (g_shouldTerminate)
+        {
+            return;
+        }
+
+        // Increment processed combinations counter
+        g_totalProcessedCombinations++;
+
+        // Periodically report progress
+        if (progressCallback && g_totalProcessedCombinations % 1000 == 0)
+        {
+            progressCallback(currentDepth, g_totalProcessedCombinations.load(), expectedCombinations);
+        }
+
+        // Calculate effects and profit for current state
+        MixState currentMix = currentState.toMixState();
+        std::vector<std::string> effectsList = calculateEffectsForMix(
+            currentMix, substances, product.initialEffect, effectsSet);
+
+        double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+        double cost = calculateFinalCost(currentMix, substances);
+        double profit = sellPrice - cost;
+
+        // Update thread's best mix if this one is better
+        if (profit > threadBestProfit)
+        {
+            threadBestMix = currentMix;
+            threadBestProfit = profit;
+            threadBestSellPrice = sellPrice;
+            threadBestCost = cost;
+
+            // Update global best mix if needed (thread-safe)
+            std::lock_guard<std::mutex> lock(g_bestMixMutex);
+            if (threadBestProfit > globalBestProfit)
+            {
+                globalBestMix = threadBestMix;
+                globalBestProfit = threadBestProfit;
+                globalBestSellPrice = threadBestSellPrice;
+                globalBestCost = threadBestCost;
+
+                // Report best mix found so far
+                std::vector<std::string> mixNames = currentState.toSubstanceNames(substances);
+                std::cout << "Best mix so far: [";
+                for (size_t i = 0; i < mixNames.size(); ++i)
+                {
+                    if (i > 0)
+                        std::cout << ", ";
+                    std::cout << mixNames[i];
+                }
+                std::cout << "] with profit " << threadBestProfit
+                          << ", price " << threadBestSellPrice
+                          << ", cost " << threadBestCost << std::endl;
+            }
+        }
+
+        // If we haven't reached max depth, continue DFS
+        if (currentDepth < maxDepth)
+        {
+            for (size_t i = 0; i < substances.size(); ++i)
+            {
+                currentState.addSubstance(i);
+                dfs(currentDepth + 1);
+                currentState.removeLastSubstance(); // Backtrack
+            }
+        }
+    };
+
+    // Start DFS from depth 1 (with the first substance already added)
+    dfs(1);
+}
+
+// Main DFS algorithm with threading
+JsBestMixResult findBestMixDFS(
+    const Product &product,
+    const std::vector<Substance> &substances,
+    const std::unordered_map<std::string, int> &effectMultipliers,
+    int maxDepth,
+    ProgressCallback progressCallback)
+{
+    // Reset global counters
+    g_totalProcessedCombinations = 0;
+    g_shouldTerminate = false;
+
+    // Initialize best mix variables
+    MixState bestMix(maxDepth);
+    double bestProfit = -std::numeric_limits<double>::infinity();
+    double bestSellPrice = 0.0;
+    double bestCost = 0.0;
+
+    // Calculate total expected combinations for progress reporting
+    int totalCombinations = 0;
+    size_t substanceCount = std::min(static_cast<size_t>(MAX_SUBSTANCES), substances.size());
+    for (size_t i = 1; i <= static_cast<size_t>(maxDepth); ++i)
+    {
+        totalCombinations += static_cast<int>(pow(substanceCount, i));
+    }
+
+    // Report initial progress
+    if (progressCallback)
+    {
+        progressCallback(1, 0, totalCombinations);
+    }
+
+    // Create and launch threads - one for each starting substance
+    std::vector<std::thread> threads;
+    threads.reserve(substances.size());
+
+    for (size_t i = 0; i < substances.size(); ++i)
+    {
+        threads.emplace_back(
+            dfsThreadWorker,
+            std::ref(product),
+            std::ref(substances),
+            std::ref(effectMultipliers),
+            i,
+            maxDepth,
+            totalCombinations,
+            std::ref(bestMix),
+            std::ref(bestProfit),
+            std::ref(bestSellPrice),
+            std::ref(bestCost),
+            progressCallback);
+    }
+
+    // Wait for all threads to complete
+    for (auto &thread : threads)
+    {
+        if (thread.joinable())
+        {
+            thread.join();
+        }
+    }
+
+    // Final progress report
+    if (progressCallback)
+    {
+        progressCallback(maxDepth, totalCombinations, totalCombinations);
+    }
+
+    // Create the result
+    JsBestMixResult result;
+    result.mixArray = bestMix.toSubstanceNames(substances);
+    result.profit = bestProfit;
+    result.sellPrice = bestSellPrice;
+    result.cost = bestCost;
+
+    return result;
+}
+
+// Parse JSON input and run DFS with progress reporting
+JsBestMixResult findBestMixDFSJson(
+    std::string productJson,
+    std::string substancesJson,
+    std::string effectMultipliersJson,
+    std::string substanceRulesJson,
+    int maxDepth,
+    bool reportProgress)
+{
+    Product product = parseProductJson(productJson);
+    std::vector<Substance> substances = parseSubstancesJson(substancesJson);
+    std::unordered_map<std::string, int> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
+    applySubstanceRulesJson(substances, substanceRulesJson);
+
+    // Run the DFS algorithm with progress reporting if enabled
+    if (reportProgress)
+    {
+        return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToConsole);
+    }
+    else
+    {
+        return findBestMixDFS(product, substances, effectMultipliers, maxDepth, nullptr);
+    }
+}
+
+// Print usage information
+void printUsage(const char *programName)
+{
+    std::cerr << "Usage: " << programName << " [options] <product_json> <substances_json> <effect_multipliers_json> <substance_rules_json> <max_depth>\n"
+              << "Options:\n"
+              << "  -p, --progress  Enable progress reporting\n"
+              << "  -o, --output    Output file (if not specified, prints to stdout)\n"
+              << "  -a, --algorithm  Algorithm to use: bfs (default) or dfs\n"
+              << "  -h, --help      Show this help message\n";
+}
+
 // Function to read file content into a string
 std::string readFileContents(const std::string &filePath)
 {
@@ -113,6 +398,7 @@ int main(int argc, char *argv[])
 {
     bool reportProgress = false;
     std::string outputFile;
+    std::string algorithm = "bfs"; // Default algorithm
     std::vector<std::string> jsonArgs;
 
     // Parse command line arguments
@@ -132,6 +418,25 @@ int main(int argc, char *argv[])
             else
             {
                 std::cerr << "Error: Output file path missing\n";
+                printUsage(argv[0]);
+                return 1;
+            }
+        }
+        else if (arg == "-a" || arg == "--algorithm")
+        {
+            if (i + 1 < argc)
+            {
+                algorithm = argv[++i];
+                if (algorithm != "bfs" && algorithm != "dfs")
+                {
+                    std::cerr << "Error: Invalid algorithm. Use 'bfs' or 'dfs'\n";
+                    printUsage(argv[0]);
+                    return 1;
+                }
+            }
+            else
+            {
+                std::cerr << "Error: Algorithm name missing\n";
                 printUsage(argv[0]);
                 return 1;
             }
@@ -171,19 +476,30 @@ int main(int argc, char *argv[])
     effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
     substanceRulesJson = readFileContents(substanceRulesJsonPath);
 
-    // Call the BFS algorithm
+    // Call the appropriate algorithm based on user selection
     JsBestMixResult result;
-    if (reportProgress)
+    if (algorithm == "dfs")
     {
-        result = findBestMixJsonWithProgress(
+        std::cout << "Running DFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        result = findBestMixDFSJson(
             productJson, substancesJson, effectMultipliersJson,
-            substanceRulesJson, maxDepth, true);
+            substanceRulesJson, maxDepth, reportProgress);
     }
     else
     {
-        result = findBestMixJson(
-            productJson, substancesJson, effectMultipliersJson,
-            substanceRulesJson, maxDepth);
+        std::cout << "Running BFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+        if (reportProgress)
+        {
+            result = findBestMixJsonWithProgress(
+                productJson, substancesJson, effectMultipliersJson,
+                substanceRulesJson, maxDepth, true);
+        }
+        else
+        {
+            result = findBestMixJson(
+                productJson, substancesJson, effectMultipliersJson,
+                substanceRulesJson, maxDepth);
+        }
     }
 
     // Format the result as JSON

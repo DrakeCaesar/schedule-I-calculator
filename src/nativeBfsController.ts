@@ -1,5 +1,6 @@
-// Native BFS Controller
-// Manages the Native C++ implementation of the BFS algorithm via Node.js server
+// Native Algorithm Controller
+// Manages the Native C++ implementation of search algorithms via Node.js server
+// Currently configured to use DFS by default
 
 import { MAX_RECIPE_DEPTH } from "./bfsCommon";
 import {
@@ -19,8 +20,8 @@ import {
   prepareSubstancesForWasm,
 } from "./wasmLoader";
 
-// State variables for Native BFS
-let nativeBfsRunning = false;
+// State variables for Native algorithm
+let nativeAlgorithmRunning = false;
 let nativeBestMix: BfsMixResult = {
   mix: [],
   profit: -Infinity,
@@ -33,6 +34,9 @@ let nativeStartTime = 0;
 let nativeTotalProcessed = 0;
 let nativeGrandTotal = 1; // Start with 1 to avoid division by zero
 let nativeLastUpdate = 0;
+
+// Algorithm configuration
+const ALGORITHM = "dfs"; // Set to use DFS algorithm
 
 export function updateNativeBestMixDisplay() {
   if (!nativeCurrentProduct) return;
@@ -58,7 +62,7 @@ export function updateNativeProgressDisplay(
   );
 }
 
-// Initialize WebSocket connection for native BFS
+// Initialize WebSocket connection for native algorithm
 function initializeNativeWebSocket() {
   if (nativeWebSocket) {
     // Close existing connection if there is one
@@ -69,7 +73,9 @@ function initializeNativeWebSocket() {
   nativeWebSocket = new WebSocket("ws://localhost:3000");
 
   nativeWebSocket.onopen = () => {
-    console.log("Native BFS WebSocket connection established");
+    console.log(
+      `Native ${ALGORITHM.toUpperCase()} WebSocket connection established`
+    );
   };
 
   nativeWebSocket.onmessage = (event) => {
@@ -91,7 +97,7 @@ function initializeNativeWebSocket() {
         };
 
         updateNativeProgressDisplay(progressData);
-        
+
         // If progress update includes a best mix, update the display
         if (data.bestMix && data.bestMix.profit > nativeBestMix.profit) {
           nativeBestMix = data.bestMix;
@@ -105,7 +111,7 @@ function initializeNativeWebSocket() {
         }
       } else if (data.type === "done") {
         // Handle completion
-        nativeBfsRunning = false;
+        nativeAlgorithmRunning = false;
 
         // Update progress to 100%
         updateNativeProgressDisplay(
@@ -131,13 +137,14 @@ function initializeNativeWebSocket() {
         }
 
         // Update button state
-        const nativeBfsButton = document.getElementById("nativeBfsButton");
-        if (nativeBfsButton) {
-          nativeBfsButton.textContent = "Start Native BFS";
+        const nativeAlgorithmButton =
+          document.getElementById("nativeBfsButton");
+        if (nativeAlgorithmButton) {
+          nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
         }
       } else if (data.type === "error") {
         // Handle error
-        console.error("Native BFS error:", data.message);
+        console.error(`Native ${ALGORITHM.toUpperCase()} error:`, data.message);
 
         updateNativeProgressDisplay(
           {
@@ -150,12 +157,13 @@ function initializeNativeWebSocket() {
           true
         );
 
-        nativeBfsRunning = false;
+        nativeAlgorithmRunning = false;
 
         // Update button state
-        const nativeBfsButton = document.getElementById("nativeBfsButton");
-        if (nativeBfsButton) {
-          nativeBfsButton.textContent = "Start Native BFS";
+        const nativeAlgorithmButton =
+          document.getElementById("nativeBfsButton");
+        if (nativeAlgorithmButton) {
+          nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
         }
       }
     } catch (error) {
@@ -165,24 +173,26 @@ function initializeNativeWebSocket() {
 
   nativeWebSocket.onerror = (error) => {
     console.error("WebSocket error:", error);
-    nativeBfsRunning = false;
+    nativeAlgorithmRunning = false;
   };
 
   nativeWebSocket.onclose = () => {
-    console.log("Native BFS WebSocket connection closed");
+    console.log(
+      `Native ${ALGORITHM.toUpperCase()} WebSocket connection closed`
+    );
     nativeWebSocket = null;
   };
 }
 
-// Function to toggle native BFS processing via Node.js server
+// Function to toggle native algorithm processing via Node.js server
 export async function toggleNativeBFS(product: ProductVariety) {
-  const nativeBfsButton = document.getElementById("nativeBfsButton");
-  if (!nativeBfsButton) return;
+  const nativeAlgorithmButton = document.getElementById("nativeBfsButton");
+  if (!nativeAlgorithmButton) return;
 
   // Check if calculation is already running
-  if (nativeBfsRunning) {
+  if (nativeAlgorithmRunning) {
     // If currently running, abort and reset
-    nativeBfsRunning = false;
+    nativeAlgorithmRunning = false;
 
     // Update progress display with cancellation message
     updateNativeProgressDisplay(
@@ -196,7 +206,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
       true
     );
 
-    nativeBfsButton.textContent = "Start Native BFS";
+    nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
     return;
   }
 
@@ -206,7 +216,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
 
   // Set start time for execution time calculation
   nativeStartTime = Date.now();
-  nativeBfsRunning = true;
+  nativeAlgorithmRunning = true;
   nativeLastUpdate = 0;
   nativeCurrentProduct = product;
   nativeBestMix = { mix: [], profit: -Infinity };
@@ -214,8 +224,8 @@ export async function toggleNativeBFS(product: ProductVariety) {
   // Initialize WebSocket connection for progress updates
   initializeNativeWebSocket();
 
-  // Start the BFS calculation
-  nativeBfsButton.textContent = "Stop Native BFS";
+  // Start the calculation
+  nativeAlgorithmButton.textContent = `Stop Native ${ALGORITHM.toUpperCase()}`;
 
   // Initial progress update
   updateNativeProgressDisplay(
@@ -224,7 +234,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
       total: 100,
       depth: 1,
       executionTime: 0,
-      message: "Starting native calculation...",
+      message: `Starting native ${ALGORITHM} calculation...`,
     },
     true
   );
@@ -251,7 +261,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
 
   // Send the data to the server - use the full URL with port
   try {
-    const response = await fetch("http://localhost:3000/api/bfs", {
+    const response = await fetch("http://localhost:3000/api/mix", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -262,6 +272,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
         effectMultipliers: effectMultipliersJson,
         substanceRules: substanceRulesJson,
         maxDepth,
+        algorithm: ALGORITHM, // Specify DFS algorithm
       }),
     });
 
@@ -314,12 +325,12 @@ export async function toggleNativeBFS(product: ProductVariety) {
       );
 
       // Reset the button after a successful computation
-      nativeBfsButton.textContent = "Start Native BFS";
-      nativeBfsRunning = false;
+      nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
+      nativeAlgorithmRunning = false;
     }
   } catch (error: unknown) {
     // Handle errors with proper type checking
-    console.error("Native BFS error:", error);
+    console.error(`Native ${ALGORITHM.toUpperCase()} error:`, error);
 
     // Convert error to string for display
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -337,14 +348,14 @@ export async function toggleNativeBFS(product: ProductVariety) {
     );
 
     // Reset the button after an error
-    nativeBfsButton.textContent = "Start Native BFS";
-    nativeBfsRunning = false;
+    nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
+    nativeAlgorithmRunning = false;
   }
 }
 
 // Export state getters
 export function isNativeBfsRunning(): boolean {
-  return nativeBfsRunning;
+  return nativeAlgorithmRunning;
 }
 
 export function getNativeBestMix(): BfsMixResult {
