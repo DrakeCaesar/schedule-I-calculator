@@ -2,6 +2,16 @@
 
 A tool for calculating the most profitable substance mixtures.
 
+## Licensing
+
+All original source code in this repository is licensed under the MIT License (see LICENSE file).
+
+**This project is intended for non-commercial use only.** If you would like to use it commercially, please contact the author.
+
+## Disclaimer
+
+This project is an unofficial fan-made tool for Schedule I. It is not affiliated with, endorsed, or sponsored by TVGS. All trademarks and copyrights belong to their respective owners.
+
 ## Prerequisites
 
 To build this project, you'll need:
