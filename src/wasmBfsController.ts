@@ -24,9 +24,12 @@ let wasmCurrentProduct: ProductVariety | null = null;
 let wasmStartTime = 0;
 let wasmBfsWorker: Worker | null = null;
 
-// Progress throttling
+// Progress tracking
 let lastWasmProgressUpdate = 0;
 const PROGRESS_UPDATE_INTERVAL = 250; // ms
+// Add variables to track processed combinations
+let totalProcessedCombinations = 0;
+let totalCombinations = 0;
 
 // Helper function to create effect span HTML
 function createEffectSpan(effect: string): string {
@@ -130,7 +133,7 @@ export function updateWasmProgressDisplay(progress: number) {
     progressDisplay.innerHTML = `
       <div class="overall-progress">
         <h4>WebAssembly BFS Progress</h4>
-        <div>Total processed: ${progress}%</div>
+        <div>Total processed: ${totalProcessedCombinations.toLocaleString()} / ${totalCombinations.toLocaleString()}</div>
         <div class="progress-bar-container">
           <div class="progress-bar" style="width: ${progress}%"></div>
           <span class="progress-text" data-progress="${progress}%" style="--progress-percent: ${progress}%"></span>
@@ -169,6 +172,9 @@ function createWasmWorkerMessageHandler() {
           100,
           Math.round((event.data.processed / event.data.total) * 100)
         );
+        // Store the actual count values for display
+        totalProcessedCombinations = event.data.processed;
+        totalCombinations = event.data.total;
       } else if (event.data.progress !== undefined) {
         // If we already have a percentage, use that
         progress = event.data.progress;
