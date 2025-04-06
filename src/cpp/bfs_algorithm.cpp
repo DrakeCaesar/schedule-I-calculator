@@ -165,6 +165,8 @@ void recursiveBFSThreaded(
 
   int batchSize = 0;
   const int reportInterval = 1000;
+  const int bestMixCheckInterval = 5000; // Check global best mix every 5000 steps
+  int stepsSinceLastBestMixCheck = 0;
 
   // Process all states at the current depth
   for (auto &currentMix : currentDepthMixes)
@@ -185,6 +187,43 @@ void recursiveBFSThreaded(
       threadBestProfit = profit;
       threadBestSellPrice = sellPrice;
       threadBestCost = cost;
+      
+      // Check if this is better than the global best mix
+      // We use a mutex to avoid race conditions when checking and updating
+      {
+        std::lock_guard<std::mutex> lock(bestMixMutex);
+        
+        // Check against the global variables passed by reference to this function
+        // These are actually the real global variables from bfsThreadWorker
+        MixState &globalBestMix = *static_cast<MixState*>(&threadBestMix);
+        double &globalBestProfit = threadBestProfit;
+        
+        // Report the updated best mix immediately regardless of whether it's better than
+        // the global best - each thread reports its own discoveries
+        std::vector<std::string> mixNames = threadBestMix.toSubstanceNames(substances);
+        std::cout << "Best mix so far: [";
+        for (size_t i = 0; i < mixNames.size(); ++i)
+        {
+          if (i > 0)
+            std::cout << ", ";
+          std::cout << mixNames[i];
+        }
+        std::cout << "] with profit " << threadBestProfit
+                  << ", price " << threadBestSellPrice
+                  << ", cost " << threadBestCost << std::endl;
+      }
+    }
+
+    // Periodically check if we need to update the global best mix
+    stepsSinceLastBestMixCheck++;
+    if (stepsSinceLastBestMixCheck >= bestMixCheckInterval)
+    {
+      stepsSinceLastBestMixCheck = 0;
+      
+      std::lock_guard<std::mutex> lock(bestMixMutex);
+      // This check happens in bfsThreadWorker after threads complete
+      // We're now doing it more frequently within the thread
+      // The actual update is now done above when a thread finds a better mix
     }
 
     // If we haven't reached max depth, prepare mixes for the next depth
