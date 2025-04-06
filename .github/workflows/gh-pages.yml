@@ -29,7 +29,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '2023.11.20'
+
+      - name: Install vcpkg dependencies
+        run: |
+          echo "Installing vcpkg dependencies..."
+          $VCPKG_ROOT/vcpkg install rapidjson
+
+      - name: Build WebAssembly
+        run: |
+          echo "Building WebAssembly components..."
+          chmod +x ./build.sh
+          bash ./build.sh
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+      - name: Build Web Application
         run: pnpm build
 
       - name: Setup Pages
