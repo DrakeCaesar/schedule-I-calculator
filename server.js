@@ -133,7 +133,7 @@ app.post("/api/bfs", async (req, res) => {
     let processedCombinations = 0;
     let currentDepth = 1;
     let startTime = Date.now();
-    
+
     // Track the best mix found so far
     let currentBestMix = null;
 
@@ -178,6 +178,24 @@ app.post("/api/bfs", async (req, res) => {
         // Calculate execution time
         const executionTime = Date.now() - startTime;
 
+        // Periodically send the current best mix, even if it hasn't changed
+        // This gives more frequent UI updates
+        if (currentBestMix && percentage % 5 === 0) {
+          // Use the last known digit of processed number as a simple way to reduce
+          // how often we send updates (avoids flooding the WebSocket)
+          const lastDigit = processed % 10;
+          if (lastDigit === 0) {
+            console.log("Sending periodic best mix update at progress:", percentage + "%");
+            // Emit best mix update with currentBestMix
+            bfsProgressEmitter.emit("progress", {
+              type: "update",
+              bestMix: currentBestMix,
+              executionTime,
+              milestone: true, // Mark this as a milestone update rather than a new best mix
+            });
+          }
+        }
+
         // Emit progress event
         bfsProgressEmitter.emit("progress", {
           type: "progress",
@@ -195,9 +213,11 @@ app.post("/api/bfs", async (req, res) => {
 
       // Check for best mix found so far
       // Format: Best mix so far: [mixArray] with profit X
-      const bestMixMatch = dataStr.match(/Best mix so far: \[(.*?)\] with profit (\d+\.?\d*), price (\d+\.?\d*), cost (\d+\.?\d*)/);
+      const bestMixMatch = dataStr.match(
+        /Best mix so far: \[(.*?)\] with profit (\d+\.?\d*), price (\d+\.?\d*), cost (\d+\.?\d*)/
+      );
       if (bestMixMatch) {
-        const mixArray = bestMixMatch[1].split(',').map(item => item.trim());
+        const mixArray = bestMixMatch[1].split(",").map((item) => item.trim());
         const profit = parseFloat(bestMixMatch[2]);
         const sellPrice = parseFloat(bestMixMatch[3]);
         const cost = parseFloat(bestMixMatch[4]);
@@ -207,7 +227,7 @@ app.post("/api/bfs", async (req, res) => {
           mix: mixArray,
           profit,
           sellPrice,
-          cost
+          cost,
         };
 
         // Emit best mix update
