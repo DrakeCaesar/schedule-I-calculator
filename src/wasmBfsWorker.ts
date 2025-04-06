@@ -13,14 +13,22 @@ let isPaused = false;
 let startTime = 0;
 let workerId = -1;
 let lastProgressUpdate = 0;
+let lastBestMixUpdate = 0;
 let totalTrackedProcessed = 0;
 let totalTrackedCombinations = 0;
+let currentBestMix = {
+  mix: [],
+  profit: -Infinity,
+  sellPrice: 0,
+  cost: 0,
+};
 
 // Setup a global reportBfsProgress function for C++ to call
 // This will be called by the C++ code when progress is made
 declare global {
   interface Window {
     reportBfsProgress: (progressData: any) => void;
+    reportBestMixFound: (mixData: any) => void;
   }
 }
 
@@ -53,6 +61,50 @@ declare global {
   });
 };
 
+// Implementation of reportBestMixFound that the C++ code will call
+(self as any).reportBestMixFound = function (mixData: any) {
+  if (isPaused) return;
+
+  const currentTime = Date.now();
+  // Throttle best mix updates to avoid overwhelming the main thread - once per second is enough
+  if (currentTime - lastBestMixUpdate < 1000) return;
+
+  lastBestMixUpdate = currentTime;
+
+  // Extract mix data
+  let mixArray: string[] = [];
+  const profit = parseFloat(mixData.profit || "0");
+  const sellPrice = parseFloat(mixData.sellPrice || "0");
+  const cost = parseFloat(mixData.cost || "0");
+
+  // Check if this mix is better than our current best
+  if (profit <= currentBestMix.profit) return;
+
+  // Extract mix array
+  if (mixData.mixArray && Array.isArray(mixData.mixArray)) {
+    mixArray = mixData.mixArray;
+  } else if (mixData.mix && Array.isArray(mixData.mix)) {
+    mixArray = mixData.mix;
+  } else if (typeof mixData.mix === "string") {
+    mixArray = mixData.mix.split(",").map((s: string) => s.trim());
+  }
+
+  // Update current best mix
+  currentBestMix = {
+    mix: mixArray,
+    profit,
+    sellPrice,
+    cost,
+  };
+
+  // Send best mix update to main thread
+  self.postMessage({
+    type: "update",
+    bestMix: currentBestMix,
+    workerId,
+  });
+};
+
 // Define interface for WASM BFS result
 interface WasmBfsResult {
   mixArray: string[] | Record<string, string>;
@@ -72,8 +124,15 @@ self.onmessage = async (event: MessageEvent) => {
     isPaused = false;
     startTime = Date.now();
     lastProgressUpdate = 0;
+    lastBestMixUpdate = 0;
     totalTrackedProcessed = 0;
     totalTrackedCombinations = 0;
+    currentBestMix = {
+      mix: [],
+      profit: -Infinity,
+      sellPrice: 0,
+      cost: 0,
+    };
 
     const product = data.product;
     const maxDepth = data.maxDepth || 5; // Default to 5 if not provided
@@ -157,6 +216,9 @@ self.onmessage = async (event: MessageEvent) => {
         cost: typedResult.cost,
       };
 
+      // Update our current best mix with the final result
+      currentBestMix = bestMix;
+
       // Get the total combinations value, using our tracked value if available
       let finalTotalCombinations =
         typedResult.totalCombinations || totalTrackedCombinations || 100;
@@ -174,7 +236,7 @@ self.onmessage = async (event: MessageEvent) => {
         isFinal: true, // Signal that this is the final progress update
       });
 
-      // Send the best mix result
+      // Send the final best mix result
       self.postMessage({
         type: "update",
         bestMix,
@@ -210,11 +272,34 @@ function simulateProgress() {
   let progress = 0;
   let estimatedTotal = 100;
 
+  // Also simulate best mix updates during progress
+  let simulatedMixes = [
+    {
+      mix: ["Stone", "Powder"],
+      profit: 50,
+      sellPrice: 150,
+      cost: 100,
+    },
+    {
+      mix: ["Stone", "Powder", "Liquid"],
+      profit: 75,
+      sellPrice: 200,
+      cost: 125,
+    },
+    {
+      mix: ["Stone", "Powder", "Liquid", "Crystal"],
+      profit: 120,
+      sellPrice: 250,
+      cost: 130,
+    },
+  ];
+
   const progressInterval = setInterval(() => {
     if (isPaused) return;
 
     progress = Math.min(progress + 1, 95);
 
+    // Send progress update
     self.postMessage({
       type: "progress",
       progress,
@@ -223,6 +308,39 @@ function simulateProgress() {
       executionTime: Date.now() - startTime,
       workerId,
     });
+
+    // Also simulate best mix updates at certain progress thresholds
+    if (progress === 30 && simulatedMixes.length > 0) {
+      const mix = simulatedMixes.shift();
+      if (mix) {
+        self.postMessage({
+          type: "update",
+          bestMix: mix,
+          workerId,
+        });
+        currentBestMix = mix;
+      }
+    } else if (progress === 60 && simulatedMixes.length > 0) {
+      const mix = simulatedMixes.shift();
+      if (mix) {
+        self.postMessage({
+          type: "update",
+          bestMix: mix,
+          workerId,
+        });
+        currentBestMix = mix;
+      }
+    } else if (progress === 90 && simulatedMixes.length > 0) {
+      const mix = simulatedMixes.shift();
+      if (mix) {
+        self.postMessage({
+          type: "update",
+          bestMix: mix,
+          workerId,
+        });
+        currentBestMix = mix;
+      }
+    }
 
     if (progress >= 95) {
       clearInterval(progressInterval);

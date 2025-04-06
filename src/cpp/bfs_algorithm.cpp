@@ -67,6 +67,26 @@ void recursiveBFS(
       bestProfit = profit;
       bestSellPrice = sellPrice;
       bestCost = cost;
+
+      // Report the new best mix in WebAssembly mode
+#ifdef __EMSCRIPTEN__
+      reportBestMixFoundToJS(bestMix, substances, bestProfit, bestSellPrice, bestCost);
+#endif
+
+#ifndef __EMSCRIPTEN__
+      // Print best mix so far to stdout in native mode
+      std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
+      std::cout << "Best mix so far: [";
+      for (size_t i = 0; i < mixNames.size(); ++i)
+      {
+        if (i > 0)
+          std::cout << ", ";
+        std::cout << mixNames[i];
+      }
+      std::cout << "] with profit " << bestProfit
+                << ", price " << bestSellPrice
+                << ", cost " << bestCost << std::endl;
+#endif
     }
 
     // If we haven't reached max depth, prepare mixes for the next depth
@@ -431,5 +451,33 @@ void reportProgressToJS(int depth, int processed, int total)
 
   // Call JavaScript progress function
   val::global("reportBfsProgress").call<void>("call", val::null(), progressEvent);
+}
+
+// JavaScript-compatible best mix reporting function
+void reportBestMixFoundToJS(const MixState &bestMix,
+                            const std::vector<Substance> &substances,
+                            double profit,
+                            double sellPrice,
+                            double cost)
+{
+  // Convert mix state to substance names
+  std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
+
+  // Create JavaScript array for mix names
+  val jsArray = val::array();
+  for (size_t i = 0; i < mixNames.size(); ++i)
+  {
+    jsArray.set(i, val(mixNames[i]));
+  }
+
+  // Create event object with mix data
+  val mixEvent = val::object();
+  mixEvent.set("mix", jsArray);
+  mixEvent.set("profit", profit);
+  mixEvent.set("sellPrice", sellPrice);
+  mixEvent.set("cost", cost);
+
+  // Call JavaScript function to report the new best mix
+  val::global("reportBestMixFound").call<void>("call", val::null(), mixEvent);
 }
 #endif

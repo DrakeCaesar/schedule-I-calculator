@@ -133,6 +133,9 @@ app.post("/api/bfs", async (req, res) => {
     let processedCombinations = 0;
     let currentDepth = 1;
     let startTime = Date.now();
+    
+    // Track the best mix found so far
+    let currentBestMix = null;
 
     // Initialize progress tracking
     bfsProgressEmitter.emit("progress", {
@@ -150,16 +153,15 @@ app.post("/api/bfs", async (req, res) => {
     // Process stdout to extract progress information
     childProcess.stdout.on("data", (data) => {
       console.log(`BFS stdout: ${data}`);
+      const dataStr = data.toString();
 
       // Try to parse progress information - looking for patterns like:
       // Progress: Depth 3, 456/1000 (45%)
-      const match = data
-        .toString()
-        .match(/Progress: Depth (\d+), (\d+)\/(\d+)/);
-      if (match) {
-        const depth = parseInt(match[1], 10);
-        const processed = parseInt(match[2], 10);
-        const total = parseInt(match[3], 10);
+      const progressMatch = dataStr.match(/Progress: Depth (\d+), (\d+)\/(\d+)/);
+      if (progressMatch) {
+        const depth = parseInt(progressMatch[1], 10);
+        const processed = parseInt(progressMatch[2], 10);
+        const total = parseInt(progressMatch[3], 10);
 
         // Update our progress tracking
         currentDepth = depth;
@@ -187,6 +189,32 @@ app.post("/api/bfs", async (req, res) => {
           percentage,
           executionTime,
           message: `Processing depth ${depth}`,
+          bestMix: currentBestMix, // Include current best mix if available
+        });
+      }
+
+      // Check for best mix found so far
+      // Format: Best mix so far: [mixArray] with profit X
+      const bestMixMatch = dataStr.match(/Best mix so far: \[(.*?)\] with profit (\d+\.?\d*), price (\d+\.?\d*), cost (\d+\.?\d*)/);
+      if (bestMixMatch) {
+        const mixArray = bestMixMatch[1].split(',').map(item => item.trim());
+        const profit = parseFloat(bestMixMatch[2]);
+        const sellPrice = parseFloat(bestMixMatch[3]);
+        const cost = parseFloat(bestMixMatch[4]);
+
+        // Update current best mix
+        currentBestMix = {
+          mix: mixArray,
+          profit,
+          sellPrice,
+          cost
+        };
+
+        // Emit best mix update
+        bfsProgressEmitter.emit("progress", {
+          type: "update",
+          bestMix: currentBestMix,
+          executionTime: Date.now() - startTime,
         });
       }
     });
@@ -239,6 +267,7 @@ app.post("/api/bfs", async (req, res) => {
           percentage: 100,
           executionTime: Date.now() - startTime,
           message: "Calculation complete",
+          bestMix: result, // Include final best mix
         });
 
         // Emit completion event

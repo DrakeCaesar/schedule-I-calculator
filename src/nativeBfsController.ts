@@ -91,6 +91,18 @@ function initializeNativeWebSocket() {
         };
 
         updateNativeProgressDisplay(progressData);
+        
+        // If progress update includes a best mix, update the display
+        if (data.bestMix && data.bestMix.profit > nativeBestMix.profit) {
+          nativeBestMix = data.bestMix;
+          updateNativeBestMixDisplay();
+        }
+      } else if (data.type === "update") {
+        // Handle best mix update
+        if (data.bestMix && data.bestMix.profit > nativeBestMix.profit) {
+          nativeBestMix = data.bestMix;
+          updateNativeBestMixDisplay();
+        }
       } else if (data.type === "done") {
         // Handle completion
         nativeBfsRunning = false;

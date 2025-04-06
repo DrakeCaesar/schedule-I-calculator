@@ -50,4 +50,11 @@ void bfsThreadWorker(
 #ifdef __EMSCRIPTEN__
 // JavaScript-compatible progress reporting function (only for WebAssembly)
 void reportProgressToJS(int depth, int processed, int total);
+
+// JavaScript-compatible best mix reporting function (only for WebAssembly)
+void reportBestMixFoundToJS(const MixState &bestMix, 
+                           const std::vector<Substance> &substances,
+                           double profit, 
+                           double sellPrice, 
+                           double cost);
 #endif
