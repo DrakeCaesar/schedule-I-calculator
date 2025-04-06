@@ -33,8 +33,8 @@ jobs:
         uses: mymindstorm/setup-emsdk@v14
         with:
           version: "3.1.55"
-          actions-cache-folder: 'emsdk-cache'
-      
+          actions-cache-folder: "emsdk-cache"
+
       - name: Set environment variables
         run: |
           echo "EMSDK=$EMSDK" >> $GITHUB_ENV
@@ -42,35 +42,16 @@ jobs:
           echo "CI=true" >> $GITHUB_ENV
           emcc --version
 
-      - name: Create vcpkg.json if not exists
-        run: |
-          if [ ! -f "vcpkg.json" ]; then
-            echo "Creating vcpkg.json manifest file"
-            cat > vcpkg.json << EOF
-          {
-            "name": "schedule-i-calculator",
-            "version": "0.1.0",
-            "dependencies": [
-              "nlohmann-json",
-              "rapidjson"
-            ]
-          }
-          EOF
-          else
-            echo "vcpkg.json already exists"
-            cat vcpkg.json
-          fi
-
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          # Use specific vcpkg Git commit that supports Emscripten
-          vcpkgGitCommitId: '856505bb767458c99d8e3c3ed441f59a058d3687'
+          # Use specific vcpkg Git commit that matches our baseline
+          vcpkgGitCommitId: "856505bb767458c99d8e3c3ed441f59a058d3687"
           # Let vcpkg search for manifest files
-          vcpkgJsonGlob: '**/vcpkg.json'
+          vcpkgJsonGlob: "**/vcpkg.json"
           # Don't run vcpkg install here, we'll do it manually
           runVcpkgInstall: false
-          
+
       - name: Create wasm32-emscripten triplet
         run: |
           mkdir -p $VCPKG_ROOT/triplets/community
@@ -85,17 +66,23 @@ jobs:
           endif()
 
           set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake")
-          
+
           # Set Emscripten-specific flags
           set(VCPKG_C_FLAGS "-sUSE_PTHREADS=0")
           set(VCPKG_CXX_FLAGS "-sUSE_PTHREADS=0")
           EOF
 
-      - name: Install vcpkg packages manually
+      - name: Install vcpkg packages in manifest mode
         run: |
-          echo "Installing vcpkg dependencies manually for wasm32-emscripten..."
-          $VCPKG_ROOT/vcpkg install nlohmann-json:wasm32-emscripten rapidjson:wasm32-emscripten
-          
+          echo "Installing vcpkg dependencies in manifest mode for wasm32-emscripten..."
+          cat vcpkg.json
+          # Set the environment variables for vcpkg in manifest mode
+          export VCPKG_DEFAULT_TRIPLET=wasm32-emscripten
+          export VCPKG_DEFAULT_HOST_TRIPLET=x64-linux
+
+          # Run vcpkg install without package arguments (manifest mode)
+          $VCPKG_ROOT/vcpkg install --triplet=wasm32-emscripten
+
           # List installed packages for debugging
           echo "Installed packages:"
           find $VCPKG_ROOT/installed/wasm32-emscripten -type d -maxdepth 1
@@ -104,28 +91,21 @@ jobs:
         run: |
           echo "Building WebAssembly components..."
           chmod +x ./build.sh
-          
+
           if [ -f "env_check.sh" ]; then
             chmod +x ./env_check.sh
             # Skip sourcing local Emscripten env in CI
             sed -i 's|source $EMSDK_PATH/emsdk_env.sh|echo "Using GitHub Actions Emscripten setup"|g' env_check.sh || echo "No need to patch env_check.sh"
           fi
-          
+
           # Add vcpkg include paths to build script
           export EMCC_CFLAGS="-I$VCPKG_ROOT/installed/wasm32-emscripten/include"
           echo "VCPKG_ROOT is set to: $VCPKG_ROOT"
           echo "EMCC_CFLAGS is set to: $EMCC_CFLAGS"
           ls -la $VCPKG_ROOT/installed/wasm32-emscripten/include || echo "Include directory not found"
-          
-          # Modify build.sh to include in-place patch for newer Emscripten versions
-          if [ -f "build.sh" ]; then
-            cat build.sh
-            # Run the build script
-            ./build.sh
-          else
-            echo "build.sh not found"
-            exit 1
-          fi
+
+          # Run the build script
+          ./build.sh
 
       - name: List WebAssembly output files
         run: |
