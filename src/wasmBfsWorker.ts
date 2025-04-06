@@ -1,7 +1,6 @@
 // WebAssembly BFS Worker
 // This worker runs the WASM BFS implementation to avoid blocking the UI thread
 
-import { MAX_RECIPE_DEPTH } from "./bfs";
 import { effects } from "./substances";
 import {
   loadWasmModule,
@@ -77,7 +76,7 @@ self.onmessage = async (event: MessageEvent) => {
     totalTrackedCombinations = 0;
 
     const product = data.product;
-    const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
+    const maxDepth = data.maxDepth || 5; // Default to 5 if not provided
 
     try {
       // Load the WebAssembly module
@@ -159,7 +158,8 @@ self.onmessage = async (event: MessageEvent) => {
       };
 
       // Get the total combinations value, using our tracked value if available
-      let finalTotalCombinations = typedResult.totalCombinations || totalTrackedCombinations || 100;
+      let finalTotalCombinations =
+        typedResult.totalCombinations || totalTrackedCombinations || 100;
       let finalProcessedCombinations = finalTotalCombinations; // At completion, processed equals total
 
       // Always send a final 100% progress update, regardless of what the C++ code reported
@@ -171,7 +171,7 @@ self.onmessage = async (event: MessageEvent) => {
         progress: 100, // Explicit progress percentage
         executionTime: Date.now() - startTime,
         workerId,
-        isFinal: true // Signal that this is the final progress update
+        isFinal: true, // Signal that this is the final progress update
       });
 
       // Send the best mix result
@@ -209,12 +209,12 @@ self.onmessage = async (event: MessageEvent) => {
 function simulateProgress() {
   let progress = 0;
   let estimatedTotal = 100;
-  
+
   const progressInterval = setInterval(() => {
     if (isPaused) return;
 
     progress = Math.min(progress + 1, 95);
-    
+
     self.postMessage({
       type: "progress",
       progress,

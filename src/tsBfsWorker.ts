@@ -1,4 +1,3 @@
-import { MAX_RECIPE_DEPTH } from "./bfs";
 import {
   applySubstanceRules,
   calculateFinalCost,
@@ -46,7 +45,7 @@ self.onmessage = (event: MessageEvent) => {
     startTime = Date.now();
 
     // Get the max depth from the passed data
-    const maxDepth = data.maxDepth || MAX_RECIPE_DEPTH;
+    const maxDepth = data.maxDepth || 5; // Default to 5 if not provided
 
     // Calculate max combinations for this worker
     // Starting with a specific substance, so our combinations are reduced

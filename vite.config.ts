@@ -18,6 +18,9 @@ export default defineConfig({
       },
     },
   },
+  worker: {
+    format: "es", // Use ES modules format for workers instead of 'iife'
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
