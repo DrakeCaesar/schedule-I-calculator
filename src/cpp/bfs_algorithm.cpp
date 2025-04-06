@@ -87,13 +87,13 @@ void recursiveBFS(
     // Report progress periodically
     if (progressCallback && batchSize >= reportInterval)
     {
-      #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
       // In native multithreaded version, use atomic counter
       progressCallback(currentDepth, totalProcessedCombinations.load(), totalCombinations);
-      #else
+#else
       // In Emscripten version, use regular counter
       progressCallback(currentDepth, processedCombinations, totalCombinations);
-      #endif
+#endif
       batchSize = 0;
     }
   }
@@ -101,11 +101,11 @@ void recursiveBFS(
   // Report progress for this depth
   if (progressCallback && batchSize > 0)
   {
-    #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
     progressCallback(currentDepth, totalProcessedCombinations.load(), totalCombinations);
-    #else
+#else
     progressCallback(currentDepth, processedCombinations, totalCombinations);
-    #endif
+#endif
   }
 
   // If we have mixes for the next depth and haven't reached max depth,
@@ -347,7 +347,7 @@ JsBestMixResult findBestMix(
 
   // Create a set of all effect names for efficiency
   std::unordered_map<std::string, bool> effectsSet;
-  effectsSet.reserve(effectMultipliers.size() * 2); 
+  effectsSet.reserve(effectMultipliers.size() * 2);
   for (const auto &pair : effectMultipliers)
   {
     effectsSet[pair.first] = true;
