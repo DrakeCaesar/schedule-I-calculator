@@ -2,10 +2,16 @@
 // This server exposes an API endpoint that runs the native C++ BFS algorithm
 
 import { exec } from "child_process";
+import { EventEmitter } from "events";
 import express from "express";
 import fs from "fs";
+import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { WebSocketServer } from "ws";
+
+// Create a global event emitter for BFS progress updates
+const bfsProgressEmitter = new EventEmitter();
 
 // Get directory name in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +19,34 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = 3000;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocketServer({ server });
+
+// Handle WebSocket connections
+wss.on("connection", (ws) => {
+  console.log("WebSocket client connected");
+
+  // Setup listener for BFS progress
+  const progressListener = (progress) => {
+    if (ws.readyState === 1) {
+      // Check if connection is open
+      ws.send(JSON.stringify(progress));
+    }
+  };
+
+  // Register listener
+  bfsProgressEmitter.on("progress", progressListener);
+
+  // Clean up when client disconnects
+  ws.on("close", () => {
+    console.log("WebSocket client disconnected");
+    bfsProgressEmitter.off("progress", progressListener);
+  });
+});
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -94,17 +128,94 @@ app.post("/api/bfs", async (req, res) => {
 
     console.log(`Executing command: ${command}`);
 
-    // Execute the native BFS calculator
-    exec(command, (error, stdout, stderr) => {
-      // Log any console output from the executable
-      if (stdout) console.log("BFS stdout:", stdout);
-      if (stderr) console.log("BFS stderr:", stderr);
+    // Track total combinations for better progress reporting
+    let totalCombinations = 0;
+    let processedCombinations = 0;
+    let currentDepth = 1;
+    let startTime = Date.now();
 
-      if (error) {
-        console.error(`Execution error: ${error}`);
+    // Initialize progress tracking
+    bfsProgressEmitter.emit("progress", {
+      type: "progress",
+      processed: 0,
+      total: 100, // Initial estimate
+      depth: 1,
+      message: "Starting calculation...",
+      executionTime: 0,
+    });
+
+    // Execute the native BFS calculator
+    const childProcess = exec(command);
+
+    // Process stdout to extract progress information
+    childProcess.stdout.on("data", (data) => {
+      console.log(`BFS stdout: ${data}`);
+
+      // Try to parse progress information - looking for patterns like:
+      // Progress: Depth 3, 456/1000 (45%)
+      const match = data
+        .toString()
+        .match(/Progress: Depth (\d+), (\d+)\/(\d+)/);
+      if (match) {
+        const depth = parseInt(match[1], 10);
+        const processed = parseInt(match[2], 10);
+        const total = parseInt(match[3], 10);
+
+        // Update our progress tracking
+        currentDepth = depth;
+        processedCombinations = processed;
+
+        // If this is the first time we see this depth, update total
+        if (depth > 1 && totalCombinations === 0) {
+          totalCombinations = total;
+        }
+
+        // Calculate overall progress percentage (0-100)
+        const percentage = Math.min(100, Math.round((processed / total) * 100));
+
+        // Calculate execution time
+        const executionTime = Date.now() - startTime;
+
+        // Emit progress event
+        bfsProgressEmitter.emit("progress", {
+          type: "progress",
+          depth,
+          processed,
+          total,
+          totalProcessed: processedCombinations,
+          grandTotal: totalCombinations,
+          percentage,
+          executionTime,
+          message: `Processing depth ${depth}`,
+        });
+      }
+    });
+
+    // Process stderr
+    childProcess.stderr.on("data", (data) => {
+      console.log(`BFS stderr: ${data}`);
+
+      // Emit error information
+      bfsProgressEmitter.emit("progress", {
+        type: "error",
+        message: data.toString(),
+      });
+    });
+
+    // Handle completion or error
+    childProcess.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(`Execution error with code: ${code}`);
+
+        // Emit error event
+        bfsProgressEmitter.emit("progress", {
+          type: "error",
+          message: `Process exited with code ${code}`,
+        });
+
         return res.status(500).json({
           success: false,
-          error: `Error executing BFS calculator: ${error.message}`,
+          error: `Error executing BFS calculator, exit code: ${code}`,
         });
       }
 
@@ -116,6 +227,25 @@ app.post("/api/bfs", async (req, res) => {
 
         const resultData = fs.readFileSync(outputJsonPath, "utf8");
         const result = JSON.parse(resultData);
+
+        // Emit a final 100% progress update
+        bfsProgressEmitter.emit("progress", {
+          type: "progress",
+          depth: currentDepth,
+          processed: totalCombinations || 100,
+          total: totalCombinations || 100,
+          totalProcessed: totalCombinations || 100,
+          grandTotal: totalCombinations || 100,
+          percentage: 100,
+          executionTime: Date.now() - startTime,
+          message: "Calculation complete",
+        });
+
+        // Emit completion event
+        bfsProgressEmitter.emit("progress", {
+          type: "done",
+          result,
+        });
 
         // Send the result back to the client
         res.json({
@@ -131,6 +261,13 @@ app.post("/api/bfs", async (req, res) => {
         // fs.unlinkSync(outputJsonPath);
       } catch (parseError) {
         console.error(`Error parsing result: ${parseError}`);
+
+        // Emit error event
+        bfsProgressEmitter.emit("progress", {
+          type: "error",
+          message: parseError.message,
+        });
+
         res.status(500).json({
           success: false,
           error: `Error parsing result: ${parseError.message}`,
@@ -139,6 +276,13 @@ app.post("/api/bfs", async (req, res) => {
     });
   } catch (error) {
     console.error(`Server error: ${error}`);
+
+    // Emit error event
+    bfsProgressEmitter.emit("progress", {
+      type: "error",
+      message: error.message,
+    });
+
     res.status(500).json({
       success: false,
       error: `Server error: ${error.message}`,
@@ -147,6 +291,6 @@ app.post("/api/bfs", async (req, res) => {
 });
 
 // Start the server
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

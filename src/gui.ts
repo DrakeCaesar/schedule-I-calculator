@@ -21,6 +21,15 @@ import {
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
 
+// WebSocket connection for native BFS progress updates
+let nativeWebSocket: WebSocket | null = null;
+let isNativeBfsRunning = false;
+// Native BFS progress state
+let nativeTotalProcessed = 0;
+let nativeGrandTotal = 1; // Start with 1 to avoid division by zero
+let nativeLastUpdate = 0;
+const NATIVE_UPDATE_INTERVAL = 250; // ms
+
 // --- UI Update Functions ---
 
 // Update the product display area
@@ -262,7 +271,7 @@ export function createNativeProgressDisplay() {
     }
   }
 
-  updateNativeProgressDisplay(0, "Ready");
+  updateNativeProgressDisplay(0, 0, 0, 0, "Ready");
 }
 
 // Function to create Native result display
@@ -297,35 +306,66 @@ export function createNativeResultDisplay() {
 }
 
 // Updated helper function to update the progress display for native BFS
-function updateNativeProgressDisplay(progress: number, message: string) {
+// This matches the format used in the TypeScript and WASM implementations
+function updateNativeProgressDisplay(
+  processed: number,
+  total: number,
+  depth: number,
+  executionTime: number,
+  message: string
+) {
   const progressDisplay = document.getElementById("nativeProgressDisplay");
   if (!progressDisplay) return;
 
-  // Calculate current execution time
+  // Calculate current time
   const now = Date.now();
-  const executionTime = nativeStartTime > 0 ? now - nativeStartTime : 0;
+
+  // Only update every NATIVE_UPDATE_INTERVAL ms unless it's a special update
+  if (
+    message !== "Ready" &&
+    message !== "Calculation complete" &&
+    message !== "Error" &&
+    now - nativeLastUpdate < NATIVE_UPDATE_INTERVAL
+  ) {
+    return;
+  }
+
+  nativeLastUpdate = now;
+
+  // Store values for our global state
+  nativeTotalProcessed = processed;
+  if (total > 0) {
+    nativeGrandTotal = total;
+  }
+
+  // Calculate progress percentage
+  const percentage = Math.min(
+    100,
+    Math.round((processed / Math.max(1, total)) * 100)
+  );
 
   // Calculate estimated remaining time based on progress
   let remainingTime = 0;
-  if (progress > 0 && progress < 100) {
-    remainingTime = Math.round((executionTime / progress) * (100 - progress));
+  if (percentage > 0 && percentage < 100) {
+    remainingTime = Math.round(
+      (executionTime / percentage) * (100 - percentage)
+    );
   }
 
   // Calculate estimated finish time
   const estimatedFinishTime = now + remainingTime;
 
-  // Format progress percentage
-  const formattedProgress = Math.max(0, Math.min(100, progress));
-
   // Update the DOM with progress information to match TypeScript BFS format
   progressDisplay.innerHTML = `
     <div class="overall-progress">
       <h4>Native BFS Progress</h4>
-      <div>Status: ${message}</div>
+      <div>Total processed: ${processed.toLocaleString()} / ${total.toLocaleString()}</div>
       <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${formattedProgress}%"></div>
-        <span class="progress-text" data-progress="${formattedProgress}%" style="--progress-percent: ${formattedProgress}%"></span>
+        <div class="progress-bar" style="width: ${percentage}%"></div>
+        <span class="progress-text" data-progress="${percentage}%" style="--progress-percent: ${percentage}%"></span>
       </div>
+      <div>Status: ${message}</div>
+      <div>Current depth: ${depth}</div>
       <div>Execution time: ${formatTime(executionTime)}</div>
       <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
       <div>Estimated finish time: ${formatClockTime(estimatedFinishTime)}</div>
@@ -335,6 +375,100 @@ function updateNativeProgressDisplay(progress: number, message: string) {
 
 // Add a variable to track native BFS start time
 let nativeStartTime = 0;
+
+// Initialize WebSocket connection for native BFS
+function initializeNativeWebSocket() {
+  if (nativeWebSocket) {
+    // Close existing connection if there is one
+    nativeWebSocket.close();
+  }
+
+  // Create new WebSocket connection
+  nativeWebSocket = new WebSocket("ws://localhost:3000");
+
+  nativeWebSocket.onopen = () => {
+    console.log("Native BFS WebSocket connection established");
+  };
+
+  nativeWebSocket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "progress") {
+        // Handle progress update
+        const executionTime =
+          data.executionTime || Date.now() - nativeStartTime;
+
+        updateNativeProgressDisplay(
+          data.totalProcessed || data.processed || 0,
+          data.grandTotal || data.total || 100,
+          data.depth || 1,
+          executionTime,
+          data.message || `Processing depth ${data.depth || 1}`
+        );
+      } else if (data.type === "done") {
+        // Handle completion
+        isNativeBfsRunning = false;
+
+        // Update progress to 100%
+        updateNativeProgressDisplay(
+          nativeGrandTotal,
+          nativeGrandTotal,
+          data.depth || 0,
+          Date.now() - nativeStartTime,
+          "Calculation complete"
+        );
+
+        // Update the result display
+        if (data.result) {
+          updateNativeBestMixDisplay({
+            mix: data.result.mixArray || [],
+            profit: data.result.profit || 0,
+            sellPrice: data.result.sellPrice || 0,
+            cost: data.result.cost || 0,
+          });
+        }
+
+        // Update button state
+        const nativeBfsButton = document.getElementById("nativeBfsButton");
+        if (nativeBfsButton) {
+          nativeBfsButton.textContent = "Start Native BFS";
+        }
+      } else if (data.type === "error") {
+        // Handle error
+        console.error("Native BFS error:", data.message);
+
+        updateNativeProgressDisplay(
+          nativeTotalProcessed,
+          nativeGrandTotal,
+          0,
+          Date.now() - nativeStartTime,
+          `Error: ${data.message}`
+        );
+
+        isNativeBfsRunning = false;
+
+        // Update button state
+        const nativeBfsButton = document.getElementById("nativeBfsButton");
+        if (nativeBfsButton) {
+          nativeBfsButton.textContent = "Start Native BFS";
+        }
+      }
+    } catch (error) {
+      console.error("Error processing WebSocket message:", error);
+    }
+  };
+
+  nativeWebSocket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    isNativeBfsRunning = false;
+  };
+
+  nativeWebSocket.onclose = () => {
+    console.log("Native BFS WebSocket connection closed");
+    nativeWebSocket = null;
+  };
+}
 
 // Helper function to update a best mix display with consistent formatting
 function updateNativeBestMixDisplay(bestMix: {
@@ -376,34 +510,40 @@ export function toggleNative() {
   if (!nativeBfsButton) return;
 
   // Check if calculation is already running
-  const progressDisplay = document.getElementById("nativeProgressDisplay");
-  const isRunning = progressDisplay?.classList.contains("running");
-
-  if (isRunning) {
+  if (isNativeBfsRunning) {
     // If currently running, abort and reset
-    if (progressDisplay) {
-      progressDisplay.classList.remove("running");
-      updateNativeProgressDisplay(0, "Calculation canceled");
-    }
+    isNativeBfsRunning = false;
+
+    // Update progress display
+    updateNativeProgressDisplay(
+      nativeTotalProcessed,
+      nativeGrandTotal,
+      0,
+      Date.now() - nativeStartTime,
+      "Calculation canceled"
+    );
+
     nativeBfsButton.textContent = "Start Native BFS";
     return;
   }
 
-  // Create only the Native progress display
+  // Create displays
   createNativeProgressDisplay();
-  // Create only the Native result display
   createNativeResultDisplay();
 
   // Set start time for execution time calculation
   nativeStartTime = Date.now();
+  isNativeBfsRunning = true;
+  nativeLastUpdate = 0;
+
+  // Initialize WebSocket connection for progress updates
+  initializeNativeWebSocket();
 
   // Start the BFS calculation
-  if (progressDisplay) {
-    progressDisplay.classList.add("running");
-  }
   nativeBfsButton.textContent = "Stop Native BFS";
 
-  updateNativeProgressDisplay(0, "Starting native calculation...");
+  // Initial progress update
+  updateNativeProgressDisplay(0, 100, 1, 0, "Starting native calculation...");
 
   // Prepare data for the server
   const maxDepthEl = document.getElementById(
@@ -449,51 +589,60 @@ export function toggleNative() {
     })
     .then((data) => {
       // Process successful result
-      const executionTime = Date.now() - nativeStartTime;
-      const formattedTime = (executionTime / 1000).toFixed(2);
-
       if (!data.success) {
         throw new Error(data.error || "Unknown server error");
       }
 
-      // Display 100% progress
-      updateNativeProgressDisplay(
-        100,
-        `Calculation complete in ${formattedTime}s`
-      );
+      // The WebSocket will handle progress updates and final results
+      // This is just a fallback in case WebSocket fails
+      if (!nativeWebSocket || nativeWebSocket.readyState !== WebSocket.OPEN) {
+        // Extract results and update the UI
+        const result = data.result;
+        if (!result) {
+          throw new Error("No result data received");
+        }
 
-      // Extract results and update the UI
-      const result = data.result;
-      if (!result) {
-        throw new Error("No result data received");
-      }
+        // Convert result format to match our UI expectations
+        const bestMix = {
+          mix: result.mixArray || [],
+          profit: result.profit || 0,
+          sellPrice: result.sellPrice || 0,
+          cost: result.cost || 0,
+        };
 
-      // Convert result format to match our UI expectations
-      const bestMix = {
-        mix: result.mixArray || [],
-        profit: result.profit || 0,
-        sellPrice: result.sellPrice || 0,
-        cost: result.cost || 0,
-      };
+        // Update the display
+        updateNativeBestMixDisplay(bestMix);
 
-      // Update the display
-      updateNativeBestMixDisplay(bestMix);
+        // Final progress update
+        const executionTime = Date.now() - nativeStartTime;
+        updateNativeProgressDisplay(
+          100,
+          100,
+          0,
+          executionTime,
+          `Calculation complete in ${(executionTime / 1000).toFixed(2)}s`
+        );
 
-      // Reset the button after a successful computation
-      nativeBfsButton.textContent = "Start Native BFS";
-      if (progressDisplay) {
-        progressDisplay.classList.remove("running");
+        // Reset the button after a successful computation
+        nativeBfsButton.textContent = "Start Native BFS";
+        isNativeBfsRunning = false;
       }
     })
     .catch((error) => {
       // Handle errors
       console.error("Native BFS error:", error);
-      updateNativeProgressDisplay(-1, `Error: ${error.message}`);
+
+      // Update progress with error
+      updateNativeProgressDisplay(
+        nativeTotalProcessed,
+        nativeGrandTotal,
+        0,
+        Date.now() - nativeStartTime,
+        `Error: ${error.message}`
+      );
 
       // Reset the button after an error
       nativeBfsButton.textContent = "Start Native BFS";
-      if (progressDisplay) {
-        progressDisplay.classList.remove("running");
-      }
+      isNativeBfsRunning = false;
     });
 }
