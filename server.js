@@ -109,7 +109,7 @@ app.post("/api/mix", async (req, res) => {
     // Add maxDepth to product object so it's available in the JSON
     const productWithDepth = {
       ...req.body.product,
-      maxDepth: maxDepth || 5
+      maxDepth: maxDepth || 5,
     };
 
     fs.writeFileSync(

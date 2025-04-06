@@ -28,10 +28,11 @@ std::mutex g_consoleMutex;
 void reportProgressToConsole(int depth, int processed, int total)
 {
     // Only report progress every 10,000 combinations instead of every time
-    if (processed % 10000 != 0 && processed != total) {
+    if (processed % 10000 != 0 && processed != total)
+    {
         return;
     }
-    
+
     // Lock console output to avoid garbled text from multiple threads
     std::lock_guard<std::mutex> lock(g_consoleMutex);
     std::cout << "Progress: Depth " << depth << ", "
@@ -416,8 +417,10 @@ int main(int argc, char *argv[])
 
     // Check if being called from server by looking for explicit algorithm flag
     bool calledFromServer = false;
-    for (int i = 1; i < argc; i++) {
-        if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--algorithm") {
+    for (int i = 1; i < argc; i++)
+    {
+        if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--algorithm")
+        {
             calledFromServer = true;
             break;
         }
@@ -425,7 +428,8 @@ int main(int argc, char *argv[])
 
     // If not called from server (no -a flag), default to DFS
     // If called from server, start with "bfs" and let -a flag override it if specified
-    if (calledFromServer) {
+    if (calledFromServer)
+    {
         algorithm = "bfs"; // Default for server calls
     }
 
@@ -496,14 +500,20 @@ int main(int argc, char *argv[])
     int maxDepth;
 
     // Try to get max depth from command line first
-    if (jsonArgs.size() > 4) {
-        try {
+    if (jsonArgs.size() > 4)
+    {
+        try
+        {
             maxDepth = std::stoi(jsonArgs[4]);
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception &e)
+        {
             std::cerr << "Error parsing max depth from command line: " << e.what() << std::endl;
             maxDepth = 5; // Default to 5 if parsing fails
         }
-    } else {
+    }
+    else
+    {
         maxDepth = 5; // Default if not provided
     }
 
@@ -515,25 +525,31 @@ int main(int argc, char *argv[])
     substanceRulesJson = readFileContents(substanceRulesJsonPath);
 
     // Check if maxDepth is included in the product JSON
-    try {
+    try
+    {
         // Quick and simple check for maxDepth in product JSON
         // This is not a full JSON parser but should work for our needs
         size_t maxDepthPos = productJson.find("\"maxDepth\":");
-        if (maxDepthPos != std::string::npos) {
+        if (maxDepthPos != std::string::npos)
+        {
             // Extract the value after "maxDepth":
             size_t valueStart = productJson.find_first_of("0123456789", maxDepthPos);
             size_t valueEnd = productJson.find_first_not_of("0123456789", valueStart);
-            if (valueStart != std::string::npos && valueEnd != std::string::npos) {
+            if (valueStart != std::string::npos && valueEnd != std::string::npos)
+            {
                 std::string depthStr = productJson.substr(valueStart, valueEnd - valueStart);
                 int jsonMaxDepth = std::stoi(depthStr);
                 // Only override if we found a valid value
-                if (jsonMaxDepth > 0) {
+                if (jsonMaxDepth > 0)
+                {
                     maxDepth = jsonMaxDepth;
                     std::cout << "Using maxDepth " << maxDepth << " from product JSON" << std::endl;
                 }
             }
         }
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << "Error extracting maxDepth from product JSON: " << e.what() << std::endl;
         // Continue with the command line value
     }
