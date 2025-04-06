@@ -11,6 +11,7 @@
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <iostream> // Add iostream for std::cout and std::endl
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -275,6 +276,19 @@ void bfsThreadWorker(
     globalBestProfit = threadBestProfit;
     globalBestSellPrice = threadBestSellPrice;
     globalBestCost = threadBestCost;
+
+    // Print best mix update to stdout when a thread finds a better mix
+    std::vector<std::string> mixNames = globalBestMix.toSubstanceNames(substances);
+    std::cout << "Best mix so far: [";
+    for (size_t i = 0; i < mixNames.size(); ++i)
+    {
+      if (i > 0)
+        std::cout << ", ";
+      std::cout << mixNames[i];
+    }
+    std::cout << "] with profit " << globalBestProfit
+              << ", price " << globalBestSellPrice
+              << ", cost " << globalBestCost << std::endl;
   }
 }
 #endif
