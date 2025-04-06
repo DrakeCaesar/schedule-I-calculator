@@ -17,6 +17,7 @@ import {
   prepareSubstanceRulesForWasm,
   prepareSubstancesForWasm,
 } from "./wasmLoader";
+import { calculateEffects } from "./tsBfsController";
 
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
@@ -236,31 +237,131 @@ export function toggleWASM() {
   toggleWasmBFS(currentProduct);
 }
 
+// Function to create Native BFS progress display
+export function createNativeProgressDisplay() {
+  let nativeProgressDisplay = document.getElementById("nativeProgressDisplay");
+  if (!nativeProgressDisplay) {
+    nativeProgressDisplay = document.createElement("div");
+    nativeProgressDisplay.id = "nativeProgressDisplay";
+    nativeProgressDisplay.classList.add("progress-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(nativeProgressDisplay);
+    } else {
+      document.body.appendChild(nativeProgressDisplay); // Fallback
+    }
+  }
+
+  updateNativeProgressDisplay(0, "Ready");
+}
+
+// Function to create Native result display
+export function createNativeResultDisplay() {
+  let nativeBestMixDisplay = document.getElementById("nativeBestMix");
+  if (!nativeBestMixDisplay) {
+    nativeBestMixDisplay = document.createElement("div");
+    nativeBestMixDisplay.id = "nativeBestMix";
+    nativeBestMixDisplay.classList.add("best-mix-display");
+
+    const bfsSection = document.getElementById("bfsSection");
+    if (bfsSection) {
+      bfsSection.appendChild(nativeBestMixDisplay);
+    } else {
+      document.body.appendChild(nativeBestMixDisplay); // Fallback
+    }
+  }
+}
+
+// Updated helper function to update the progress display for native BFS
+function updateNativeProgressDisplay(progress: number, message: string) {
+  const progressDisplay = document.getElementById("nativeProgressDisplay");
+  if (!progressDisplay) return;
+
+  // Calculate formatted execution time if provided
+  const now = Date.now();
+
+  // Schedule the DOM update
+  const formattedProgress = Math.max(0, Math.min(100, progress));
+  
+  // Update the DOM with progress information
+  progressDisplay.innerHTML = `
+    <div class="overall-progress">
+      <h4>Native BFS Progress</h4>
+      <div class="progress-bar-container">
+        <div class="progress-bar" style="width: ${formattedProgress}%"></div>
+        <span class="progress-text" data-progress="${formattedProgress}%" style="--progress-percent: ${formattedProgress}%"></span>
+      </div>
+      <div>${message}</div>
+    </div>
+  `;
+}
+
+// Helper function to update a best mix display with consistent formatting
+function updateNativeBestMixDisplay(bestMix: { 
+  mix: string[]; 
+  profit: number; 
+  sellPrice: number; 
+  cost: number 
+}) {
+  const bestMixDisplay = document.getElementById("nativeBestMix");
+  if (!bestMixDisplay || !currentProduct) return;
+
+  // Calculate effects for display
+  const effectsList = bestMix.mix && bestMix.mix.length > 0 
+    ? calculateEffects(bestMix.mix, currentProduct.initialEffect) 
+    : [currentProduct.initialEffect];
+  
+  const effectsHTML = effectsList
+    .map((effect) => createEffectSpan(effect))
+    .join(" ");
+
+  // Schedule the DOM update
+  bestMixDisplay.innerHTML = `
+    <h3>Native BFS Result for ${currentProduct.name}</h3>
+    <p>Mix: ${bestMix.mix.join(", ")}</p>
+    <p>Effects: ${effectsHTML}</p>
+    <p>Sell Price: $${bestMix.sellPrice.toFixed(2)}</p>
+    <p>Cost: $${bestMix.cost.toFixed(2)}</p>
+    <p>Profit: $${bestMix.profit.toFixed(2)}</p>
+  `;
+  
+  // Make the display visible
+  bestMixDisplay.style.display = "block";
+}
+
 // Function to toggle native BFS processing via Node.js server
 export function toggleNative() {
+  const nativeBfsButton = document.getElementById("nativeBfsButton");
+  if (!nativeBfsButton) return;
+
+  // Check if calculation is already running
   const progressDisplay = document.getElementById("nativeProgressDisplay");
-  const toggleButton = document.getElementById("nativeBfsButton");
+  const isRunning = progressDisplay?.classList.contains("running");
 
-  if (!progressDisplay || !toggleButton) {
-    console.error("Required DOM elements not found");
-    return;
-  }
-
-  if (progressDisplay.classList.contains("running")) {
+  if (isRunning) {
     // If currently running, abort and reset
-    progressDisplay.classList.remove("running");
-    progressDisplay.innerHTML =
-      '<div class="progress-indicator"></div><div class="progress-text">Ready</div>';
-    toggleButton.textContent = "Run Native BFS";
+    if (progressDisplay) {
+      progressDisplay.classList.remove("running");
+      updateNativeProgressDisplay(0, "Calculation canceled");
+    }
+    nativeBfsButton.textContent = "Start Native BFS";
     return;
   }
+
+  // Create only the Native progress display
+  createNativeProgressDisplay();
+  // Create only the Native result display
+  createNativeResultDisplay();
 
   // Start the BFS calculation
-  progressDisplay.classList.add("running");
-  toggleButton.textContent = "Cancel Native BFS";
+  if (progressDisplay) {
+    progressDisplay.classList.add("running");
+  }
+  nativeBfsButton.textContent = "Stop Native BFS";
 
   const startTime = Date.now();
-  updateProgressDisplay(0, "Starting native calculation...");
+  updateNativeProgressDisplay(0, "Starting native calculation...");
 
   // Prepare data for the server
   const maxDepthEl = document.getElementById(
@@ -314,7 +415,7 @@ export function toggleNative() {
       }
 
       // Display 100% progress
-      updateProgressDisplay(100, `Calculation complete in ${formattedTime}s`);
+      updateNativeProgressDisplay(100, `Calculation complete in ${formattedTime}s`);
 
       // Extract results and update the UI
       const result = data.result;
@@ -331,102 +432,23 @@ export function toggleNative() {
       };
 
       // Update the display
-      updateBestMixDisplay("native", bestMix);
+      updateNativeBestMixDisplay(bestMix);
 
-      // Show the native best mix container if it's hidden
-      const nativeBestMixEl = document.getElementById("nativeBestMix");
-      if (nativeBestMixEl && nativeBestMixEl.style.display === "none") {
-        nativeBestMixEl.style.display = "block";
+      // Reset the button after a successful computation
+      nativeBfsButton.textContent = "Start Native BFS";
+      if (progressDisplay) {
+        progressDisplay.classList.remove("running");
       }
-
-      // Reset the button after a small delay
-      setTimeout(() => {
-        if (progressDisplay && toggleButton) {
-          progressDisplay.classList.remove("running");
-          toggleButton.textContent = "Run Native BFS";
-        }
-      }, 3000);
     })
     .catch((error) => {
       // Handle errors
       console.error("Native BFS error:", error);
-      updateProgressDisplay(-1, `Error: ${error.message}`);
+      updateNativeProgressDisplay(-1, `Error: ${error.message}`);
 
-      // Reset the button after a small delay
-      setTimeout(() => {
-        if (progressDisplay && toggleButton) {
-          progressDisplay.classList.remove("running");
-          toggleButton.textContent = "Run Native BFS";
-        }
-      }, 3000);
+      // Reset the button after an error
+      nativeBfsButton.textContent = "Start Native BFS";
+      if (progressDisplay) {
+        progressDisplay.classList.remove("running");
+      }
     });
-}
-
-// Helper function to update the progress display for native BFS
-function updateProgressDisplay(progress: number, message: string) {
-  const progressDisplay = document.getElementById("nativeProgressDisplay");
-  if (!progressDisplay) return;
-
-  const progressIndicator = progressDisplay.querySelector(
-    ".progress-indicator"
-  ) as HTMLElement;
-  const progressText = progressDisplay.querySelector(
-    ".progress-text"
-  ) as HTMLElement;
-
-  if (progressIndicator && progressText) {
-    // Handle error state
-    if (progress < 0) {
-      progressIndicator.style.width = "100%";
-      progressIndicator.style.backgroundColor = "#f44336"; // Red for error
-      progressText.textContent = message;
-      return;
-    }
-
-    // Normal progress update
-    progressIndicator.style.width = `${progress}%`;
-    progressText.textContent = message;
-
-    // Change color when complete
-    if (progress >= 100) {
-      progressIndicator.style.backgroundColor = "#4CAF50"; // Green for success
-    } else {
-      progressIndicator.style.backgroundColor = ""; // Default color
-    }
-  }
-}
-
-// Helper function to update a best mix display
-function updateBestMixDisplay(
-  source: string,
-  bestMix: { mix: string[]; profit: number; sellPrice: number; cost: number }
-) {
-  const displayId =
-    source === "native"
-      ? "nativeBestMix"
-      : source === "ts"
-      ? "tsBestMix"
-      : source === "wasm"
-      ? "wasmBestMix"
-      : "bestMix";
-
-  const display = document.getElementById(displayId);
-  if (!display) return;
-
-  let html = "<h3>Best Mix:</h3>";
-  html += `<p>Profit: $${bestMix.profit.toFixed(2)}</p>`;
-  html += `<p>Sell Price: $${bestMix.sellPrice.toFixed(2)}</p>`;
-  html += `<p>Cost: $${bestMix.cost.toFixed(2)}</p>`;
-
-  if (bestMix.mix && bestMix.mix.length) {
-    html += "<ol>";
-    bestMix.mix.forEach((substance) => {
-      html += `<li>${substance}</li>`;
-    });
-    html += "</ol>";
-  } else {
-    html += "<p>No substances in mix</p>";
-  }
-
-  display.innerHTML = html;
 }

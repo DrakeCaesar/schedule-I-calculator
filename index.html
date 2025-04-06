@@ -74,7 +74,7 @@
         <!-- Native BFS results will be displayed here -->
         <div
           id="nativeBestMix"
-          class="best-mix-container"
+          class="best-mix-display"
           style="display: none"
         >
           <h3>Native BFS Results</h3>
@@ -82,8 +82,13 @@
         </div>
 
         <div id="nativeProgressDisplay" class="progress-display">
-          <div class="progress-indicator"></div>
-          <div class="progress-text">Ready</div>
+          <div class="overall-progress">
+            <h4>Native BFS Progress</h4>
+            <div class="progress-bar-container">
+              <div class="progress-indicator"></div>
+              <div class="progress-text" data-progress="0%" style="--progress-percent: 0%">Ready</div>
+            </div>
+          </div>
         </div>
         <!-- Progress display will be inserted here by JavaScript -->
       </div>
