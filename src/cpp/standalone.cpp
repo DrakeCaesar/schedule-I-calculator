@@ -162,30 +162,14 @@ int main(int argc, char *argv[])
     std::string substanceRulesJsonPath = jsonArgs[3];
     int maxDepth;
 
-    try
-    {
-        maxDepth = std::stoi(jsonArgs[4]);
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error: Invalid max depth value: " << jsonArgs[4] << std::endl;
-        return 1;
-    }
+    maxDepth = std::stoi(jsonArgs[4]);
 
     // Read JSON content from files
     std::string productJson, substancesJson, effectMultipliersJson, substanceRulesJson;
-    try
-    {
-        productJson = readFileContents(productJsonPath);
-        substancesJson = readFileContents(substancesJsonPath);
-        effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
-        substanceRulesJson = readFileContents(substanceRulesJsonPath);
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error reading input files: " << e.what() << std::endl;
-        return 1;
-    }
+    productJson = readFileContents(productJsonPath);
+    substancesJson = readFileContents(substancesJsonPath);
+    effectMultipliersJson = readFileContents(effectMultipliersJsonPath);
+    substanceRulesJson = readFileContents(substanceRulesJsonPath);
 
     // Call the BFS algorithm
     JsBestMixResult result;
