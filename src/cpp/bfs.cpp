@@ -2,7 +2,6 @@
 #include <vector>
 #include <cmath>
 #include <memory>
-#include <rapidjson/document.h>
 
 #include "types.h"
 #include "effects.h"

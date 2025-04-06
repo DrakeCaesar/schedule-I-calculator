@@ -76,6 +76,7 @@ jobs:
         run: |
           echo "Installing vcpkg dependencies in manifest mode for wasm32-emscripten..."
           cat vcpkg.json
+
           # Set the environment variables for vcpkg in manifest mode
           export VCPKG_DEFAULT_TRIPLET=wasm32-emscripten
           export VCPKG_DEFAULT_HOST_TRIPLET=x64-linux
@@ -83,9 +84,20 @@ jobs:
           # Run vcpkg install without package arguments (manifest mode)
           $VCPKG_ROOT/vcpkg install --triplet=wasm32-emscripten
 
+          # Create symbolic links from the packages directory to installed directory
+          # This is needed because vcpkg sometimes uses different directory structures
+          mkdir -p $VCPKG_ROOT/installed
+          if [ ! -d "$VCPKG_ROOT/installed/wasm32-emscripten" ] && [ -d "$VCPKG_ROOT/packages" ]; then
+            ln -s $VCPKG_ROOT/packages/nlohmann-json_wasm32-emscripten $VCPKG_ROOT/installed/wasm32-emscripten
+            echo "Created symbolic link for installed packages"
+          fi
+
           # List installed packages for debugging
-          echo "Installed packages:"
-          find $VCPKG_ROOT/installed/wasm32-emscripten -type d -maxdepth 1
+          echo "Installed packages in packages directory:"
+          find $VCPKG_ROOT/packages -name "include" -type d | grep -i json
+
+          echo "Installed packages in installed directory:"
+          find $VCPKG_ROOT/installed -type d -maxdepth 2 || echo "No installed directory found"
 
       - name: Build WebAssembly
         run: |
@@ -98,11 +110,23 @@ jobs:
             sed -i 's|source $EMSDK_PATH/emsdk_env.sh|echo "Using GitHub Actions Emscripten setup"|g' env_check.sh || echo "No need to patch env_check.sh"
           fi
 
+          # Find nlohmann-json include directory
+          JSON_INCLUDE=$(find $VCPKG_ROOT/packages -path "*/include/nlohmann/json.hpp" -printf "%h/..\n" | head -n1)
+
+          if [ -z "$JSON_INCLUDE" ]; then
+            echo "WARNING: Couldn't find nlohmann/json.hpp in vcpkg packages"
+            # Look for it in alternative locations
+            JSON_INCLUDE=$(find $VCPKG_ROOT -path "*/include/nlohmann/json.hpp" -printf "%h/..\n" | head -n1)
+          fi
+
           # Add vcpkg include paths to build script
-          export EMCC_CFLAGS="-I$VCPKG_ROOT/installed/wasm32-emscripten/include"
-          echo "VCPKG_ROOT is set to: $VCPKG_ROOT"
-          echo "EMCC_CFLAGS is set to: $EMCC_CFLAGS"
-          ls -la $VCPKG_ROOT/installed/wasm32-emscripten/include || echo "Include directory not found"
+          if [ -n "$JSON_INCLUDE" ]; then
+            echo "Found JSON include directory at: $JSON_INCLUDE"
+            export EMCC_CFLAGS="-I$JSON_INCLUDE"
+            echo "EMCC_CFLAGS is set to: $EMCC_CFLAGS"
+          else
+            echo "WARNING: Could not find nlohmann/json.hpp"
+          fi
 
           # Run the build script
           ./build.sh
