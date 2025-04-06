@@ -33,12 +33,10 @@ jobs:
         uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
-          actions-cache-folder: 'emsdk-cache'
+          actions-cache-folder: "emsdk-cache"
 
       - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '2023.11.20'
+        uses: lukka/run-vcpkg@v11.5
 
       - name: Install vcpkg dependencies
         run: |
