@@ -94,56 +94,74 @@ std::vector<std::string> calculateEffectsForMix(
     const std::string &initialEffect,
     const std::unordered_map<std::string, bool> &effectsSet)
 {
-  // Pre-allocate with a reasonable initial capacity
-  std::vector<std::string> effectsList;
-  effectsList.reserve(10); // Start with space for ~10 effects
-  effectsList.push_back(initialEffect);
-
 // Thread-local storage for caching effects at each depth
 #ifdef __EMSCRIPTEN__
   // For WebAssembly (single-threaded), we can use regular static variables
   static std::unordered_map<size_t, std::vector<std::string>> effectsCache;
-  static MixState lastMixState(mixState.substanceIndices.capacity());
-  static size_t lastProcessedDepth = 0;
 #else
   // For multi-threaded native environment, use thread_local
   thread_local std::unordered_map<size_t, std::vector<std::string>> effectsCache;
-  thread_local MixState lastMixState(mixState.substanceIndices.capacity());
-  thread_local size_t lastProcessedDepth = 0;
 #endif
 
-  // Check if we can reuse previous calculations
-  size_t reuseDepth = 0;
-  if (!lastMixState.substanceIndices.empty() && !mixState.substanceIndices.empty())
+  // Get the current mix depth
+  size_t currentDepth = mixState.substanceIndices.size();
+
+  // If we have a cached result for the previous depth, use it as a starting point
+  if (currentDepth > 0 && effectsCache.find(currentDepth - 1) != effectsCache.end())
   {
-    // Find common prefix between current and last mix state
-    size_t minSize = std::min(lastMixState.substanceIndices.size(), mixState.substanceIndices.size());
-    for (; reuseDepth < minSize; ++reuseDepth)
+    // Get effects from previous depth
+    std::vector<std::string> effectsList = effectsCache[currentDepth - 1];
+
+    // Apply only the last substance's rules
+    size_t lastIdx = mixState.substanceIndices[currentDepth - 1];
+    effectsList = applySubstanceRules(effectsList, substances[lastIdx], currentDepth, effectsSet);
+
+    // Cache the result for this depth
+    effectsCache[currentDepth] = effectsList;
+
+    return effectsList;
+  }
+  else if (currentDepth > 0 && effectsCache.find(0) != effectsCache.end())
+  {
+    // We don't have the previous depth cached, but we have the initial state
+    // This is likely due to backtracking in the DFS
+
+    // Start with the initial effect
+    std::vector<std::string> effectsList = effectsCache[0];
+
+    // Apply rules for all substances in this mix
+    for (size_t i = 0; i < currentDepth; ++i)
     {
-      if (lastMixState.substanceIndices[reuseDepth] != mixState.substanceIndices[reuseDepth])
-        break;
+      size_t idx = mixState.substanceIndices[i];
+      effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
+
+      // Cache intermediate results
+      effectsCache[i + 1] = effectsList;
     }
-  }
 
-  // If we can reuse previous calculations, start from the cached result
-  if (reuseDepth > 0 && reuseDepth <= lastProcessedDepth && effectsCache.count(reuseDepth - 1) > 0)
+    return effectsList;
+  }
+  else
   {
-    effectsList = effectsCache[reuseDepth - 1];
+    // First calculation or cache was reset
+    // Start with the initial effect
+    std::vector<std::string> effectsList;
+    effectsList.reserve(10); // Start with space for ~10 effects
+    effectsList.push_back(initialEffect);
+
+    // Cache the initial state
+    effectsCache[0] = effectsList;
+
+    // Apply rules for all substances in this mix
+    for (size_t i = 0; i < currentDepth; ++i)
+    {
+      size_t idx = mixState.substanceIndices[i];
+      effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
+
+      // Cache intermediate results
+      effectsCache[i + 1] = effectsList;
+    }
+
+    return effectsList;
   }
-
-  // Apply rules for the remaining substances
-  for (size_t i = reuseDepth; i < mixState.substanceIndices.size(); ++i)
-  {
-    size_t idx = mixState.substanceIndices[i];
-    effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
-
-    // Cache the intermediate result
-    effectsCache[i] = effectsList;
-  }
-
-  // Update the last processed mix state and depth for next call
-  lastMixState = mixState;
-  lastProcessedDepth = mixState.substanceIndices.size();
-
-  return effectsList;
 }
