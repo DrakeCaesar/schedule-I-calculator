@@ -35,9 +35,9 @@ void recursiveBFS(
     int maxDepth,
     std::vector<MixState> &currentDepthMixes,
     MixState &bestMix,
-    double &bestProfit,
-    double &bestSellPrice,
-    double &bestCost,
+    int &bestProfitCents,
+    int &bestSellPriceCents,
+    int &bestCostCents,
     int &processedCombinations,
     int totalCombinations,
     ProgressCallback progressCallback)
@@ -56,22 +56,22 @@ void recursiveBFS(
     std::vector<std::string> effectsList = calculateEffectsForMix(
         currentMix, substances, product.initialEffect, effectsSet);
 
-    // Calculate profit
-    double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-    double cost = calculateFinalCost(currentMix, substances);
-    double profit = sellPrice - cost;
+    // Calculate profit using integer cents
+    int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+    int costCents = calculateFinalCost(currentMix, substances);
+    int profitCents = sellPriceCents - costCents;
 
     // Update best mix if this one is better
-    if (profit > bestProfit)
+    if (profitCents > bestProfitCents)
     {
       bestMix = currentMix;
-      bestProfit = profit;
-      bestSellPrice = sellPrice;
-      bestCost = cost;
+      bestProfitCents = profitCents;
+      bestSellPriceCents = sellPriceCents;
+      bestCostCents = costCents;
 
       // Report the new best mix in WebAssembly mode
 #ifdef __EMSCRIPTEN__
-      reportBestMixFoundToJS(bestMix, substances, bestProfit, bestSellPrice, bestCost);
+      reportBestMixFoundToJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
 #endif
 
 #ifndef __EMSCRIPTEN__
@@ -84,9 +84,9 @@ void recursiveBFS(
           std::cout << ", ";
         std::cout << mixNames[i];
       }
-      std::cout << "] with profit " << bestProfit
-                << ", price " << bestSellPrice
-                << ", cost " << bestCost << std::endl;
+      std::cout << "] with profit " << bestProfitCents / 100.0
+                << ", price " << bestSellPriceCents / 100.0
+                << ", cost " << bestCostCents / 100.0 << std::endl;
 #endif
     }
 
@@ -136,7 +136,7 @@ void recursiveBFS(
     recursiveBFS(
         product, substances, effectMultipliers, effectsSet,
         currentDepth + 1, maxDepth, nextDepthMixes,
-        bestMix, bestProfit, bestSellPrice, bestCost,
+        bestMix, bestProfitCents, bestSellPriceCents, bestCostCents,
         processedCombinations, totalCombinations, progressCallback);
   }
 }
@@ -152,9 +152,9 @@ void recursiveBFSThreaded(
     int maxDepth,
     std::vector<MixState> &currentDepthMixes,
     MixState &threadBestMix,
-    double &threadBestProfit,
-    double &threadBestSellPrice,
-    double &threadBestCost,
+    int &threadBestProfitCents,
+    int &threadBestSellPriceCents,
+    int &threadBestCostCents,
     int &processedCombinations,
     int expectedCombinations,
     ProgressCallback progressCallback)
@@ -175,18 +175,18 @@ void recursiveBFSThreaded(
     std::vector<std::string> effectsList = calculateEffectsForMix(
         currentMix, substances, product.initialEffect, effectsSet);
 
-    // Calculate profit
-    double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-    double cost = calculateFinalCost(currentMix, substances);
-    double profit = sellPrice - cost;
+    // Calculate profit using integer cents
+    int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+    int costCents = calculateFinalCost(currentMix, substances);
+    int profitCents = sellPriceCents - costCents;
 
     // Update thread's best mix if this one is better
-    if (profit > threadBestProfit)
+    if (profitCents > threadBestProfitCents)
     {
       threadBestMix = currentMix;
-      threadBestProfit = profit;
-      threadBestSellPrice = sellPrice;
-      threadBestCost = cost;
+      threadBestProfitCents = profitCents;
+      threadBestSellPriceCents = sellPriceCents;
+      threadBestCostCents = costCents;
       
       // Check if this is better than the global best mix
       // We use a mutex to avoid race conditions when checking and updating
@@ -196,7 +196,7 @@ void recursiveBFSThreaded(
         // Check against the global variables passed by reference to this function
         // These are actually the real global variables from bfsThreadWorker
         MixState &globalBestMix = *static_cast<MixState*>(&threadBestMix);
-        double &globalBestProfit = threadBestProfit;
+        int &globalBestProfitCents = threadBestProfitCents;
         
         // Report the updated best mix immediately regardless of whether it's better than
         // the global best - each thread reports its own discoveries
@@ -208,9 +208,9 @@ void recursiveBFSThreaded(
             std::cout << ", ";
           std::cout << mixNames[i];
         }
-        std::cout << "] with profit " << threadBestProfit
-                  << ", price " << threadBestSellPrice
-                  << ", cost " << threadBestCost << std::endl;
+        std::cout << "] with profit " << threadBestProfitCents / 100.0
+                  << ", price " << threadBestSellPriceCents / 100.0
+                  << ", cost " << threadBestCostCents / 100.0 << std::endl;
       }
     }
 
@@ -263,11 +263,14 @@ void recursiveBFSThreaded(
     recursiveBFSThreaded(
         product, substances, effectMultipliers, effectsSet,
         currentDepth + 1, maxDepth, nextDepthMixes,
-        threadBestMix, threadBestProfit, threadBestSellPrice, threadBestCost,
+        threadBestMix, threadBestProfitCents, threadBestSellPriceCents, threadBestCostCents,
         processedCombinations, expectedCombinations, progressCallback);
   }
 }
 
+#endif  // <-- Added missing #endif for the recursiveBFSThreaded function
+
+#ifndef __EMSCRIPTEN__
 // Thread worker function (only in native build)
 void bfsThreadWorker(
     const Product &product,
@@ -278,16 +281,16 @@ void bfsThreadWorker(
     int maxDepth,
     int expectedCombinations,
     MixState &globalBestMix,
-    double &globalBestProfit,
-    double &globalBestSellPrice,
-    double &globalBestCost,
+    int &globalBestProfitCents,
+    int &globalBestSellPriceCents,
+    int &globalBestCostCents,
     ProgressCallback progressCallback)
 {
   // Initialize thread-local best mix data
   MixState threadBestMix(maxDepth);
-  double threadBestProfit = -std::numeric_limits<double>::infinity();
-  double threadBestSellPrice = 0.0;
-  double threadBestCost = 0.0;
+  int threadBestProfitCents = -std::numeric_limits<int>::infinity();
+  int threadBestSellPriceCents = 0;
+  int threadBestCostCents = 0;
 
   // Create initial mix state for this thread's starting substance
   std::vector<MixState> initialMixes;
@@ -304,17 +307,17 @@ void bfsThreadWorker(
   recursiveBFSThreaded(
       product, substances, effectMultipliers, effectsSet,
       1, maxDepth, initialMixes,
-      threadBestMix, threadBestProfit, threadBestSellPrice, threadBestCost,
+      threadBestMix, threadBestProfitCents, threadBestSellPriceCents, threadBestCostCents,
       processedCombinations, expectedCombinations, progressCallback);
 
   // Synchronize with global best mix
   std::lock_guard<std::mutex> lock(bestMixMutex);
-  if (threadBestProfit > globalBestProfit)
+  if (threadBestProfitCents > globalBestProfitCents)
   {
     globalBestMix = threadBestMix;
-    globalBestProfit = threadBestProfit;
-    globalBestSellPrice = threadBestSellPrice;
-    globalBestCost = threadBestCost;
+    globalBestProfitCents = threadBestProfitCents;
+    globalBestSellPriceCents = threadBestSellPriceCents;
+    globalBestCostCents = threadBestCostCents;
 
     // Print best mix update to stdout when a thread finds a better mix
     std::vector<std::string> mixNames = globalBestMix.toSubstanceNames(substances);
@@ -325,9 +328,9 @@ void bfsThreadWorker(
         std::cout << ", ";
       std::cout << mixNames[i];
     }
-    std::cout << "] with profit " << globalBestProfit
-              << ", price " << globalBestSellPrice
-              << ", cost " << globalBestCost << std::endl;
+    std::cout << "] with profit " << globalBestProfitCents / 100.0
+              << ", price " << globalBestSellPriceCents / 100.0
+              << ", cost " << globalBestCostCents / 100.0 << std::endl;
   }
 }
 #endif
@@ -347,9 +350,9 @@ JsBestMixResult findBestMix(
 
   // Initialize the best mix and profit
   MixState bestMix(maxDepth);
-  double bestProfit = -std::numeric_limits<double>::infinity();
-  double bestSellPrice = 0.0;
-  double bestCost = 0.0;
+  int bestProfitCents = -std::numeric_limits<int>::infinity();
+  int bestSellPriceCents = 0;
+  int bestCostCents = 0;
 
   // Create a set of all effect names for efficiency
   std::unordered_map<std::string, bool> effectsSet;
@@ -389,9 +392,9 @@ JsBestMixResult findBestMix(
         maxDepth,
         totalCombinations,
         std::ref(bestMix),
-        std::ref(bestProfit),
-        std::ref(bestSellPrice),
-        std::ref(bestCost),
+        std::ref(bestProfitCents),
+        std::ref(bestSellPriceCents),
+        std::ref(bestCostCents),
         progressCallback);
   }
 
@@ -414,9 +417,9 @@ JsBestMixResult findBestMix(
   // Emscripten single-threaded implementation
   // Initialize the best mix and profit
   MixState bestMix(maxDepth);
-  double bestProfit = -std::numeric_limits<double>::infinity();
-  double bestSellPrice = 0.0;
-  double bestCost = 0.0;
+  int bestProfitCents = -std::numeric_limits<int>::infinity();
+  int bestSellPriceCents = 0;
+  int bestCostCents = 0;
 
   // Create a set of all effect names for efficiency
   std::unordered_map<std::string, bool> effectsSet;
@@ -457,7 +460,7 @@ JsBestMixResult findBestMix(
   recursiveBFS(
       product, substances, effectMultipliers, effectsSet,
       1, maxDepth, initialMixes,
-      bestMix, bestProfit, bestSellPrice, bestCost,
+      bestMix, bestProfitCents, bestSellPriceCents, bestCostCents,
       processedCombinations, totalCombinations, progressCallback);
 
   // Final progress report
@@ -486,9 +489,10 @@ JsBestMixResult findBestMix(
   result.mixArray = bestMixNames;
 #endif
 
-  result.profit = bestProfit;
-  result.sellPrice = bestSellPrice;
-  result.cost = bestCost;
+  // Store monetary values in cents in the result
+  result.profitCents = bestProfitCents;
+  result.sellPriceCents = bestSellPriceCents;
+  result.costCents = bestCostCents;
 
   return result;
 }
@@ -509,9 +513,9 @@ void reportProgressToJS(int depth, int processed, int total)
 // JavaScript-compatible best mix reporting function
 void reportBestMixFoundToJS(const MixState &bestMix,
                             const std::vector<Substance> &substances,
-                            double profit,
-                            double sellPrice,
-                            double cost)
+                            int profitCents,
+                            int sellPriceCents,
+                            int costCents)
 {
   // Convert mix state to substance names
   std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
@@ -526,9 +530,9 @@ void reportBestMixFoundToJS(const MixState &bestMix,
   // Create event object with mix data
   val mixEvent = val::object();
   mixEvent.set("mix", jsArray);
-  mixEvent.set("profit", profit);
-  mixEvent.set("sellPrice", sellPrice);
-  mixEvent.set("cost", cost);
+  mixEvent.set("profit", profitCents / 100.0);
+  mixEvent.set("sellPrice", sellPriceCents / 100.0);
+  mixEvent.set("cost", costCents / 100.0);
 
   // Call JavaScript function to report the new best mix
   val::global("reportBestMixFound").call<void>("call", val::null(), mixEvent);

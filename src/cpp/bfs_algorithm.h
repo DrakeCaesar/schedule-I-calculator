@@ -23,9 +23,9 @@ void recursiveBFS(
     int maxDepth,
     std::vector<MixState> &currentDepthMixes,
     MixState &bestMix,
-    double &bestProfit,
-    double &bestSellPrice,
-    double &bestCost,
+    int &bestProfitCents,
+    int &bestSellPriceCents,
+    int &bestCostCents,
     int &processedCombinations,
     int totalCombinations,
     ProgressCallback progressCallback = nullptr);
@@ -41,9 +41,9 @@ void bfsThreadWorker(
     int maxDepth,
     int expectedCombinations,
     MixState &globalBestMix,
-    double &globalBestProfit,
-    double &globalBestSellPrice,
-    double &globalBestCost,
+    int &globalBestProfitCents,
+    int &globalBestSellPriceCents,
+    int &globalBestCostCents,
     ProgressCallback progressCallback);
 #endif
 
@@ -51,10 +51,10 @@ void bfsThreadWorker(
 // JavaScript-compatible progress reporting function (only for WebAssembly)
 void reportProgressToJS(int depth, int processed, int total);
 
-// JavaScript-compatible best mix reporting function (only for WebAssembly)
+// Report the best mix found to JavaScript (for WebAssembly build)
 void reportBestMixFoundToJS(const MixState &bestMix, 
                            const std::vector<Substance> &substances,
-                           double profit, 
-                           double sellPrice, 
-                           double cost);
+                           int profitCents, 
+                           int sellPriceCents, 
+                           int costCents);
 #endif

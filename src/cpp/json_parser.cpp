@@ -24,7 +24,8 @@ std::vector<Substance> parseSubstancesJson(const std::string &substancesJson)
   {
     Substance substance;
     substance.name = item["name"].get<std::string>();
-    substance.cost = item["cost"].get<double>();
+    // Change to read cost as integer cents instead of double
+    substance.cost = static_cast<int>(std::round(item["cost"].get<double>() * 100.0));
     substance.defaultEffect = item["defaultEffect"].get<std::string>();
     substances.push_back(substance);
   }

@@ -68,9 +68,14 @@ std::string formatResultAsJson(const JsBestMixResult &result)
     }
     json += "],\n";
 
-    json += "  \"profit\": " + std::to_string(result.profit) + ",\n";
-    json += "  \"sellPrice\": " + std::to_string(result.sellPrice) + ",\n";
-    json += "  \"cost\": " + std::to_string(result.cost) + "\n";
+    // Convert cents back to dollars with 2 decimal places for JSON output
+    double profit = result.profitCents / 100.0;
+    double sellPrice = result.sellPriceCents / 100.0;
+    double cost = result.costCents / 100.0;
+
+    json += "  \"profit\": " + std::to_string(profit) + ",\n";
+    json += "  \"sellPrice\": " + std::to_string(sellPrice) + ",\n";
+    json += "  \"cost\": " + std::to_string(cost) + "\n";
     json += "}";
 
     return json;
@@ -123,8 +128,9 @@ struct DFSState
 {
     int substanceIndices[MAX_DEPTH]; // Fixed-size array for the current path
     int depth;                       // Current depth in the search
+    int currentCost;                 // Track the current mix cost in cents (integer)
 
-    DFSState() : depth(0)
+    DFSState() : depth(0), currentCost(0)
     {
         // Initialize all indices to -1 (not used)
         for (int i = 0; i < MAX_DEPTH; ++i)
@@ -134,22 +140,24 @@ struct DFSState
     }
 
     // Add a substance to the current state
-    void addSubstance(int index)
+    void addSubstance(int index, const std::vector<Substance> &substances)
     {
         if (depth < MAX_DEPTH)
         {
             substanceIndices[depth] = index;
+            currentCost += substances[index].cost; // Add the cost in cents
             depth++;
         }
     }
 
     // Remove the last substance added (backtrack)
-    void removeLastSubstance()
+    void removeLastSubstance(const std::vector<Substance> &substances)
     {
         if (depth > 0)
         {
-            substanceIndices[depth - 1] = -1;
             depth--;
+            currentCost -= substances[substanceIndices[depth]].cost; // Subtract the cost in cents
+            substanceIndices[depth] = -1;
         }
     }
 
@@ -189,20 +197,20 @@ void dfsThreadWorker(
     int maxDepth,
     int expectedCombinations,
     MixState &globalBestMix,
-    double &globalBestProfit,
-    double &globalBestSellPrice,
-    double &globalBestCost,
+    int &globalBestProfitCents,
+    int &globalBestSellPriceCents,
+    int &globalBestCostCents,
     ProgressCallback progressCallback)
 {
     // Initialize thread-local best mix data
     DFSState currentState;
     MixState threadBestMix(maxDepth);
-    double threadBestProfit = -std::numeric_limits<double>::infinity();
-    double threadBestSellPrice = 0.0;
-    double threadBestCost = 0.0;
+    int threadBestProfitCents = -std::numeric_limits<int>::infinity();
+    int threadBestSellPriceCents = 0;
+    int threadBestCostCents = 0;
 
     // Initialize with the starting substance
-    currentState.addSubstance(startSubstanceIndex);
+    currentState.addSubstance(startSubstanceIndex, substances);
 
     // Create a set of all effect names for efficiency
     std::unordered_map<std::string, bool> effectsSet;
@@ -235,26 +243,27 @@ void dfsThreadWorker(
         std::vector<std::string> effectsList = calculateEffectsForMix(
             currentMix, substances, product.initialEffect, effectsSet);
 
-        double sellPrice = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-        double cost = calculateFinalCost(currentMix, substances);
-        double profit = sellPrice - cost;
+        // Calculate all monetary values in cents (integer)
+        int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+        int costCents = currentState.currentCost; // Already in cents
+        int profitCents = sellPriceCents - costCents;
 
         // Update thread's best mix if this one is better
-        if (profit > threadBestProfit)
+        if (profitCents > threadBestProfitCents)
         {
             threadBestMix = currentMix;
-            threadBestProfit = profit;
-            threadBestSellPrice = sellPrice;
-            threadBestCost = cost;
+            threadBestProfitCents = profitCents;
+            threadBestSellPriceCents = sellPriceCents;
+            threadBestCostCents = costCents;
 
             // Update global best mix if needed (thread-safe)
             std::lock_guard<std::mutex> lock(g_bestMixMutex);
-            if (threadBestProfit > globalBestProfit)
+            if (threadBestProfitCents > globalBestProfitCents)
             {
                 globalBestMix = threadBestMix;
-                globalBestProfit = threadBestProfit;
-                globalBestSellPrice = threadBestSellPrice;
-                globalBestCost = threadBestCost;
+                globalBestProfitCents = threadBestProfitCents;
+                globalBestSellPriceCents = threadBestSellPriceCents;
+                globalBestCostCents = threadBestCostCents;
 
                 // Report best mix found so far - now with proper locking
                 {
@@ -267,9 +276,9 @@ void dfsThreadWorker(
                             std::cout << ", ";
                         std::cout << mixNames[i];
                     }
-                    std::cout << "] with profit " << threadBestProfit
-                              << ", price " << threadBestSellPrice
-                              << ", cost " << threadBestCost << std::endl;
+                    std::cout << "] with profit " << threadBestProfitCents / 100.0
+                              << ", price " << threadBestSellPriceCents / 100.0
+                              << ", cost " << threadBestCostCents / 100.0 << std::endl;
                 }
             }
         }
@@ -279,9 +288,9 @@ void dfsThreadWorker(
         {
             for (size_t i = 0; i < substances.size(); ++i)
             {
-                currentState.addSubstance(i);
+                currentState.addSubstance(i, substances);
                 dfs(currentDepth + 1);
-                currentState.removeLastSubstance(); // Backtrack
+                currentState.removeLastSubstance(substances); // Backtrack
             }
         }
     };
@@ -304,9 +313,9 @@ JsBestMixResult findBestMixDFS(
 
     // Initialize best mix variables
     MixState bestMix(maxDepth);
-    double bestProfit = -std::numeric_limits<double>::infinity();
-    double bestSellPrice = 0.0;
-    double bestCost = 0.0;
+    int bestProfitCents = -std::numeric_limits<int>::infinity();
+    int bestSellPriceCents = 0;
+    int bestCostCents = 0;
 
     // Calculate total expected combinations for progress reporting
     int totalCombinations = 0;
@@ -337,9 +346,9 @@ JsBestMixResult findBestMixDFS(
             maxDepth,
             totalCombinations,
             std::ref(bestMix),
-            std::ref(bestProfit),
-            std::ref(bestSellPrice),
-            std::ref(bestCost),
+            std::ref(bestProfitCents),
+            std::ref(bestSellPriceCents),
+            std::ref(bestCostCents),
             progressCallback);
     }
 
@@ -361,9 +370,9 @@ JsBestMixResult findBestMixDFS(
     // Create the result
     JsBestMixResult result;
     result.mixArray = bestMix.toSubstanceNames(substances);
-    result.profit = bestProfit;
-    result.sellPrice = bestSellPrice;
-    result.cost = bestCost;
+    result.profitCents = bestProfitCents;
+    result.sellPriceCents = bestSellPriceCents;
+    result.costCents = bestCostCents;
 
     return result;
 }

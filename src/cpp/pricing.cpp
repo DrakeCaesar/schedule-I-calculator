@@ -1,7 +1,8 @@
 #include "pricing.h"
 #include <cmath>
 
-double calculateFinalPrice(
+// Calculate the final selling price in cents
+int calculateFinalPrice(
     const std::string &productName,
     const std::vector<std::string> &currentEffects,
     const std::unordered_map<std::string, int> &effectMultipliers)
@@ -19,34 +20,35 @@ double calculateFinalPrice(
     }
   }
 
-  // Determine base price from product name (convert to integer cents)
+  // Determine base price from product name (in integer cents)
   // Default to Weed pricing (35.00)
-  int basePriceInt = 3500; // $35.00 by default
+  int basePriceInCents = 3500; // $35.00 by default
   
   // Check for specific product types
   if (productName.find("Meth") != std::string::npos)
-    basePriceInt = 7000; // $70.00
+    basePriceInCents = 7000; // $70.00
   else if (productName.find("Cocaine") != std::string::npos)
-    basePriceInt = 15000; // $150.00
+    basePriceInCents = 15000; // $150.00
   // Otherwise keep default Weed price
 
   // Calculate final price using integer arithmetic
   // Formula: basePrice * (1.0 + totalMultiplier/100)
   // = (basePrice * 100 + basePrice * totalMultiplier) / 100
-  int finalPrice = basePriceInt + (basePriceInt * totalMultiplier) / 100;
+  int finalPriceInCents = basePriceInCents + (basePriceInCents * totalMultiplier) / 100;
   
-  // Convert to dollars and round
-  return std::round(finalPrice / 100.0);
+  // Return the price in cents directly, no rounding needed
+  return finalPriceInCents;
 }
 
-double calculateFinalCost(const MixState &mixState, const std::vector<Substance> &substances)
+// Calculate the total cost of a mix in cents
+int calculateFinalCost(const MixState &mixState, const std::vector<Substance> &substances)
 {
-  double totalCost = 0.0;
+  int totalCost = 0;
 
   for (size_t idx : mixState.substanceIndices)
   {
     totalCost += substances[idx].cost;
   }
 
-  return std::round(totalCost);
+  return totalCost;
 }
