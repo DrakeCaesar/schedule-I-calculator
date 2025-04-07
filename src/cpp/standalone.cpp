@@ -232,8 +232,16 @@ void dfsThreadWorker(
         // Increment processed combinations counter
         g_totalProcessedCombinations++;
 
-        // Periodically report progress - changed from 1000 to 10000
-        if (progressCallback && g_totalProcessedCombinations % 10000 == 0)
+        // Adaptively adjust progress reporting frequency based on depth
+        // Higher depths have exponentially more combinations, so we report less frequently
+        int reportFrequency = 10000;
+        if (currentDepth > 5) {
+            // For depth 6+, report less frequently to reduce I/O pressure
+            reportFrequency = 50000 * (currentDepth - 4); // 50k for depth 5, 100k for depth 6, etc.
+        }
+        
+        // Periodically report progress with adaptive frequency
+        if (progressCallback && g_totalProcessedCombinations % reportFrequency == 0)
         {
             progressCallback(currentDepth, g_totalProcessedCombinations.load(), expectedCombinations);
         }

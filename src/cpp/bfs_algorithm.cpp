@@ -105,8 +105,15 @@ void recursiveBFS(
     processedCombinations++;
     batchSize++;
 
-    // Report progress periodically
-    if (progressCallback && batchSize >= reportInterval)
+    // Adjust reporting frequency based on depth
+    int reportFrequency = reportInterval;
+    if (currentDepth > 5) {
+      // For deeper levels, report progress less frequently to reduce I/O pressure
+      reportFrequency = reportInterval * (currentDepth - 4); // 1000 for depth <=5, 2000 for depth 6, 3000 for depth 7...
+    }
+
+    // Report progress periodically with adaptive frequency
+    if (progressCallback && batchSize >= reportFrequency)
     {
 #ifndef __EMSCRIPTEN__
       // In native multithreaded version, use atomic counter
@@ -242,8 +249,15 @@ void recursiveBFSThreaded(
     totalProcessedCombinations++;
     batchSize++;
 
-    // Report progress periodically
-    if (progressCallback && batchSize >= reportInterval)
+    // Adjust reporting frequency based on depth
+    int reportFrequency = reportInterval;
+    if (currentDepth > 5) {
+      // For deeper levels, report progress less frequently to reduce I/O pressure
+      reportFrequency = reportInterval * (currentDepth - 4); // 1000 for depth <=5, 2000 for depth 6, 3000 for depth 7...
+    }
+
+    // Report progress periodically with adaptive frequency
+    if (progressCallback && batchSize >= reportFrequency)
     {
       progressCallback(currentDepth, totalProcessedCombinations.load(), expectedCombinations);
       batchSize = 0;

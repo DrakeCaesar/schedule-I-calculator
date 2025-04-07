@@ -161,8 +161,17 @@ app.post("/api/mix", async (req, res) => {
       executionTime: 0,
     });
 
-    // Execute the native calculator
-    const childProcess = exec(command);
+    // Execute the native calculator with increased timeout (20 minutes)
+    const childProcess = exec(command, { timeout: 20 * 60 * 1000 });
+
+    // Handle potential exec errors
+    childProcess.on('error', (error) => {
+      console.error(`Error executing calculator: ${error.message}`);
+      bfsProgressEmitter.emit("progress", {
+        type: "error",
+        message: `Execution error: ${error.message}`,
+      });
+    });
 
     // Process stdout to extract progress information
     childProcess.stdout.on("data", (data) => {
