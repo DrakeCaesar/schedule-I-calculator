@@ -362,10 +362,18 @@ body {
   width: 100%;
 }
 
+/* Add a container for native buttons to display them side by side */
+.native-buttons-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
 #bothBfsButton,
 #tsBfsButton,
 #wasmBfsButton,
-#nativeBfsButton {
+#nativeBfsButton,
+#nativeDfsButton {
   padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
@@ -381,6 +389,12 @@ body {
   &:active {
     transform: translateY(1px);
   }
+}
+
+/* Make the native buttons take equal width in their container */
+#nativeBfsButton,
+#nativeDfsButton {
+  flex: 1;
 }
 
 #bothBfsButton {
@@ -412,6 +426,14 @@ body {
 
   &:hover {
     background-color: #7b1fa2;
+  }
+}
+
+#nativeDfsButton {
+  background-color: #673ab7; /* Darker purple for DFS */
+
+  &:hover {
+    background-color: #512da8;
   }
 }
 
