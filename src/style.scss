@@ -421,19 +421,20 @@ body {
   }
 }
 
-#nativeBfsButton {
-  background-color: #9c27b0; /* Purple */
+#nativeBfsButton,
+#nativeDfsButton {
+  background {
+    background-color: #9c27b0; /* Purple */
+
+    &:hover {
+      background-color: #7b1fa2;
+    }
+  }
+
+  -color: #9c27b0;
 
   &:hover {
     background-color: #7b1fa2;
-  }
-}
-
-#nativeDfsButton {
-  background-color: #673ab7; /* Darker purple for DFS */
-
-  &:hover {
-    background-color: #512da8;
   }
 }
 

@@ -40,7 +40,7 @@ let currentAlgorithm = "dfs"; // Default algorithm
 
 export function updateNativeBestMixDisplay() {
   if (!nativeCurrentProduct) return;
-  updateBestMixDisplay("native", nativeBestMix, nativeCurrentProduct);
+  updateBestMixDisplay("native", nativeBestMix, nativeCurrentProduct, currentAlgorithm.toUpperCase());
 }
 
 export function updateNativeProgressDisplay(
@@ -51,6 +51,18 @@ export function updateNativeProgressDisplay(
   nativeTotalProcessed = progressData.processed;
   if (progressData.total > 0) {
     nativeGrandTotal = progressData.total;
+  }
+
+  // Update the column header to reflect the current algorithm
+  const nativeColumnHeader = document.querySelector('.native-column h3');
+  if (nativeColumnHeader) {
+    nativeColumnHeader.textContent = `Native ${currentAlgorithm.toUpperCase()}`;
+  }
+  
+  // Update the progress display header
+  const nativeProgressHeader = document.querySelector('.native-column .progress-display h4');
+  if (nativeProgressHeader) {
+    nativeProgressHeader.textContent = `Native ${currentAlgorithm.toUpperCase()} Progress`;
   }
 
   // Use the shared progress display component
@@ -201,6 +213,22 @@ function updateButtonStates() {
   }
 }
 
+// Update the best mix display title to match the current algorithm
+function updateNativeMixDisplayTitle() {
+  const nativeBestMixDisplay = document.getElementById("nativeBestMix");
+  if (nativeBestMixDisplay) {
+    // Look for an h4 element, or any title element if it exists
+    const titleElement = nativeBestMixDisplay.querySelector("h4") || 
+                          nativeBestMixDisplay.querySelector("h3") ||
+                          nativeBestMixDisplay.querySelector("p");
+    
+    if (titleElement) {
+      // Update the title to show the current algorithm
+      titleElement.textContent = `Best Native ${currentAlgorithm.toUpperCase()} Mix`;
+    }
+  }
+}
+
 // Common function to start/stop native algorithm
 async function toggleNativeAlgorithm(
   product: ProductVariety,
@@ -209,6 +237,9 @@ async function toggleNativeAlgorithm(
   // Store the algorithm for this run
   currentAlgorithm = algorithm;
 
+  // Update all UI elements to reflect the current algorithm
+  updateNativeMixDisplayTitle();
+  
   const buttonId = algorithm === "bfs" ? "nativeBfsButton" : "nativeDfsButton";
   const algorithmButton = document.getElementById(buttonId);
   if (!algorithmButton) return;
@@ -237,7 +268,7 @@ async function toggleNativeAlgorithm(
 
   // Create displays using shared components
   createProgressDisplay("native");
-  createBestMixDisplay("native");
+  createBestMixDisplay("native", algorithm.toUpperCase()); // Pass algorithm type to the display
 
   // Set start time for execution time calculation
   nativeStartTime = Date.now();

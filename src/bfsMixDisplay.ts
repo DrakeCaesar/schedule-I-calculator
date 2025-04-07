@@ -24,7 +24,8 @@ export function createEffectSpan(effect: string): string {
 export function updateBestMixDisplay(
   implementation: "ts" | "wasm" | "native",
   bestMix: BfsMixResult,
-  currentProduct: ProductVariety
+  currentProduct: ProductVariety,
+  algorithmType: string = "BFS" // Add algorithm type parameter with default "BFS"
 ): void {
   const displayId =
     implementation === "native"
@@ -59,7 +60,7 @@ export function updateBestMixDisplay(
   // Schedule the DOM update
   scheduleDomUpdate(() => {
     bestMixDisplay.innerHTML = `
-      <h3>${implementationNames[implementation]} BFS Result for ${
+      <h3>${implementationNames[implementation]} ${algorithmType} Result for ${
       currentProduct.name
     }</h3>
       <p>Mix: ${mixArray.join(", ")}</p>
@@ -74,47 +75,21 @@ export function updateBestMixDisplay(
   });
 }
 
-// Create or get a best mix display element for a specific implementation
+/**
+ * Create a display area for showing the best mix results
+ */
 export function createBestMixDisplay(
-  implementation: "ts" | "wasm" | "native"
-): HTMLElement {
+  type: string,
+  algorithmType: string = "BFS"
+) {
+  // Use the correct ID based on the type
   const displayId =
-    implementation === "native"
-      ? "nativeBestMix" // Native uses a slightly different ID format
-      : `${implementation}BestMixDisplay`;
+    type === "native" ? "nativeBestMix" : `${type}BestMixDisplay`;
+  const displayEl = document.getElementById(displayId);
+  if (!displayEl) return;
 
-  let bestMixDisplay = document.getElementById(displayId);
-
-  if (!bestMixDisplay) {
-    bestMixDisplay = document.createElement("div");
-    bestMixDisplay.id = displayId;
-    bestMixDisplay.classList.add("best-mix-display");
-
-    // Default hidden state with a placeholder message
-    bestMixDisplay.style.display = "none";
-    bestMixDisplay.innerHTML = `<p>Run ${implementation.toUpperCase()} BFS to see results</p>`;
-
-    // Find the appropriate column to place the display
-    const columnSelector = `.${implementation}-column`;
-    const column = document.querySelector(columnSelector);
-
-    if (column) {
-      // Find if there's already a results display in this column
-      const existingDisplay = column.querySelector(".best-mix-display");
-      if (existingDisplay) {
-        column.replaceChild(bestMixDisplay, existingDisplay);
-      } else {
-        // Insert at beginning of column
-        column.insertBefore(bestMixDisplay, column.firstChild);
-      }
-    } else {
-      // Fallback - append to BFS section
-      const bfsSection = document.getElementById("bfsSection");
-      if (bfsSection) {
-        bfsSection.appendChild(bestMixDisplay);
-      }
-    }
-  }
-
-  return bestMixDisplay;
+  displayEl.style.display = "block";
+  displayEl.innerHTML = `<h4>Best ${
+    type.charAt(0).toUpperCase() + type.slice(1)
+  } ${algorithmType} Mix</h4>`;
 }
