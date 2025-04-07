@@ -18,9 +18,11 @@ if(EMSCRIPTEN)
 
     set(SOURCES
         src/cpp/bfs.cpp
+        src/cpp/dfs.cpp
         src/cpp/effects.cpp
         src/cpp/pricing.cpp
         src/cpp/bfs_algorithm.cpp
+        src/cpp/dfs_algorithm.cpp
         src/cpp/json_parser.cpp
     )
 
@@ -54,6 +56,8 @@ else()
         src/cpp/effects.cpp
         src/cpp/pricing.cpp
         src/cpp/bfs_algorithm.cpp
+        src/cpp/dfs_algorithm.cpp
+        src/cpp/dfs.cpp
         src/cpp/json_parser.cpp
     )
 
