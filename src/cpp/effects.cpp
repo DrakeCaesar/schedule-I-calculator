@@ -88,7 +88,7 @@ std::vector<std::string> applySubstanceRules(
 }
 
 // Calculate effects for a mix
-std::vector<std::string> calculateEffectsForMix(
+std::vector<std::string> calculateEffectsForMixDFS(
     const MixState &mixState,
     const std::vector<Substance> &substances,
     const std::string &initialEffect,
@@ -164,4 +164,26 @@ std::vector<std::string> calculateEffectsForMix(
 
     return effectsList;
   }
+}
+
+// Calculate effects for a mix - BFS version (using legacy implementation)
+std::vector<std::string> calculateEffectsForMixBFS(
+    const MixState &mixState,
+    const std::vector<Substance> &substances,
+    const std::string &initialEffect,
+    const std::unordered_map<std::string, bool> &effectsSet)
+{
+  // Pre-allocate with a reasonable initial capacity
+  std::vector<std::string> effectsList;
+  effectsList.reserve(10); // Start with space for ~10 effects
+  effectsList.push_back(initialEffect);
+
+  // Process each substance in the mix from beginning to end
+  for (size_t i = 0; i < mixState.substanceIndices.size(); ++i)
+  {
+    size_t idx = mixState.substanceIndices[i];
+    effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
+  }
+
+  return effectsList;
 }

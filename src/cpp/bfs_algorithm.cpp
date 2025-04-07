@@ -52,8 +52,8 @@ void recursiveBFS(
   // Process all states at the current depth
   for (auto &currentMix : currentDepthMixes)
   {
-    // Calculate effects for current mix
-    std::vector<std::string> effectsList = calculateEffectsForMix(
+    // Calculate effects for current mix - using BFS-specific function
+    std::vector<std::string> effectsList = calculateEffectsForMixBFS(
         currentMix, substances, product.initialEffect, effectsSet);
 
     // Calculate profit using integer cents
@@ -86,7 +86,8 @@ void recursiveBFS(
       }
       std::cout << "] with profit " << bestProfitCents / 100.0
                 << ", price " << bestSellPriceCents / 100.0
-                << ", cost " << bestCostCents / 100.0 << std::endl;
+                << ", cost " << bestCostCents / 100.0
+                << " at depth " << mixNames.size() << std::endl; // Added depth info
 #endif
     }
 
@@ -180,7 +181,7 @@ void recursiveBFSThreaded(
   for (auto &currentMix : currentDepthMixes)
   {
     // Calculate effects for current mix
-    std::vector<std::string> effectsList = calculateEffectsForMix(
+    std::vector<std::string> effectsList = calculateEffectsForMixDFS(
         currentMix, substances, product.initialEffect, effectsSet);
 
     // Calculate profit using integer cents

@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 {
     bool reportProgress = false;
     std::string outputFile;
-    std::string algorithm = "dfs"; // Changed default to "dfs" instead of "bfs"
+    std::string algorithm = "bfs"; // Changed default to "dfs" instead of "bfs"
     std::vector<std::string> jsonArgs;
 
     // Check if being called from server by looking for explicit algorithm flag

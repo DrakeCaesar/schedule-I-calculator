@@ -35,7 +35,9 @@
       "logging": {
         "moduleLoad": false,
         "trace": true
-      }
+      },
+      "symbolSearchPath": "${workspaceFolder}/src/cpp",
+      "preLaunchTask": "update_natvis"
     }
   ]
 }
