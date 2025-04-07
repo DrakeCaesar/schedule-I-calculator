@@ -9,3 +9,4 @@ build/
 build-native/
 temp/
 .vite-inspect
+.vs/

@@ -99,11 +99,51 @@ std::vector<std::string> calculateEffectsForMix(
   effectsList.reserve(10); // Start with space for ~10 effects
   effectsList.push_back(initialEffect);
 
-  for (size_t i = 0; i < mixState.substanceIndices.size(); ++i)
+// Thread-local storage for caching effects at each depth
+#ifdef __EMSCRIPTEN__
+  // For WebAssembly (single-threaded), we can use regular static variables
+  static std::unordered_map<size_t, std::vector<std::string>> effectsCache;
+  static MixState lastMixState(mixState.substanceIndices.capacity());
+  static size_t lastProcessedDepth = 0;
+#else
+  // For multi-threaded native environment, use thread_local
+  thread_local std::unordered_map<size_t, std::vector<std::string>> effectsCache;
+  thread_local MixState lastMixState(mixState.substanceIndices.capacity());
+  thread_local size_t lastProcessedDepth = 0;
+#endif
+
+  // Check if we can reuse previous calculations
+  size_t reuseDepth = 0;
+  if (!lastMixState.substanceIndices.empty() && !mixState.substanceIndices.empty())
+  {
+    // Find common prefix between current and last mix state
+    size_t minSize = std::min(lastMixState.substanceIndices.size(), mixState.substanceIndices.size());
+    for (; reuseDepth < minSize; ++reuseDepth)
+    {
+      if (lastMixState.substanceIndices[reuseDepth] != mixState.substanceIndices[reuseDepth])
+        break;
+    }
+  }
+
+  // If we can reuse previous calculations, start from the cached result
+  if (reuseDepth > 0 && reuseDepth <= lastProcessedDepth && effectsCache.count(reuseDepth - 1) > 0)
+  {
+    effectsList = effectsCache[reuseDepth - 1];
+  }
+
+  // Apply rules for the remaining substances
+  for (size_t i = reuseDepth; i < mixState.substanceIndices.size(); ++i)
   {
     size_t idx = mixState.substanceIndices[i];
     effectsList = applySubstanceRules(effectsList, substances[idx], i + 1, effectsSet);
+
+    // Cache the intermediate result
+    effectsCache[i] = effectsList;
   }
+
+  // Update the last processed mix state and depth for next call
+  lastMixState = mixState;
+  lastProcessedDepth = mixState.substanceIndices.size();
 
   return effectsList;
 }
