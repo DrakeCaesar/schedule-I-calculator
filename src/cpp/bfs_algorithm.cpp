@@ -527,7 +527,7 @@ JsBestMixResult findBestMix(
   result.profitCents = bestProfitCents;
   result.sellPriceCents = bestSellPriceCents;
   result.costCents = bestCostCents;
-  
+
   // Convert cents to dollars for backward compatibility
   result.profit = bestProfitCents / 100.0;
   result.sellPrice = bestSellPriceCents / 100.0;

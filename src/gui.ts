@@ -12,9 +12,7 @@ import {
 } from "./substances";
 import { toggleTsBFS } from "./tsBfsController";
 import { toggleWasmBFS } from "./wasmBfsController";
-
-const STORAGE_KEY_MIX = "currentMix";
-const STORAGE_KEY_PRODUCT = "currentProduct";
+import { toggleWasmDFS } from "./wasmDfsController";
 
 // --- UI Update Functions ---
 
@@ -224,6 +222,10 @@ export function toggleTS() {
 
 export function toggleWASM() {
   toggleWasmBFS(currentProduct);
+}
+
+export function toggleWasmDFSHandler() {
+  toggleWasmDFS(currentProduct);
 }
 
 export function toggleNative() {

@@ -8,6 +8,11 @@
 #include <cmath>
 #include <limits>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/val.h>
+using namespace emscripten;
+#endif
+
 // Define global variables for thread synchronization
 std::mutex g_bestMixMutex;
 std::atomic<int> g_totalProcessedCombinations(0);
@@ -298,6 +303,7 @@ JsBestMixResult findBestMixDFS(
     int maxDepth,
     ProgressCallback progressCallback)
 {
+#ifndef __EMSCRIPTEN__
   // Reset global counters
   g_totalProcessedCombinations = 0;
   g_shouldTerminate = false;
@@ -370,13 +376,267 @@ JsBestMixResult findBestMixDFS(
   {
     progressCallback(maxDepth, totalCombinations, totalCombinations);
   }
+#else
+  // WebAssembly Single-threaded Implementation
+  // Initialize mix variables
+  MixState bestMix(maxDepth);
+  int bestProfitCents = -std::numeric_limits<int>::infinity();
+  int bestSellPriceCents = 0;
+  int bestCostCents = 0;
+
+  // Create a set of all effect names for efficiency
+  std::unordered_map<std::string, bool> effectsSet;
+  effectsSet.reserve(effectMultipliers.size() * 2);
+  for (const auto &pair : effectMultipliers)
+  {
+    effectsSet[pair.first] = true;
+  }
+
+  // Calculate total expected combinations for progress reporting
+  int64_t totalCombinations64 = 0;
+  size_t substanceCount = std::min(static_cast<size_t>(MAX_SUBSTANCES), substances.size());
+  for (int i = 1; i <= maxDepth; ++i)
+  {
+    totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
+  }
+
+  // Cap to INT_MAX if needed for compatibility with progress callback
+  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+
+  // Initial progress report
+  int processedCombinations = 0;
+  if (progressCallback)
+  {
+    progressCallback(1, 0, totalCombinations);
+  }
+
+  // Process each substance as a starting point in sequence
+  for (size_t startIdx = 0; startIdx < substances.size(); ++startIdx)
+  {
+    // Initialize state with the starting substance
+    DFSState currentState;
+    currentState.addSubstance(startIdx, substances);
+    processedCombinations++;
+
+    // Initialize effects cache with initial effect
+    std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
+    effectsCache[0].push_back(product.initialEffect);
+
+    // Calculate effects for the first substance
+    std::vector<std::string> effectsList = applySubstanceRules(
+        effectsCache[0], substances[startIdx], 1, effectsSet);
+    effectsCache[1] = effectsList;
+
+    // Calculate profit for starting substance
+    int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+    int costCents = currentState.currentCost;
+    int profitCents = sellPriceCents - costCents;
+
+    // Update best mix if better
+    if (profitCents > bestProfitCents)
+    {
+      bestMix = currentState.toMixState();
+      bestProfitCents = profitCents;
+      bestSellPriceCents = sellPriceCents;
+      bestCostCents = costCents;
+
+      // Report to JavaScript
+      if (progressCallback)
+      {
+        reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
+      }
+    }
+
+    // Stack-based DFS (simulating recursion for WebAssembly)
+    struct StackEntry
+    {
+      size_t substanceIndex;
+      size_t depth;
+    };
+
+    std::vector<StackEntry> stack;
+    stack.reserve(maxDepth);
+
+    // Add first entry for depth 2 if we should go deeper
+    if (maxDepth > 1)
+    {
+      stack.push_back({0, 2});
+    }
+
+    // Progress reporting variables
+    int batchSize = 0;
+    const int reportInterval = 1000;
+
+    // Process the DFS stack
+    while (!stack.empty())
+    {
+      // Get current stack entry
+      StackEntry &current = stack.back();
+
+      // If we've exhausted substances at this depth, backtrack
+      if (current.substanceIndex >= substances.size())
+      {
+        stack.pop_back();
+        // Backtrack if we have more than just the initial substance
+        if (currentState.depth > 1)
+        {
+          currentState.removeLastSubstance(substances);
+        }
+        continue;
+      }
+
+      // Add the current substance
+      currentState.addSubstance(current.substanceIndex, substances);
+
+      // Calculate effects using the cached previous level
+      if (current.depth == 2)
+      {
+        // Use cached effects from starting substance
+        effectsList = applySubstanceRules(
+            effectsCache[1], substances[current.substanceIndex], current.depth, effectsSet);
+      }
+      else
+      {
+        // Use parent's cached effects
+        effectsList = applySubstanceRules(
+            effectsCache[current.depth - 1], substances[current.substanceIndex], current.depth, effectsSet);
+      }
+      effectsCache[current.depth] = effectsList;
+
+      // Count this combination
+      processedCombinations++;
+      batchSize++;
+
+      // Adaptive progress reporting frequency
+      int reportFrequency = reportInterval;
+      if (current.depth > 5)
+      {
+        reportFrequency = reportInterval * (current.depth - 4);
+      }
+
+      // Report progress periodically
+      if (progressCallback && batchSize >= reportFrequency)
+      {
+        progressCallback(current.depth, processedCombinations, totalCombinations);
+        batchSize = 0;
+      }
+
+      // Calculate profit for the current mix
+      sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+      costCents = currentState.currentCost;
+      profitCents = sellPriceCents - costCents;
+
+      // Update best mix if better
+      if (profitCents > bestProfitCents)
+      {
+        bestMix = currentState.toMixState();
+        bestProfitCents = profitCents;
+        bestSellPriceCents = sellPriceCents;
+        bestCostCents = costCents;
+
+        // Report to JavaScript
+        if (progressCallback)
+        {
+          reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
+        }
+      }
+
+      // If we haven't reached max depth, go deeper with the first substance
+      if (current.depth < maxDepth)
+      {
+        current.substanceIndex++;                // Move to next substance at current level
+        stack.push_back({0, current.depth + 1}); // Push next level starting at substance 0
+      }
+      else
+      {
+        // At max depth, try the next substance at this level
+        currentState.removeLastSubstance(substances);
+        current.substanceIndex++;
+      }
+    }
+
+    // Report progress after finishing this starting substance
+    if (progressCallback && batchSize > 0)
+    {
+      progressCallback(maxDepth, processedCombinations, totalCombinations);
+    }
+  }
+
+  // Final progress report
+  if (progressCallback)
+  {
+    progressCallback(maxDepth, totalCombinations, totalCombinations);
+  }
+#endif
 
   // Create the result
   JsBestMixResult result;
+
+#ifdef __EMSCRIPTEN__
+  // WebAssembly version: convert to JavaScript array
+  val jsArray = val::array();
+  std::vector<std::string> bestMixNames = bestMix.toSubstanceNames(substances);
+  for (size_t i = 0; i < bestMixNames.size(); ++i)
+  {
+    jsArray.set(i, val(bestMixNames[i]));
+  }
+  result.mixArray = jsArray;
+#else
+  // Native version: use std::vector directly
   result.mixArray = bestMix.toSubstanceNames(substances);
+#endif
+
+  // Set the monetary values in cents
   result.profitCents = bestProfitCents;
   result.sellPriceCents = bestSellPriceCents;
   result.costCents = bestCostCents;
 
+  // Convert cents to dollars for backward compatibility
+  result.profit = bestProfitCents / 100.0;
+  result.sellPrice = bestSellPriceCents / 100.0;
+  result.cost = bestCostCents / 100.0;
+
   return result;
 }
+
+#ifdef __EMSCRIPTEN__
+// JavaScript-compatible progress reporting function for DFS
+void reportProgressToDfsJS(int depth, int processed, int total)
+{
+  val progressEvent = val::object();
+  progressEvent.set("depth", depth);
+  progressEvent.set("processed", processed);
+  progressEvent.set("total", total);
+
+  // Call JavaScript progress function
+  val::global("reportDfsProgress").call<void>("call", val::null(), progressEvent);
+}
+
+// JavaScript-compatible best mix reporting function for DFS
+void reportBestMixFoundToDfsJS(const MixState &bestMix,
+                               const std::vector<Substance> &substances,
+                               int profitCents,
+                               int sellPriceCents,
+                               int costCents)
+{
+  // Convert mix state to substance names
+  std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
+
+  // Create JavaScript array for mix names
+  val jsArray = val::array();
+  for (size_t i = 0; i < mixNames.size(); ++i)
+  {
+    jsArray.set(i, val(mixNames[i]));
+  }
+
+  // Create event object with mix data
+  val mixEvent = val::object();
+  mixEvent.set("mix", jsArray);
+  mixEvent.set("profit", profitCents / 100.0);
+  mixEvent.set("sellPrice", sellPriceCents / 100.0);
+  mixEvent.set("cost", costCents / 100.0);
+
+  // Call JavaScript function to report the new best mix
+  val::global("reportBestMixFound").call<void>("call", val::null(), mixEvent);
+}
+#endif

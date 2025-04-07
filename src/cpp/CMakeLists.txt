@@ -8,6 +8,7 @@ set(SOURCES
   effects.cpp
   pricing.cpp
   bfs_algorithm.cpp
+  dfs_algorithm.cpp # Added DFS algorithm
   json_parser.cpp
 )
 
@@ -17,6 +18,7 @@ set(HEADERS
   effects.h
   pricing.h
   bfs_algorithm.h
+  dfs_algorithm.h # Added DFS header
   json_parser.h
 )
 
@@ -24,7 +26,7 @@ set(HEADERS
 if(EMSCRIPTEN)
   # WebAssembly build
   message(STATUS "Building for WebAssembly")
-  set(WASM_SOURCES ${SOURCES} bfs.cpp)
+  set(WASM_SOURCES ${SOURCES} bfs.cpp dfs.cpp) # Added dfs.cpp
 
   # Set Emscripten compiler flags
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'] -s EXPORT_ES6=1 -s EXPORT_NAME=createBfsModule -s ENVIRONMENT=web -s TOTAL_MEMORY=67108864 -s ASSERTIONS=2 -O3 --bind --no-entry")

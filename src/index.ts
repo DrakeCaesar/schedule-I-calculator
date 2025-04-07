@@ -11,6 +11,7 @@ import {
   toggleNativeDFSHandler,
   toggleTS,
   toggleWASM,
+  toggleWasmDFSHandler,
   updateProductDisplay,
 } from "./gui";
 import "./style.scss";
@@ -162,6 +163,18 @@ function initializeApp() {
     }
     newNativeDfsButton.addEventListener("click", () => {
       toggleNativeDFSHandler(); // Use the new DFS-specific handler
+    });
+  }
+
+  // Set up WebAssembly DFS button event listener
+  const wasmDfsButton = document.getElementById("wasmDfsButton");
+  if (wasmDfsButton) {
+    const newWasmDfsButton = wasmDfsButton.cloneNode(true);
+    if (wasmDfsButton.parentNode) {
+      wasmDfsButton.parentNode.replaceChild(newWasmDfsButton, wasmDfsButton);
+    }
+    newWasmDfsButton.addEventListener("click", () => {
+      toggleWasmDFSHandler(); // Call the new WASM DFS toggle function
     });
   }
 

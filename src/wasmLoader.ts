@@ -5,6 +5,7 @@ type BFSModuleFactory = () => Promise<BFSModule>;
 
 // Simplified interface for the WASM module
 interface BFSModule {
+  // BFS functions
   findBestMixJson: (
     productJson: string,
     substancesJson: string,
@@ -34,7 +35,36 @@ interface BFSModule {
     cost: number;
   };
 
-  // Add the new helper function
+  // DFS functions
+  findBestMixDFSJson?: (
+    productJson: string,
+    substancesJson: string,
+    effectMultipliersJson: string,
+    substanceRulesJson: string,
+    maxDepth: number
+  ) => {
+    mixArray: string[];
+    profit: number;
+    sellPrice: number;
+    cost: number;
+  };
+
+  // Add the new progress-enabled DFS function
+  findBestMixDFSJsonWithProgress?: (
+    productJson: string,
+    substancesJson: string,
+    effectMultipliersJson: string,
+    substanceRulesJson: string,
+    maxDepth: number,
+    reportProgress: boolean
+  ) => {
+    mixArray: string[];
+    profit: number;
+    sellPrice: number;
+    cost: number;
+  };
+
+  // Add the helper function
   getMixArray?: () => string[];
 }
 

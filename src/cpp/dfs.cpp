@@ -62,9 +62,8 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
 #ifdef __EMSCRIPTEN__
   if (reportProgress)
   {
-    // In WebAssembly build, we'd need a JavaScript callback, similar to BFS
-    // This would need to be implemented later if WebAssembly DFS is needed
-    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, nullptr);
+    // Use the WebAssembly-specific progress reporting function
+    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToDfsJS);
   }
   else
 #else

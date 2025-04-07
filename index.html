@@ -47,6 +47,9 @@
               <button id="nativeBfsButton">Start Native BFS</button>
               <button id="nativeDfsButton">Start Native DFS</button>
             </div>
+            <div class="wasm-dfs-button-row">
+              <button id="wasmDfsButton">Start WASM DFS</button>
+            </div>
           </div>
         </div>
 
@@ -116,6 +119,33 @@
             <div id="wasmBfsProgressDisplay" class="progress-display">
               <div class="overall-progress">
                 <h4>WebAssembly BFS Progress</h4>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" style="width: 0%"></div>
+                  <div
+                    class="progress-text"
+                    data-progress="0%"
+                    style="--progress-percent: 0%"
+                  >
+                    Ready
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WebAssembly DFS Column -->
+          <div class="bfs-column wasm-dfs-column">
+            <h3>WebAssembly DFS</h3>
+            <div
+              id="wasm-dfsBestMixDisplay"
+              class="best-mix-display"
+              style="display: none"
+            >
+              <p>Run WebAssembly DFS to see results</p>
+            </div>
+            <div id="wasm-dfsProgressDisplay" class="progress-display">
+              <div class="overall-progress">
+                <h4>WebAssembly DFS Progress</h4>
                 <div class="progress-bar-container">
                   <div class="progress-bar" style="width: 0%"></div>
                   <div
