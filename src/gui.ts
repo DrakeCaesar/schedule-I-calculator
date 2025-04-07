@@ -14,6 +14,9 @@ import { toggleTsBFS } from "./tsBfsController";
 import { toggleWasmBFS } from "./wasmBfsController";
 import { toggleWasmDFS } from "./wasmDfsController";
 
+const STORAGE_KEY_MIX = "currentMix";
+const STORAGE_KEY_PRODUCT = "currentProduct";
+
 // --- UI Update Functions ---
 
 // Update the product display area
