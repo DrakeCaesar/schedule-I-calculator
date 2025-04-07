@@ -40,8 +40,8 @@ void reportProgressToConsole(int depth, int processed, int total)
     int percentage = 0;
     if (total > 0)
     {
-        double percent = (100.0 * processed) / total;
-        percentage = static_cast<int>(percent);
+        // Use integer arithmetic instead of floating-point
+        percentage = (100 * processed) / total;
         // Make sure percentage is between 0 and 100
         percentage = std::max(0, std::min(100, percentage));
     }

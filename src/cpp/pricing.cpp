@@ -23,7 +23,7 @@ int calculateFinalPrice(
   // Determine base price from product name (in integer cents)
   // Default to Weed pricing (35.00)
   int basePriceInCents = 3500; // $35.00 by default
-  
+
   // Check for specific product types
   if (productName.find("Meth") != std::string::npos)
     basePriceInCents = 7000; // $70.00
@@ -35,7 +35,7 @@ int calculateFinalPrice(
   // Formula: basePrice * (1.0 + totalMultiplier/100)
   // = (basePrice * 100 + basePrice * totalMultiplier) / 100
   int finalPriceInCents = basePriceInCents + (basePriceInCents * totalMultiplier) / 100;
-  
+
   // Return the price in cents directly, no rounding needed
   return finalPriceInCents;
 }

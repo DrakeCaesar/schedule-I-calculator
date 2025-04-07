@@ -32,7 +32,7 @@ struct SubstanceRule
 struct Substance
 {
   std::string name;
-  int cost;  // Changed from double to int (representing cents)
+  int cost; // Changed from double to int (representing cents)
   std::string defaultEffect;
   std::vector<SubstanceRule> rules;
 };
@@ -49,18 +49,18 @@ struct Product
 struct JsBestMixResult
 {
   emscripten::val mixArray; // Using emscripten::val to store JavaScript array
-  int profitCents;         // Integer cents instead of double dollars
-  int sellPriceCents;      // Integer cents instead of double dollars
-  int costCents;           // Integer cents instead of double dollars
+  int profitCents;          // Integer cents instead of double dollars
+  int sellPriceCents;       // Integer cents instead of double dollars
+  int costCents;            // Integer cents instead of double dollars
 };
 #else
 // Native version with std::vector
 struct JsBestMixResult
 {
   std::vector<std::string> mixArray;
-  int profitCents;         // Integer cents instead of double dollars
-  int sellPriceCents;      // Integer cents instead of double dollars
-  int costCents;           // Integer cents instead of double dollars
+  int profitCents;    // Integer cents instead of double dollars
+  int sellPriceCents; // Integer cents instead of double dollars
+  int costCents;      // Integer cents instead of double dollars
 };
 #endif
 

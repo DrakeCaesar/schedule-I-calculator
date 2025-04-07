@@ -187,17 +187,17 @@ void recursiveBFSThreaded(
       threadBestProfitCents = profitCents;
       threadBestSellPriceCents = sellPriceCents;
       threadBestCostCents = costCents;
-      
+
       // Check if this is better than the global best mix
       // We use a mutex to avoid race conditions when checking and updating
       {
         std::lock_guard<std::mutex> lock(bestMixMutex);
-        
+
         // Check against the global variables passed by reference to this function
         // These are actually the real global variables from bfsThreadWorker
-        MixState &globalBestMix = *static_cast<MixState*>(&threadBestMix);
+        MixState &globalBestMix = *static_cast<MixState *>(&threadBestMix);
         int &globalBestProfitCents = threadBestProfitCents;
-        
+
         // Report the updated best mix immediately regardless of whether it's better than
         // the global best - each thread reports its own discoveries
         std::vector<std::string> mixNames = threadBestMix.toSubstanceNames(substances);
@@ -219,7 +219,7 @@ void recursiveBFSThreaded(
     if (stepsSinceLastBestMixCheck >= bestMixCheckInterval)
     {
       stepsSinceLastBestMixCheck = 0;
-      
+
       std::lock_guard<std::mutex> lock(bestMixMutex);
       // This check happens in bfsThreadWorker after threads complete
       // We're now doing it more frequently within the thread
@@ -268,7 +268,7 @@ void recursiveBFSThreaded(
   }
 }
 
-#endif  // <-- Added missing #endif for the recursiveBFSThreaded function
+#endif // <-- Added missing #endif for the recursiveBFSThreaded function
 
 #ifndef __EMSCRIPTEN__
 // Thread worker function (only in native build)
