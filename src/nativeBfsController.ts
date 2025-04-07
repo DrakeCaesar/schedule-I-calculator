@@ -1,6 +1,6 @@
 // Native Algorithm Controller
 // Manages the Native C++ implementation of search algorithms via Node.js server
-// Currently configured to use DFS by default
+// Now supports both BFS and DFS with separate functions
 
 import { MAX_RECIPE_DEPTH } from "./bfsCommon";
 import {
@@ -35,8 +35,8 @@ let nativeTotalProcessed = 0;
 let nativeGrandTotal = 1; // Start with 1 to avoid division by zero
 let nativeLastUpdate = 0;
 
-// Algorithm configuration
-const ALGORITHM = "dfs"; // Set to use DFS algorithm
+// Currently active algorithm
+let currentAlgorithm = "dfs"; // Default algorithm
 
 export function updateNativeBestMixDisplay() {
   if (!nativeCurrentProduct) return;
@@ -74,7 +74,7 @@ function initializeNativeWebSocket() {
 
   nativeWebSocket.onopen = () => {
     console.log(
-      `Native ${ALGORITHM.toUpperCase()} WebSocket connection established`
+      `Native ${currentAlgorithm.toUpperCase()} WebSocket connection established`
     );
   };
 
@@ -136,15 +136,14 @@ function initializeNativeWebSocket() {
           updateNativeBestMixDisplay();
         }
 
-        // Update button state
-        const nativeAlgorithmButton =
-          document.getElementById("nativeBfsButton");
-        if (nativeAlgorithmButton) {
-          nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
-        }
+        // Update button states
+        updateButtonStates();
       } else if (data.type === "error") {
         // Handle error
-        console.error(`Native ${ALGORITHM.toUpperCase()} error:`, data.message);
+        console.error(
+          `Native ${currentAlgorithm.toUpperCase()} error:`,
+          data.message
+        );
 
         updateNativeProgressDisplay(
           {
@@ -159,12 +158,8 @@ function initializeNativeWebSocket() {
 
         nativeAlgorithmRunning = false;
 
-        // Update button state
-        const nativeAlgorithmButton =
-          document.getElementById("nativeBfsButton");
-        if (nativeAlgorithmButton) {
-          nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
-        }
+        // Update button states
+        updateButtonStates();
       }
     } catch (error) {
       console.error("Error processing WebSocket message:", error);
@@ -178,16 +173,45 @@ function initializeNativeWebSocket() {
 
   nativeWebSocket.onclose = () => {
     console.log(
-      `Native ${ALGORITHM.toUpperCase()} WebSocket connection closed`
+      `Native ${currentAlgorithm.toUpperCase()} WebSocket connection closed`
     );
     nativeWebSocket = null;
   };
 }
 
-// Function to toggle native algorithm processing via Node.js server
-export async function toggleNativeBFS(product: ProductVariety) {
-  const nativeAlgorithmButton = document.getElementById("nativeBfsButton");
-  if (!nativeAlgorithmButton) return;
+// Helper function to update button states
+function updateButtonStates() {
+  const nativeBfsButton = document.getElementById("nativeBfsButton");
+  const nativeDfsButton = document.getElementById("nativeDfsButton");
+
+  if (nativeBfsButton) {
+    nativeBfsButton.textContent = "Start Native BFS";
+    nativeBfsButton.classList.toggle(
+      "running",
+      nativeAlgorithmRunning && currentAlgorithm === "bfs"
+    );
+  }
+
+  if (nativeDfsButton) {
+    nativeDfsButton.textContent = "Start Native DFS";
+    nativeDfsButton.classList.toggle(
+      "running",
+      nativeAlgorithmRunning && currentAlgorithm === "dfs"
+    );
+  }
+}
+
+// Common function to start/stop native algorithm
+async function toggleNativeAlgorithm(
+  product: ProductVariety,
+  algorithm: string
+) {
+  // Store the algorithm for this run
+  currentAlgorithm = algorithm;
+
+  const buttonId = algorithm === "bfs" ? "nativeBfsButton" : "nativeDfsButton";
+  const algorithmButton = document.getElementById(buttonId);
+  if (!algorithmButton) return;
 
   // Check if calculation is already running
   if (nativeAlgorithmRunning) {
@@ -206,7 +230,8 @@ export async function toggleNativeBFS(product: ProductVariety) {
       true
     );
 
-    nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
+    // Update button states
+    updateButtonStates();
     return;
   }
 
@@ -225,7 +250,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
   initializeNativeWebSocket();
 
   // Start the calculation
-  nativeAlgorithmButton.textContent = `Stop Native ${ALGORITHM.toUpperCase()}`;
+  algorithmButton.textContent = `Stop Native ${algorithm.toUpperCase()}`;
 
   // Initial progress update
   updateNativeProgressDisplay(
@@ -234,7 +259,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
       total: 100,
       depth: 1,
       executionTime: 0,
-      message: `Starting native ${ALGORITHM} calculation...`,
+      message: `Starting native ${algorithm} calculation...`,
     },
     true
   );
@@ -272,7 +297,7 @@ export async function toggleNativeBFS(product: ProductVariety) {
         effectMultipliers: effectMultipliersJson,
         substanceRules: substanceRulesJson,
         maxDepth,
-        algorithm: ALGORITHM, // Specify DFS algorithm
+        algorithm, // Specify algorithm
       }),
     });
 
@@ -325,12 +350,12 @@ export async function toggleNativeBFS(product: ProductVariety) {
       );
 
       // Reset the button after a successful computation
-      nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
       nativeAlgorithmRunning = false;
+      updateButtonStates();
     }
   } catch (error: unknown) {
     // Handle errors with proper type checking
-    console.error(`Native ${ALGORITHM.toUpperCase()} error:`, error);
+    console.error(`Native ${algorithm.toUpperCase()} error:`, error);
 
     // Convert error to string for display
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -348,9 +373,18 @@ export async function toggleNativeBFS(product: ProductVariety) {
     );
 
     // Reset the button after an error
-    nativeAlgorithmButton.textContent = `Start Native ${ALGORITHM.toUpperCase()}`;
     nativeAlgorithmRunning = false;
+    updateButtonStates();
   }
+}
+
+// Specific functions to toggle BFS and DFS algorithms
+export async function toggleNativeBFS(product: ProductVariety) {
+  return toggleNativeAlgorithm(product, "bfs");
+}
+
+export async function toggleNativeDFS(product: ProductVariety) {
+  return toggleNativeAlgorithm(product, "dfs");
 }
 
 // Export state getters

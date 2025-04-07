@@ -3,7 +3,7 @@
 import { currentMix, currentProduct } from ".";
 import { toggleBothBFS } from "./bfsCommon";
 import { createEffectSpan } from "./bfsMixDisplay";
-import { toggleNativeBFS } from "./nativeBfsController";
+import { toggleNativeBFS, toggleNativeDFS } from "./nativeBfsController";
 import {
   applySubstanceRules,
   calculateFinalCost,
@@ -227,5 +227,15 @@ export function toggleWASM() {
 }
 
 export function toggleNative() {
+  // For backward compatibility, use DFS since that's the default
+  toggleNativeDFS(currentProduct);
+}
+
+// New separated algorithm handlers
+export function toggleNativeBFSHandler() {
   toggleNativeBFS(currentProduct);
+}
+
+export function toggleNativeDFSHandler() {
+  toggleNativeDFS(currentProduct);
 }

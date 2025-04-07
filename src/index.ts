@@ -7,7 +7,8 @@ import {
   onTrashDragOver,
   onTrashDrop,
   toggleBFS,
-  toggleNative,
+  toggleNativeBFSHandler,
+  toggleNativeDFSHandler,
   toggleTS,
   toggleWASM,
   updateProductDisplay,
@@ -145,7 +146,22 @@ function initializeApp() {
       nativeBfsButton.parentNode.replaceChild(newNativeButton, nativeBfsButton);
     }
     newNativeButton.addEventListener("click", () => {
-      toggleNative(); // Call new toggleNative function
+      toggleNativeBFSHandler(); // Use the new BFS-specific handler
+    });
+  }
+
+  // Set up Native DFS button event listener
+  const nativeDfsButton = document.getElementById("nativeDfsButton");
+  if (nativeDfsButton) {
+    const newNativeDfsButton = nativeDfsButton.cloneNode(true);
+    if (nativeDfsButton.parentNode) {
+      nativeDfsButton.parentNode.replaceChild(
+        newNativeDfsButton,
+        nativeDfsButton
+      );
+    }
+    newNativeDfsButton.addEventListener("click", () => {
+      toggleNativeDFSHandler(); // Use the new DFS-specific handler
     });
   }
 
