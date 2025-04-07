@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.10)
 project(schedule-I-calculator)
 
+# Enable modern C++ features
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable Link-Time Optimization if supported
+include(CheckIPOSupported)
+check_ipo_supported(RESULT LTO_SUPPORTED OUTPUT LTO_MESSAGE)
+
+if(LTO_SUPPORTED)
+    message(STATUS "Link-Time Optimization (LTO) is supported")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+else()
+    message(STATUS "Link-Time Optimization not supported: ${LTO_MESSAGE}")
+endif()
+
 # Use vcpkg toolchain file if not already set
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
@@ -49,7 +64,7 @@ if(EMSCRIPTEN)
         SUFFIX ".js")
 else()
     # Native build
-    message(STATUS "Building native executable")
+    message(STATUS "Building native executable with runtime performance optimizations")
 
     set(SOURCES
         src/cpp/standalone.cpp
@@ -70,21 +85,81 @@ else()
     find_package(Threads REQUIRED)
     target_link_libraries(bfs_calculator PRIVATE Threads::Threads)
 
-    # Set optimization flags for native build - fixed for MSVC compatibility
+    # Set runtime performance optimization flags
     if(MSVC)
-        # Only apply optimizations for Release builds to avoid conflict with runtime checks
-        string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        # MSVC runtime optimizations
+        target_compile_options(bfs_calculator PRIVATE
 
-        # Apply optimizations in Release mode
-        target_compile_options(bfs_calculator PRIVATE
-            $<$<CONFIG:Release>:/O2>
-            $<$<CONFIG:Debug>:/Od>
+            # Release mode flags
+            $<$<CONFIG:Release>:/O2> # Full optimization
+            $<$<CONFIG:Release>:/Ob3> # Aggressive inlining
+            $<$<CONFIG:Release>:/Oi> # Enable intrinsic functions
+            $<$<CONFIG:Release>:/Ot> # Favor speed over size
+            $<$<CONFIG:Release>:/GL> # Whole program optimization
+            $<$<CONFIG:Release>:/Gy> # Function-level linking
+            $<$<CONFIG:Release>:/fp:fast> # Fast floating-point model
+            $<$<CONFIG:Release>:/Qpar> # Auto-parallelization
+            $<$<CONFIG:Release>:/Qvec-report:2> # Vector report level
+            $<$<CONFIG:Release>:/Qpar-report:2> # Parallelization report
+            $<$<CONFIG:Release>:/DNDEBUG> # Define NDEBUG
         )
+
+        # Enhanced linker options for performance
+        target_link_options(bfs_calculator PRIVATE
+            $<$<CONFIG:Release>:/LTCG> # Link-time code generation
+            $<$<CONFIG:Release>:/INCREMENTAL:NO> # Disable incremental linking
+            $<$<CONFIG:Release>:/OPT:REF> # Eliminate unreferenced data
+            $<$<CONFIG:Release>:/OPT:ICF> # Identical COMDAT folding
+            $<$<CONFIG:Release>:/DYNAMICBASE:NO> # Disable ASLR for perf (security trade-off)
+            $<$<CONFIG:Release>:/HIGHENTROPYVA:NO> # Disable high entropy ASLR
+        )
+
+        # Processor-specific optimizations - automatically select best instruction set
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8) # 64-bit
+            target_compile_options(bfs_calculator PRIVATE
+                $<$<CONFIG:Release>:/favor:blend> # Optimize for latest AMD/Intel
+
+                # Uncomment specific instruction set if you know your target platform
+                # $<$<CONFIG:Release>:/arch:AVX2>  # Use AVX2 instructions
+                # $<$<CONFIG:Release>:/arch:AVX>   # Use AVX instructions
+            )
+        endif()
     else()
-        # Non-MSVC compilers
+        # GCC/Clang runtime optimizations
         target_compile_options(bfs_calculator PRIVATE
-            $<$<NOT:$<CONFIG:Debug>>:-O3>
-            $<$<CONFIG:Debug>:-O0 -g>
+
+            # Release mode flags
+            $<$<NOT:$<CONFIG:Debug>>:-O3> # Full optimization
+            $<$<NOT:$<CONFIG:Debug>>:-march=native> # Optimize for this machine
+            $<$<NOT:$<CONFIG:Debug>>:-mtune=native> # Tune for this machine
+            $<$<NOT:$<CONFIG:Debug>>:-flto> # Link-time optimization
+            $<$<NOT:$<CONFIG:Debug>>:-ffast-math> # Fast math operations
+            $<$<NOT:$<CONFIG:Debug>>:-funroll-loops> # Unroll loops
+            $<$<NOT:$<CONFIG:Debug>>:-finline-functions> # Inline eligible functions
+            $<$<NOT:$<CONFIG:Debug>>:-fomit-frame-pointer> # Omit frame pointer when possible
+            $<$<NOT:$<CONFIG:Debug>>:-DNDEBUG> # Define NDEBUG
+
+            # Enable auto-vectorization and provide feedback
+            $<$<NOT:$<CONFIG:Debug>>:-ftree-vectorize>
+
+            # $<$<NOT:$<CONFIG:Debug>>:-fopt-info-vec-optimized>
+
+            # Profile-guided optimization if available
+            # First build: -fprofile-generate
+            # Then run, then rebuild with: -fprofile-use
+            # $<$<NOT:$<CONFIG:Debug>>:-fprofile-use>
+        )
+
+        # Enhanced linker options for runtime performance
+        target_link_options(bfs_calculator PRIVATE
+            $<$<NOT:$<CONFIG:Debug>>:-flto> # Link-time optimization
+            $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections> # Garbage collect unused sections
+            $<$<NOT:$<CONFIG:Debug>>:-Wl,-O3> # Linker optimizations
         )
     endif()
+
+    # Print optimization summary
+    message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+    message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 endif()
