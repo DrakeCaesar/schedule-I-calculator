@@ -165,7 +165,7 @@ app.post("/api/mix", async (req, res) => {
     const childProcess = exec(command, { timeout: 20 * 60 * 1000 });
 
     // Handle potential exec errors
-    childProcess.on('error', (error) => {
+    childProcess.on("error", (error) => {
       console.error(`Error executing calculator: ${error.message}`);
       bfsProgressEmitter.emit("progress", {
         type: "error",

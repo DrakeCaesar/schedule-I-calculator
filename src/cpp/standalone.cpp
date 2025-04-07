@@ -235,11 +235,12 @@ void dfsThreadWorker(
         // Adaptively adjust progress reporting frequency based on depth
         // Higher depths have exponentially more combinations, so we report less frequently
         int reportFrequency = 10000;
-        if (currentDepth > 5) {
+        if (currentDepth > 5)
+        {
             // For depth 6+, report less frequently to reduce I/O pressure
             reportFrequency = 50000 * (currentDepth - 4); // 50k for depth 5, 100k for depth 6, etc.
         }
-        
+
         // Periodically report progress with adaptive frequency
         if (progressCallback && g_totalProcessedCombinations % reportFrequency == 0)
         {
@@ -334,15 +335,15 @@ JsBestMixResult findBestMixDFS(
         // Use pow with doubles and then cast to int64_t to handle large values
         totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
     }
-    
+
     // Cap to INT_MAX if needed for compatibility with progress callback
-    int totalCombinations = (totalCombinations64 > INT_MAX) ? 
-                            INT_MAX : static_cast<int>(totalCombinations64);
-    
+    int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+
     // If we'll exceed INT_MAX, print a warning
-    if (totalCombinations64 > INT_MAX) {
+    if (totalCombinations64 > INT_MAX)
+    {
         std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cout << "WARNING: Total combinations (" << totalCombinations64 
+        std::cout << "WARNING: Total combinations (" << totalCombinations64
                   << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
     }
 

@@ -107,7 +107,8 @@ void recursiveBFS(
 
     // Adjust reporting frequency based on depth
     int reportFrequency = reportInterval;
-    if (currentDepth > 5) {
+    if (currentDepth > 5)
+    {
       // For deeper levels, report progress less frequently to reduce I/O pressure
       reportFrequency = reportInterval * (currentDepth - 4); // 1000 for depth <=5, 2000 for depth 6, 3000 for depth 7...
     }
@@ -251,7 +252,8 @@ void recursiveBFSThreaded(
 
     // Adjust reporting frequency based on depth
     int reportFrequency = reportInterval;
-    if (currentDepth > 5) {
+    if (currentDepth > 5)
+    {
       // For deeper levels, report progress less frequently to reduce I/O pressure
       reportFrequency = reportInterval * (currentDepth - 4); // 1000 for depth <=5, 2000 for depth 6, 3000 for depth 7...
     }
@@ -387,12 +389,12 @@ JsBestMixResult findBestMix(
   }
 
   // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? 
-                          INT_MAX : static_cast<int>(totalCombinations64);
-  
+  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+
   // If we'll exceed INT_MAX, print a warning
-  if (totalCombinations64 > INT_MAX) {
-    std::cout << "WARNING: Total combinations (" << totalCombinations64 
+  if (totalCombinations64 > INT_MAX)
+  {
+    std::cout << "WARNING: Total combinations (" << totalCombinations64
               << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
   }
 
@@ -476,10 +478,9 @@ JsBestMixResult findBestMix(
     // Use pow with doubles and then cast to int64_t to handle large values
     totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
   }
-  
+
   // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? 
-                           INT_MAX : static_cast<int>(totalCombinations64);
+  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
 
   // Initial progress report
   int processedCombinations = 0;
