@@ -35,16 +35,17 @@ void reportProgressToConsole(int depth, int processed, int total)
 
     // Lock console output to avoid garbled text from multiple threads
     std::lock_guard<std::mutex> lock(g_consoleMutex);
-    
+
     // Calculate percentage safely to avoid negative values
     int percentage = 0;
-    if (total > 0) {
+    if (total > 0)
+    {
         double percent = (100.0 * processed) / total;
         percentage = static_cast<int>(percent);
         // Make sure percentage is between 0 and 100
         percentage = std::max(0, std::min(100, percentage));
     }
-    
+
     std::cout << "Progress: Depth " << depth << ", "
               << processed << "/" << total
               << " (" << percentage << "%)" << std::endl;
