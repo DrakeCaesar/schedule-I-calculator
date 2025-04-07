@@ -17,12 +17,14 @@ if (!fs.existsSync(cppDir)) {
 const isDebug = process.argv.includes("--debug");
 console.log(`Building in ${isDebug ? "debug" : "optimized release"} mode...`);
 
-// List of source files to compile - match the ones in build.sh
+// List of source files to compile - added dfs.cpp and dfs_algorithm.cpp
 const sourceFiles = [
   "bfs.cpp",
+  "dfs.cpp",  // Added DFS module
   "effects.cpp",
   "pricing.cpp",
   "bfs_algorithm.cpp",
+  "dfs_algorithm.cpp", // Added DFS algorithm
   "json_parser.cpp",
 ].map((file) => path.join(cppDir, file).replace(/\\/g, "/"));
 

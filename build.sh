@@ -11,9 +11,11 @@ mkdir -p src/cpp
 # Common arguments for both debug and release builds
 COMMON_ARGS=(
   src/cpp/bfs.cpp
+  src/cpp/dfs.cpp
   src/cpp/effects.cpp
   src/cpp/pricing.cpp
   src/cpp/bfs_algorithm.cpp
+  src/cpp/dfs_algorithm.cpp
   src/cpp/json_parser.cpp
   -o src/cpp/bfs.wasm.js
   -s WASM=1
