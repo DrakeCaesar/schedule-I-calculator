@@ -104,52 +104,33 @@ void dfsThreadWorker(
     effectsSet[pair.first] = true;
   }
 
-  // Stack-based DFS implementation using recursion
-  std::function<void(int)> dfs = [&](int currentDepth)
+  // Thread-local cache for effect calculations at each depth
+  std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
+
+  // Initialize effects cache with initial effect
+  effectsCache[0].push_back(product.initialEffect);
+
+  // Pre-calculate effects for the first substance (which is already added)
+  std::vector<std::string> effectsList = applySubstanceRules(
+      effectsCache[0], substances[startSubstanceIndex], 1, effectsSet);
+  effectsCache[1] = effectsList;
+
+  // Process the first node (already added substance)
   {
-    // Check if we should terminate early
-    if (g_shouldTerminate)
-    {
-      return;
-    }
-
-    // Increment processed combinations counter
-    g_totalProcessedCombinations++;
-
-    // Adaptively adjust progress reporting frequency based on depth
-    // Higher depths have exponentially more combinations, so we report less frequently
-    int reportFrequency = 10000;
-    if (currentDepth > 5)
-    {
-      // For depth 6+, report less frequently to reduce I/O pressure
-      reportFrequency = 50000 * (currentDepth - 4); // 50k for depth 5, 100k for depth 6, etc.
-    }
-
-    // Periodically report progress with adaptive frequency
-    if (progressCallback && g_totalProcessedCombinations % reportFrequency == 0)
-    {
-      progressCallback(currentDepth, g_totalProcessedCombinations.load(), expectedCombinations);
-    }
-
-    // Calculate effects and profit for current state
-    MixState currentMix = currentState.toMixState();
-    std::vector<std::string> effectsList = calculateEffectsForMix(
-        currentMix, substances, product.initialEffect, effectsSet);
-
-    // Calculate all monetary values in cents (integer)
+    // Calculate monetary values for the first node
     int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-    int costCents = currentState.currentCost; // Already in cents
+    int costCents = currentState.currentCost;
     int profitCents = sellPriceCents - costCents;
 
-    // Update thread's best mix if this one is better
+    // Update best mix if this one is better
     if (profitCents > threadBestProfitCents)
     {
-      threadBestMix = currentMix;
+      threadBestMix = currentState.toMixState();
       threadBestProfitCents = profitCents;
       threadBestSellPriceCents = sellPriceCents;
       threadBestCostCents = costCents;
 
-      // Update global best mix if needed (thread-safe)
+      // Update global best mix (thread-safe)
       std::lock_guard<std::mutex> lock(g_bestMixMutex);
       if (threadBestProfitCents > globalBestProfitCents)
       {
@@ -158,7 +139,125 @@ void dfsThreadWorker(
         globalBestSellPriceCents = threadBestSellPriceCents;
         globalBestCostCents = threadBestCostCents;
 
-        // Report best mix found so far - now with proper locking
+        // Report best mix
+        {
+          std::lock_guard<std::mutex> consoleLock(g_consoleMutex);
+          std::vector<std::string> mixNames = currentState.toSubstanceNames(substances);
+          std::cout << "Best mix so far: [";
+          for (size_t i = 0; i < mixNames.size(); ++i)
+          {
+            if (i > 0)
+              std::cout << ", ";
+            std::cout << mixNames[i];
+          }
+          std::cout << "] with profit " << threadBestProfitCents / 100.0
+                    << ", price " << threadBestSellPriceCents / 100.0
+                    << ", cost " << threadBestCostCents / 100.0 << std::endl;
+        }
+      }
+    }
+  }
+
+  g_totalProcessedCombinations++; // Count the first node
+
+  // Use a stack-based iterative DFS approach
+  // Each entry represents (substance_index, depth)
+  struct StackEntry
+  {
+    size_t substanceIndex;
+    size_t depth;
+  };
+
+  std::vector<StackEntry> stack;
+  stack.reserve(maxDepth);
+
+  // If we should go deeper, add the first candidate for depth 2
+  if (maxDepth > 1)
+  {
+    stack.push_back({0, 2});
+  }
+
+  while (!stack.empty() && !g_shouldTerminate)
+  {
+    // Get the top entry without popping
+    StackEntry &current = stack.back();
+
+    // If we've exhausted substances at this depth, backtrack
+    if (current.substanceIndex >= substances.size())
+    {
+      stack.pop_back();
+      // Backtrack if we have more than just the initial substance
+      if (currentState.depth > 1)
+      {
+        currentState.removeLastSubstance(substances);
+      }
+      continue;
+    }
+
+    // Add the current substance
+    currentState.addSubstance(current.substanceIndex, substances);
+
+    // Calculate effects efficiently using the cached previous level
+    if (current.depth == 2)
+    {
+      // For depth 2, use the cached effects from the starting substance
+      effectsList = applySubstanceRules(
+          effectsCache[1],
+          substances[current.substanceIndex],
+          current.depth,
+          effectsSet);
+      effectsCache[current.depth] = effectsList;
+    }
+    else
+    {
+      // For deeper levels, use the parent's cached effects
+      effectsList = applySubstanceRules(
+          effectsCache[current.depth - 1],
+          substances[current.substanceIndex],
+          current.depth,
+          effectsSet);
+      effectsCache[current.depth] = effectsList;
+    }
+
+    // Update progress and count this combination
+    g_totalProcessedCombinations++;
+
+    // Adaptively adjust progress reporting frequency
+    int reportFrequency = 10000;
+    if (current.depth > 5)
+    {
+      reportFrequency = 50000 * (current.depth - 4);
+    }
+
+    // Report progress periodically
+    if (progressCallback && g_totalProcessedCombinations % reportFrequency == 0)
+    {
+      progressCallback(current.depth, g_totalProcessedCombinations.load(), expectedCombinations);
+    }
+
+    // Calculate profit for the current mix
+    int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+    int costCents = currentState.currentCost;
+    int profitCents = sellPriceCents - costCents;
+
+    // Update best mix if needed
+    if (profitCents > threadBestProfitCents)
+    {
+      threadBestMix = currentState.toMixState();
+      threadBestProfitCents = profitCents;
+      threadBestSellPriceCents = sellPriceCents;
+      threadBestCostCents = costCents;
+
+      // Update global best mix (thread-safe)
+      std::lock_guard<std::mutex> lock(g_bestMixMutex);
+      if (threadBestProfitCents > globalBestProfitCents)
+      {
+        globalBestMix = threadBestMix;
+        globalBestProfitCents = threadBestProfitCents;
+        globalBestSellPriceCents = threadBestSellPriceCents;
+        globalBestCostCents = threadBestCostCents;
+
+        // Report best mix
         {
           std::lock_guard<std::mutex> consoleLock(g_consoleMutex);
           std::vector<std::string> mixNames = currentState.toSubstanceNames(substances);
@@ -176,20 +275,19 @@ void dfsThreadWorker(
       }
     }
 
-    // If we haven't reached max depth, continue DFS
-    if (currentDepth < maxDepth)
+    // If we haven't reached max depth, go deeper with the first substance
+    if (current.depth < maxDepth)
     {
-      for (size_t i = 0; i < substances.size(); ++i)
-      {
-        currentState.addSubstance(i, substances);
-        dfs(currentDepth + 1);
-        currentState.removeLastSubstance(substances); // Backtrack
-      }
+      current.substanceIndex++;                // Move to next substance at current level
+      stack.push_back({0, current.depth + 1}); // Push the next level starting at substance 0
     }
-  };
-
-  // Start DFS from depth 1 (with the first substance already added)
-  dfs(1);
+    else
+    {
+      // At max depth, try the next substance at this level
+      currentState.removeLastSubstance(substances);
+      current.substanceIndex++;
+    }
+  }
 }
 
 // Main DFS algorithm with threading
