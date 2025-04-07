@@ -326,11 +326,24 @@ JsBestMixResult findBestMixDFS(
     int bestCostCents = 0;
 
     // Calculate total expected combinations for progress reporting
-    int totalCombinations = 0;
+    // Use 64-bit integer to avoid overflow at high depths
+    int64_t totalCombinations64 = 0;
     size_t substanceCount = std::min(static_cast<size_t>(MAX_SUBSTANCES), substances.size());
     for (size_t i = 1; i <= static_cast<size_t>(maxDepth); ++i)
     {
-        totalCombinations += static_cast<int>(pow(substanceCount, i));
+        // Use pow with doubles and then cast to int64_t to handle large values
+        totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
+    }
+    
+    // Cap to INT_MAX if needed for compatibility with progress callback
+    int totalCombinations = (totalCombinations64 > INT_MAX) ? 
+                            INT_MAX : static_cast<int>(totalCombinations64);
+    
+    // If we'll exceed INT_MAX, print a warning
+    if (totalCombinations64 > INT_MAX) {
+        std::lock_guard<std::mutex> lock(g_consoleMutex);
+        std::cout << "WARNING: Total combinations (" << totalCombinations64 
+                  << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
     }
 
     // Report initial progress
