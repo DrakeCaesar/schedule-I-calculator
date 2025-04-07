@@ -63,9 +63,11 @@ JsBestMixResult findBestMixJsonWithProgress(
   }
   else
 #else
+  // In native mode, use the reportProgressToConsole function defined in standalone.cpp
+  extern void reportProgressToConsole(int depth, int processed, int total);
   if (reportProgress)
   {
-    return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr); // Replace with native progress reporting
+    return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToConsole);
   }
   else
 #endif
@@ -93,6 +95,11 @@ EMSCRIPTEN_BINDINGS(bfs_module)
 {
   value_object<JsBestMixResult>("JsBestMixResult")
       .field("mixArray", &JsBestMixResult::mixArray)
+      // Include both cents-based integer and dollar-based double fields
+      .field("profitCents", &JsBestMixResult::profitCents)
+      .field("sellPriceCents", &JsBestMixResult::sellPriceCents)
+      .field("costCents", &JsBestMixResult::costCents)
+      // Keep the legacy dollar-based fields for backward compatibility
       .field("profit", &JsBestMixResult::profit)
       .field("sellPrice", &JsBestMixResult::sellPrice)
       .field("cost", &JsBestMixResult::cost);

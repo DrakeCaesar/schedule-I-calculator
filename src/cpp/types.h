@@ -52,6 +52,11 @@ struct JsBestMixResult
   int profitCents;          // Integer cents instead of double dollars
   int sellPriceCents;       // Integer cents instead of double dollars
   int costCents;            // Integer cents instead of double dollars
+  
+  // Add these fields for backward compatibility
+  double profit;            // Dollar value (cents / 100.0)
+  double sellPrice;         // Dollar value (cents / 100.0)
+  double cost;              // Dollar value (cents / 100.0)
 };
 #else
 // Native version with std::vector
@@ -61,6 +66,11 @@ struct JsBestMixResult
   int profitCents;    // Integer cents instead of double dollars
   int sellPriceCents; // Integer cents instead of double dollars
   int costCents;      // Integer cents instead of double dollars
+  
+  // Add these fields for backward compatibility
+  double profit;      // Dollar value (cents / 100.0)
+  double sellPrice;   // Dollar value (cents / 100.0)
+  double cost;        // Dollar value (cents / 100.0)
 };
 #endif
 

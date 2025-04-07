@@ -523,10 +523,15 @@ JsBestMixResult findBestMix(
   result.mixArray = bestMixNames;
 #endif
 
-  // Store monetary values in cents in the result
+  // Store monetary values in both cents and dollars in the result
   result.profitCents = bestProfitCents;
   result.sellPriceCents = bestSellPriceCents;
   result.costCents = bestCostCents;
+  
+  // Convert cents to dollars for backward compatibility
+  result.profit = bestProfitCents / 100.0;
+  result.sellPrice = bestSellPriceCents / 100.0;
+  result.cost = bestCostCents / 100.0;
 
   return result;
 }
