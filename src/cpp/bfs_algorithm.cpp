@@ -181,7 +181,7 @@ void recursiveBFSThreaded(
   for (auto &currentMix : currentDepthMixes)
   {
     // Calculate effects for current mix
-    std::vector<std::string> effectsList = calculateEffectsForMixDFS(
+    std::vector<std::string> effectsList = calculateEffectsForMixBFS(
         currentMix, substances, product.initialEffect, effectsSet);
 
     // Calculate profit using integer cents
