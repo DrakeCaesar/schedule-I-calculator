@@ -9,4 +9,5 @@ build/
 build-native/
 temp/
 .vite-inspect
-.vs/
+.vs/*
+!.vs/launch.vs.json

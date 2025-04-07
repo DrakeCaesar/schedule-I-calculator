@@ -1,0 +1,29 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "",
+      "name": "CMakeLists.txt"
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "bfs_calculator.exe",
+      "name": "Debug BFS Calculator",
+      "args": [
+        "-p",
+        "${workspaceRoot}\\temp\\product.json",
+        "${workspaceRoot}\\temp\\substances.json",
+        "${workspaceRoot}\\temp\\effectMultipliers.json",
+        "${workspaceRoot}\\temp\\substanceRules.json",
+        "5",
+        "-o",
+        "${workspaceRoot}\\temp\\output.json"
+      ],
+      "cwd": "${workspaceRoot}"
+    }
+  ]
+}
