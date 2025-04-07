@@ -40,7 +40,12 @@ let currentAlgorithm = "dfs"; // Default algorithm
 
 export function updateNativeBestMixDisplay() {
   if (!nativeCurrentProduct) return;
-  updateBestMixDisplay("native", nativeBestMix, nativeCurrentProduct, currentAlgorithm.toUpperCase());
+  updateBestMixDisplay(
+    "native",
+    nativeBestMix,
+    nativeCurrentProduct,
+    currentAlgorithm.toUpperCase()
+  );
 }
 
 export function updateNativeProgressDisplay(
@@ -54,13 +59,15 @@ export function updateNativeProgressDisplay(
   }
 
   // Update the column header to reflect the current algorithm
-  const nativeColumnHeader = document.querySelector('.native-column h3');
+  const nativeColumnHeader = document.querySelector(".native-column h3");
   if (nativeColumnHeader) {
     nativeColumnHeader.textContent = `Native ${currentAlgorithm.toUpperCase()}`;
   }
-  
+
   // Update the progress display header
-  const nativeProgressHeader = document.querySelector('.native-column .progress-display h4');
+  const nativeProgressHeader = document.querySelector(
+    ".native-column .progress-display h4"
+  );
   if (nativeProgressHeader) {
     nativeProgressHeader.textContent = `Native ${currentAlgorithm.toUpperCase()} Progress`;
   }
@@ -218,10 +225,11 @@ function updateNativeMixDisplayTitle() {
   const nativeBestMixDisplay = document.getElementById("nativeBestMix");
   if (nativeBestMixDisplay) {
     // Look for an h4 element, or any title element if it exists
-    const titleElement = nativeBestMixDisplay.querySelector("h4") || 
-                          nativeBestMixDisplay.querySelector("h3") ||
-                          nativeBestMixDisplay.querySelector("p");
-    
+    const titleElement =
+      nativeBestMixDisplay.querySelector("h4") ||
+      nativeBestMixDisplay.querySelector("h3") ||
+      nativeBestMixDisplay.querySelector("p");
+
     if (titleElement) {
       // Update the title to show the current algorithm
       titleElement.textContent = `Best Native ${currentAlgorithm.toUpperCase()} Mix`;
@@ -239,7 +247,7 @@ async function toggleNativeAlgorithm(
 
   // Update all UI elements to reflect the current algorithm
   updateNativeMixDisplayTitle();
-  
+
   const buttonId = algorithm === "bfs" ? "nativeBfsButton" : "nativeDfsButton";
   const algorithmButton = document.getElementById(buttonId);
   if (!algorithmButton) return;
