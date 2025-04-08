@@ -10,6 +10,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
+#include <emscripten/threading.h>
 using namespace emscripten;
 #endif
 
@@ -303,7 +304,6 @@ JsBestMixResult findBestMixDFS(
     int maxDepth,
     ProgressCallback progressCallback)
 {
-#ifndef __EMSCRIPTEN__
   // Reset global counters
   g_totalProcessedCombinations = 0;
   g_shouldTerminate = false;
@@ -327,204 +327,108 @@ JsBestMixResult findBestMixDFS(
   // Cap to INT_MAX if needed for compatibility with progress callback
   int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
 
-  // If we'll exceed INT_MAX, print a warning
+#ifndef __EMSCRIPTEN__
+  // If we'll exceed INT_MAX, print a warning (native only)
   if (totalCombinations64 > INT_MAX)
   {
     std::lock_guard<std::mutex> lock(g_consoleMutex);
     std::cout << "WARNING: Total combinations (" << totalCombinations64
               << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
   }
-
-  // Report initial progress
-  if (progressCallback)
-  {
-    progressCallback(1, 0, totalCombinations);
-  }
-
-  // Create and launch threads - one for each starting substance
-  std::vector<std::thread> threads;
-  threads.reserve(substances.size());
-
-  for (size_t i = 0; i < substances.size(); ++i)
-  {
-    threads.emplace_back(
-        dfsThreadWorker,
-        std::ref(product),
-        std::ref(substances),
-        std::ref(effectMultipliers),
-        i,
-        maxDepth,
-        totalCombinations,
-        std::ref(bestMix),
-        std::ref(bestProfitCents),
-        std::ref(bestSellPriceCents),
-        std::ref(bestCostCents),
-        progressCallback);
-  }
-
-  // Wait for all threads to complete
-  for (auto &thread : threads)
-  {
-    if (thread.joinable())
-    {
-      thread.join();
-    }
-  }
-
-  // Final progress report
-  if (progressCallback)
-  {
-    progressCallback(maxDepth, totalCombinations, totalCombinations);
-  }
-#else
-  // WebAssembly Single-threaded Implementation
-  // Initialize mix variables
-  MixState bestMix(maxDepth);
-  int bestProfitCents = -std::numeric_limits<int>::infinity();
-  int bestSellPriceCents = 0;
-  int bestCostCents = 0;
-
-  // Create a set of all effect names for efficiency
-  std::unordered_map<std::string, bool> effectsSet;
-  effectsSet.reserve(effectMultipliers.size() * 2);
-  for (const auto &pair : effectMultipliers)
-  {
-    effectsSet[pair.first] = true;
-  }
-
-  // Calculate total expected combinations for progress reporting
-  int64_t totalCombinations64 = 0;
-  size_t substanceCount = std::min(static_cast<size_t>(MAX_SUBSTANCES), substances.size());
-  for (int i = 1; i <= maxDepth; ++i)
-  {
-    totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
-  }
-
-  // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+#endif
 
   // Initial progress report
-  int processedCombinations = 0;
   if (progressCallback)
   {
     progressCallback(1, 0, totalCombinations);
   }
 
-  // Process each substance as a starting point in sequence
-  for (size_t startIdx = 0; startIdx < substances.size(); ++startIdx)
-  {
-    // Initialize state with the starting substance
-    DFSState currentState;
-    currentState.addSubstance(startIdx, substances);
-    processedCombinations++;
+  // Check if we can use threads
+  bool canUseThreads = true; // Default true for native builds
 
-    // Initialize effects cache with initial effect
-    std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
-    effectsCache[0].push_back(product.initialEffect);
+#ifdef __EMSCRIPTEN__
+  // For WebAssembly, check if threading is supported
+  #ifdef __EMSCRIPTEN_PTHREADS__
+    canUseThreads = emscripten_has_threading_support();
+  #else
+    canUseThreads = false; // No threading support in this build
+  #endif
+#endif
 
-    // Calculate effects for the first substance
-    std::vector<std::string> effectsList = applySubstanceRules(
-        effectsCache[0], substances[startIdx], 1, effectsSet);
-    effectsCache[1] = effectsList;
-
-    // Calculate profit for starting substance
-    int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-    int costCents = currentState.currentCost;
-    int profitCents = sellPriceCents - costCents;
-
-    // Update best mix if better
-    if (profitCents > bestProfitCents)
+  if (canUseThreads) {
+    // Multi-threaded implementation (native or WebAssembly with threading)
+    // Create a set of all effect names for efficiency
+    std::unordered_map<std::string, bool> effectsSet;
+    effectsSet.reserve(effectMultipliers.size() * 2);
+    for (const auto &pair : effectMultipliers)
     {
-      bestMix = currentState.toMixState();
-      bestProfitCents = profitCents;
-      bestSellPriceCents = sellPriceCents;
-      bestCostCents = costCents;
-
-      // Report to JavaScript
-      if (progressCallback)
-      {
-        reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
-      }
+      effectsSet[pair.first] = true;
     }
 
-    // Stack-based DFS (simulating recursion for WebAssembly)
-    struct StackEntry
-    {
-      size_t substanceIndex;
-      size_t depth;
-    };
+    // Create and launch threads - one for each starting substance
+    std::vector<std::thread> threads;
+    int maxThreads = std::min(16, (int)substances.size()); // Use up to 16 threads
+    threads.reserve(maxThreads);
 
-    std::vector<StackEntry> stack;
-    stack.reserve(maxDepth);
-
-    // Add first entry for depth 2 if we should go deeper
-    if (maxDepth > 1)
+    for (size_t i = 0; i < substances.size() && i < maxThreads; ++i)
     {
-      stack.push_back({0, 2});
+      threads.emplace_back(
+          dfsThreadWorker,
+          std::ref(product),
+          std::ref(substances),
+          std::ref(effectMultipliers),
+          i,
+          maxDepth,
+          totalCombinations,
+          std::ref(bestMix),
+          std::ref(bestProfitCents),
+          std::ref(bestSellPriceCents),
+          std::ref(bestCostCents),
+          progressCallback);
     }
 
-    // Progress reporting variables
-    int batchSize = 0;
-    const int reportInterval = 1000;
-
-    // Process the DFS stack
-    while (!stack.empty())
+    // Wait for all threads to complete
+    for (auto &thread : threads)
     {
-      // Get current stack entry
-      StackEntry &current = stack.back();
-
-      // If we've exhausted substances at this depth, backtrack
-      if (current.substanceIndex >= substances.size())
+      if (thread.joinable())
       {
-        stack.pop_back();
-        // Backtrack if we have more than just the initial substance
-        if (currentState.depth > 1)
-        {
-          currentState.removeLastSubstance(substances);
-        }
-        continue;
+        thread.join();
       }
-
-      // Add the current substance
-      currentState.addSubstance(current.substanceIndex, substances);
-
-      // Calculate effects using the cached previous level
-      if (current.depth == 2)
-      {
-        // Use cached effects from starting substance
-        effectsList = applySubstanceRules(
-            effectsCache[1], substances[current.substanceIndex], current.depth, effectsSet);
-      }
-      else
-      {
-        // Use parent's cached effects
-        effectsList = applySubstanceRules(
-            effectsCache[current.depth - 1], substances[current.substanceIndex], current.depth, effectsSet);
-      }
-      effectsCache[current.depth] = effectsList;
-
-      // Count this combination
+    }
+  } 
+  else {
+    // Single-threaded WebAssembly fallback
+    // Create a set of all effect names for efficiency
+    std::unordered_map<std::string, bool> effectsSet;
+    effectsSet.reserve(effectMultipliers.size() * 2);
+    for (const auto &pair : effectMultipliers)
+    {
+      effectsSet[pair.first] = true;
+    }
+    
+    int processedCombinations = 0;
+    
+    // Process each substance as a starting point in sequence
+    for (size_t startIdx = 0; startIdx < substances.size(); ++startIdx)
+    {
+      // Initialize state with the starting substance
+      DFSState currentState;
+      currentState.addSubstance(startIdx, substances);
       processedCombinations++;
-      batchSize++;
 
-      // Adaptive progress reporting frequency
-      int reportFrequency = reportInterval;
-      if (current.depth > 5)
-      {
-        reportFrequency = reportInterval * (current.depth - 4);
-      }
+      // Initialize effects cache with initial effect
+      std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
+      effectsCache[0].push_back(product.initialEffect);
 
-      // Report progress periodically
-      if (progressCallback && batchSize >= reportFrequency)
-      {
-        progressCallback(current.depth, processedCombinations, totalCombinations);
-        batchSize = 0;
-      }
+      // Calculate effects for the first substance
+      std::vector<std::string> effectsList = applySubstanceRules(
+          effectsCache[0], substances[startIdx], 1, effectsSet);
+      effectsCache[1] = effectsList;
 
-      // Calculate profit for the current mix
-      sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
-      costCents = currentState.currentCost;
-      profitCents = sellPriceCents - costCents;
+      // Calculate profit for starting substance
+      int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+      int costCents = currentState.currentCost;
+      int profitCents = sellPriceCents - costCents;
 
       // Update best mix if better
       if (profitCents > bestProfitCents)
@@ -534,31 +438,130 @@ JsBestMixResult findBestMixDFS(
         bestSellPriceCents = sellPriceCents;
         bestCostCents = costCents;
 
+#ifdef __EMSCRIPTEN__
         // Report to JavaScript
         if (progressCallback)
         {
           reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
         }
+#endif
       }
 
-      // If we haven't reached max depth, go deeper with the first substance
-      if (current.depth < maxDepth)
+      // Stack-based DFS (simulating recursion for WebAssembly)
+      struct StackEntry
       {
-        current.substanceIndex++;                // Move to next substance at current level
-        stack.push_back({0, current.depth + 1}); // Push next level starting at substance 0
-      }
-      else
-      {
-        // At max depth, try the next substance at this level
-        currentState.removeLastSubstance(substances);
-        current.substanceIndex++;
-      }
-    }
+        size_t substanceIndex;
+        size_t depth;
+      };
 
-    // Report progress after finishing this starting substance
-    if (progressCallback && batchSize > 0)
-    {
-      progressCallback(maxDepth, processedCombinations, totalCombinations);
+      std::vector<StackEntry> stack;
+      stack.reserve(maxDepth);
+
+      // Add first entry for depth 2 if we should go deeper
+      if (maxDepth > 1)
+      {
+        stack.push_back({0, 2});
+      }
+
+      // Progress reporting variables
+      int batchSize = 0;
+      const int reportInterval = 1000;
+
+      // Process the DFS stack
+      while (!stack.empty())
+      {
+        // Get current stack entry
+        StackEntry &current = stack.back();
+
+        // If we've exhausted substances at this depth, backtrack
+        if (current.substanceIndex >= substances.size())
+        {
+          stack.pop_back();
+          // Backtrack if we have more than just the initial substance
+          if (currentState.depth > 1)
+          {
+            currentState.removeLastSubstance(substances);
+          }
+          continue;
+        }
+
+        // Add the current substance
+        currentState.addSubstance(current.substanceIndex, substances);
+
+        // Calculate effects using the cached previous level
+        if (current.depth == 2)
+        {
+          // Use cached effects from starting substance
+          effectsList = applySubstanceRules(
+              effectsCache[1], substances[current.substanceIndex], current.depth, effectsSet);
+        }
+        else
+        {
+          // Use parent's cached effects
+          effectsList = applySubstanceRules(
+              effectsCache[current.depth - 1], substances[current.substanceIndex], current.depth, effectsSet);
+        }
+        effectsCache[current.depth] = effectsList;
+
+        // Count this combination
+        processedCombinations++;
+        batchSize++;
+
+        // Adaptive progress reporting frequency
+        int reportFrequency = reportInterval;
+        if (current.depth > 5)
+        {
+          reportFrequency = reportInterval * (current.depth - 4);
+        }
+
+        // Report progress periodically
+        if (progressCallback && batchSize >= reportFrequency)
+        {
+          progressCallback(current.depth, processedCombinations, totalCombinations);
+          batchSize = 0;
+        }
+
+        // Calculate profit for the current mix
+        sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
+        costCents = currentState.currentCost;
+        profitCents = sellPriceCents - costCents;
+
+        // Update best mix if better
+        if (profitCents > bestProfitCents)
+        {
+          bestMix = currentState.toMixState();
+          bestProfitCents = profitCents;
+          bestSellPriceCents = sellPriceCents;
+          bestCostCents = costCents;
+
+#ifdef __EMSCRIPTEN__
+          // Report to JavaScript
+          if (progressCallback)
+          {
+            reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
+          }
+#endif
+        }
+
+        // If we haven't reached max depth, go deeper with the first substance
+        if (current.depth < maxDepth)
+        {
+          current.substanceIndex++;                // Move to next substance at current level
+          stack.push_back({0, current.depth + 1}); // Push next level starting at substance 0
+        }
+        else
+        {
+          // At max depth, try the next substance at this level
+          currentState.removeLastSubstance(substances);
+          current.substanceIndex++;
+        }
+      }
+
+      // Report progress after finishing this starting substance
+      if (progressCallback && batchSize > 0)
+      {
+        progressCallback(maxDepth, processedCombinations, totalCombinations);
+      }
     }
   }
 
@@ -567,7 +570,6 @@ JsBestMixResult findBestMixDFS(
   {
     progressCallback(maxDepth, totalCombinations, totalCombinations);
   }
-#endif
 
   // Create the result
   JsBestMixResult result;
