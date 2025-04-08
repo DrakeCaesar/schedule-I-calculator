@@ -24,6 +24,12 @@ COMMON_ARGS=(
   -s EXPORT_ES6=1
   -s EXPORT_NAME=createBfsModule
   -s ENVIRONMENT=web
+  # Enable WebAssembly threads support
+  -s USE_PTHREADS=1
+  -s PTHREAD_POOL_SIZE=16
+  -s TOTAL_MEMORY=128MB
+  -s ALLOW_MEMORY_GROWTH=1
+  -s ENVIRONMENT=web,worker
   -I "$VCPKG_ROOT/installed/wasm32-emscripten/include"
   --bind
   --no-entry
@@ -38,7 +44,6 @@ DEBUG_ARGS=(
   -s SAFE_HEAP=1
   -s STACK_OVERFLOW_CHECK=2
   -s DEMANGLE_SUPPORT=1
-  -s TOTAL_MEMORY=67108864
 )
 
 # Release build arguments with optimizations
@@ -50,8 +55,6 @@ RELEASE_ARGS=(
   -fno-exceptions
   -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0
   -s ASSERTIONS=1
-  -s INITIAL_MEMORY=16MB 
-  -s TOTAL_STACK=2MB
   -s MALLOC=emmalloc
   -s SUPPORT_ERRNO=0
   -s NO_FILESYSTEM=1
@@ -67,6 +70,10 @@ RELEASE_ARGS=(
 copy_wasm_to_public() {
   mkdir -p public/
   cp src/cpp/bfs.wasm.wasm public/bfs.wasm
+  # Copy worker script if it exists
+  if [ -f "src/cpp/bfs.wasm.worker.js" ]; then
+    cp src/cpp/bfs.wasm.worker.js public/
+  fi
   echo "Copied WASM file to public directory for serving"
 }
 
@@ -76,6 +83,11 @@ copy_wasm_to_dist() {
     mkdir -p dist/assets/
     cp src/cpp/bfs.wasm.wasm dist/assets/bfs.wasm
     cp src/cpp/bfs.wasm.wasm dist/bfs.wasm
+    # Copy worker script if it exists
+    if [ -f "src/cpp/bfs.wasm.worker.js" ]; then
+      cp src/cpp/bfs.wasm.worker.js dist/assets/
+      cp src/cpp/bfs.wasm.worker.js dist/
+    fi
     echo "Copied WASM file to dist directory for production"
   fi
 }
@@ -97,3 +109,6 @@ copy_wasm_to_dist
 # Display file sizes
 echo "📊 Build size:"
 ls -lh src/cpp/bfs.wasm.js src/cpp/bfs.wasm.wasm | awk '{print "- " $9 ": " $5}'
+if [ -f "src/cpp/bfs.wasm.worker.js" ]; then
+  ls -lh src/cpp/bfs.wasm.worker.js | awk '{print "- " $9 ": " $5}'
+fi

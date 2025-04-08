@@ -612,21 +612,21 @@ void reportProgressToDfsJS(int depth, int processed, int total)
   progressObj.set("depth", depth);
   progressObj.set("processed", processed);
   progressObj.set("total", total);
-  
+
   // Call JavaScript function from C++
   emscripten::val::global("self").call<void>("reportDfsProgress", progressObj);
 }
 
 // Report the best mix found to JavaScript
 void reportBestMixFoundToDfsJS(const MixState &bestMix,
-                             const std::vector<Substance> &substances,
-                             int profitCents,
-                             int sellPriceCents,
-                             int costCents)
+                               const std::vector<Substance> &substances,
+                               int profitCents,
+                               int sellPriceCents,
+                               int costCents)
 {
   // Create an array in JavaScript
   emscripten::val mixArray = emscripten::val::array();
-  
+
   // MixState has substanceIndices member, not indices
   for (size_t i = 0; i < bestMix.substanceIndices.size(); i++)
   {
@@ -636,14 +636,14 @@ void reportBestMixFoundToDfsJS(const MixState &bestMix,
       mixArray.call<void>("push", substances[substanceIndex].name);
     }
   }
-  
+
   // Create result object
   emscripten::val resultObj = emscripten::val::object();
   resultObj.set("mixArray", mixArray);
   resultObj.set("profit", profitCents / 100.0);
   resultObj.set("sellPrice", sellPriceCents / 100.0);
   resultObj.set("cost", costCents / 100.0);
-  
+
   // Call the JavaScript function with the mix data
   emscripten::val::global("self").call<void>("reportBestMixFound", resultObj);
 }

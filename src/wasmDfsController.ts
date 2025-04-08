@@ -23,6 +23,8 @@ let wasmDfsBestMix: BfsMixResult = {
 let wasmDfsCurrentProduct: ProductVariety | null = null;
 let wasmDfsStartTime = 0;
 let wasmDfsWorker: Worker | null = null;
+let isMultiThreaded = false;
+let numThreads = 0;
 
 // Progress tracking
 let lastWasmDfsProgressUpdate = 0;
@@ -106,6 +108,33 @@ function createWasmDfsWorkerMessageHandler() {
 
       // Update the progress display
       updateWasmDfsProgressDisplay(progress, event.data.isFinal);
+    } else if (type === "info") {
+      // Handle info messages, like multi-threading status
+      if (event.data.message && event.data.message.includes("multi-threaded")) {
+        isMultiThreaded = true;
+        // Try to extract the number of threads from the message
+        const match = event.data.message.match(/with (\d+) threads/);
+        if (match && match[1]) {
+          numThreads = parseInt(match[1], 10);
+        }
+
+        // Update the button text to show threading info
+        const wasmDfsButton = document.getElementById("wasmDfsButton");
+        if (wasmDfsButton && wasmDfsRunning) {
+          wasmDfsButton.textContent = `Stop WASM DFS (${
+            numThreads || "multi"
+          }-threaded)`;
+        }
+
+        // Update status display if it exists
+        const statusElem = document.getElementById("wasm-dfs-threading-info");
+        if (statusElem) {
+          statusElem.textContent = `Using ${
+            numThreads || "multi"
+          }-threaded WebAssembly DFS`;
+          statusElem.style.display = "block";
+        }
+      }
     } else if (type === "done") {
       // When the calculation is complete, make sure we show 100% progress
       // Ensure processed equals total
@@ -158,6 +187,8 @@ export async function startWasmDFS(product: ProductVariety) {
   wasmDfsBestMix = { mix: [], profit: -Infinity };
   wasmDfsCurrentProduct = product;
   wasmDfsStartTime = Date.now();
+  isMultiThreaded = false;
+  numThreads = 0;
 
   // Reset progress tracking
   totalDfsProcessedCombinations = 0;
@@ -208,6 +239,27 @@ export async function toggleWasmDFS(product: ProductVariety) {
     // Create displays using the shared components
     createProgressDisplay("wasm-dfs");
     createBestMixDisplay("wasm-dfs");
+
+    // Create a threading info element if it doesn't exist
+    let threadingInfoElem = document.getElementById("wasm-dfs-threading-info");
+    if (!threadingInfoElem) {
+      threadingInfoElem = document.createElement("div");
+      threadingInfoElem.id = "wasm-dfs-threading-info";
+      threadingInfoElem.style.marginTop = "10px";
+      threadingInfoElem.style.fontStyle = "italic";
+      threadingInfoElem.style.display = "none";
+
+      // Find the right place to insert it (after best mix display)
+      const bestMixContainer = document.getElementById(
+        "wasm-dfs-best-mix-container"
+      );
+      if (bestMixContainer && bestMixContainer.parentNode) {
+        bestMixContainer.parentNode.insertBefore(
+          threadingInfoElem,
+          bestMixContainer.nextSibling
+        );
+      }
+    }
 
     // Start WebAssembly DFS
     wasmDfsButton.textContent = "Stop WASM DFS";

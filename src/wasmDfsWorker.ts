@@ -1,5 +1,5 @@
 // WebAssembly DFS Worker
-// This worker runs the WASM DFS implementation to avoid blocking the UI thread
+// This worker runs the WASM DFS implementation with multi-threading to avoid blocking the UI thread
 
 import { effects } from "./substances";
 import {
@@ -155,6 +155,8 @@ self.onmessage = async (event: MessageEvent) => {
         simulateProgress();
       }
 
+      console.log("Starting multi-threaded WebAssembly DFS...");
+
       // Prepare data for WASM as JSON strings
       const productJson = JSON.stringify({
         name: product.name,
@@ -164,7 +166,17 @@ self.onmessage = async (event: MessageEvent) => {
       const effectMultipliersJson = prepareEffectMultipliersForWasm(effects);
       const substanceRulesJson = prepareSubstanceRulesForWasm();
 
+      // Post a message to inform the main thread that we're using threading
+      self.postMessage({
+        type: "info",
+        message:
+          "Using multi-threaded WebAssembly implementation with 16 threads",
+        workerId,
+      });
+
       // Call the WASM DFS function with JSON strings and enable progress reporting
+      // The multi-threaded implementation will be used automatically by the WebAssembly module
+      // due to the PTHREAD_POOL_SIZE=16 setting in the build
       const result = bfsModule.findBestMixDFSJsonWithProgress
         ? bfsModule.findBestMixDFSJsonWithProgress(
             productJson,

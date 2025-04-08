@@ -17,14 +17,14 @@ if (!fs.existsSync(cppDir)) {
 const isDebug = process.argv.includes("--debug");
 console.log(`Building in ${isDebug ? "debug" : "optimized release"} mode...`);
 
-// List of source files to compile - added dfs.cpp and dfs_algorithm.cpp
+// List of source files to compile - include dfs.cpp and dfs_algorithm.cpp
 const sourceFiles = [
   "bfs.cpp",
-  "dfs.cpp", // Added DFS module
+  "dfs.cpp",
   "effects.cpp",
   "pricing.cpp",
   "bfs_algorithm.cpp",
-  "dfs_algorithm.cpp", // Added DFS algorithm
+  "dfs_algorithm.cpp",
   "json_parser.cpp",
 ].map((file) => path.join(cppDir, file).replace(/\\/g, "/"));
 
@@ -47,6 +47,11 @@ const commonArgs = [
   "-s EXPORT_ES6=1",
   "-s EXPORT_NAME=createBfsModule",
   "-s ENVIRONMENT=web,worker",
+  // Enable WebAssembly threads support
+  "-s USE_PTHREADS=1",
+  "-s PTHREAD_POOL_SIZE=16", // Specify thread pool size
+  "-s TOTAL_MEMORY=128MB", // Increase memory to accommodate threads
+  "-s ALLOW_MEMORY_GROWTH=1",
   "--bind",
   "--no-entry",
 ];
@@ -60,7 +65,6 @@ const debugArgs = [
   "-s SAFE_HEAP=1",
   "-s STACK_OVERFLOW_CHECK=2",
   "-s DEMANGLE_SUPPORT=1",
-  "-s TOTAL_MEMORY=67108864",
 ];
 
 // Define release-specific arguments
@@ -72,11 +76,8 @@ const releaseArgs = [
   "-fno-exceptions",
   "-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0",
   "-s ASSERTIONS=1",
-  "-s INITIAL_MEMORY=16MB",
-  "-s TOTAL_STACK=2MB",
   "-s MALLOC=emmalloc",
   "-s SUPPORT_ERRNO=0",
-  "-s NO_FILESYSTEM=1",
   "-s DISABLE_EXCEPTION_CATCHING=1",
   "-s ELIMINATE_DUPLICATE_FUNCTIONS=1",
   "-s AGGRESSIVE_VARIABLE_ELIMINATION=1",
