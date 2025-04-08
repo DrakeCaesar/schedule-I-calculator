@@ -93,17 +93,27 @@ JsBestMixResult findBestMixJsonWithProgress(
     int maxDepth,
     bool reportProgress)
 {
+    // Parse JSON inputs
     Product product = parseProductJson(productJson);
     std::vector<Substance> substances = parseSubstancesJson(substancesJson);
     std::unordered_map<std::string, int> effectMultipliers = parseEffectMultipliersJson(effectMultipliersJson);
     applySubstanceRulesJson(substances, substanceRulesJson);
 
     // Run the BFS algorithm with progress reporting if enabled
+#ifdef __EMSCRIPTEN__
+    if (reportProgress)
+    {
+        // Use the WebAssembly-specific progress reporting function
+        return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
+    }
+    else
+#else
     if (reportProgress)
     {
         return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToConsole);
     }
     else
+#endif
     {
         return findBestMix(product, substances, effectMultipliers, maxDepth, nullptr);
     }

@@ -20,7 +20,7 @@ console.log(`Building in ${isDebug ? "debug" : "optimized release"} mode...`);
 // List of source files to compile - added dfs.cpp and dfs_algorithm.cpp
 const sourceFiles = [
   "bfs.cpp",
-  "dfs.cpp",  // Added DFS module
+  "dfs.cpp", // Added DFS module
   "effects.cpp",
   "pricing.cpp",
   "bfs_algorithm.cpp",

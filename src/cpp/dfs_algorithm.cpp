@@ -600,43 +600,51 @@ JsBestMixResult findBestMixDFS(
 }
 
 #ifdef __EMSCRIPTEN__
-// JavaScript-compatible progress reporting function for DFS
+#include <emscripten/emscripten.h>
+#include <emscripten/bind.h>
+#include <emscripten/val.h>
+
+// JavaScript-compatible progress reporting function (only for WebAssembly)
 void reportProgressToDfsJS(int depth, int processed, int total)
 {
-  val progressEvent = val::object();
-  progressEvent.set("depth", depth);
-  progressEvent.set("processed", processed);
-  progressEvent.set("total", total);
-
-  // Call JavaScript progress function
-  val::global("reportDfsProgress").call<void>("call", val::null(), progressEvent);
+  // Use emscripten::val to create a JavaScript object
+  emscripten::val progressObj = emscripten::val::object();
+  progressObj.set("depth", depth);
+  progressObj.set("processed", processed);
+  progressObj.set("total", total);
+  
+  // Call JavaScript function from C++
+  emscripten::val::global("self").call<void>("reportDfsProgress", progressObj);
 }
 
-// JavaScript-compatible best mix reporting function for DFS
+// Report the best mix found to JavaScript
 void reportBestMixFoundToDfsJS(const MixState &bestMix,
-                               const std::vector<Substance> &substances,
-                               int profitCents,
-                               int sellPriceCents,
-                               int costCents)
+                             const std::vector<Substance> &substances,
+                             int profitCents,
+                             int sellPriceCents,
+                             int costCents)
 {
-  // Convert mix state to substance names
-  std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
-
-  // Create JavaScript array for mix names
-  val jsArray = val::array();
-  for (size_t i = 0; i < mixNames.size(); ++i)
+  // Create an array in JavaScript
+  emscripten::val mixArray = emscripten::val::array();
+  
+  // MixState has substanceIndices member, not indices
+  for (size_t i = 0; i < bestMix.substanceIndices.size(); i++)
   {
-    jsArray.set(i, val(mixNames[i]));
+    size_t substanceIndex = bestMix.substanceIndices[i];
+    if (substanceIndex < substances.size())
+    {
+      mixArray.call<void>("push", substances[substanceIndex].name);
+    }
   }
-
-  // Create event object with mix data
-  val mixEvent = val::object();
-  mixEvent.set("mix", jsArray);
-  mixEvent.set("profit", profitCents / 100.0);
-  mixEvent.set("sellPrice", sellPriceCents / 100.0);
-  mixEvent.set("cost", costCents / 100.0);
-
-  // Call JavaScript function to report the new best mix
-  val::global("reportBestMixFound").call<void>("call", val::null(), mixEvent);
+  
+  // Create result object
+  emscripten::val resultObj = emscripten::val::object();
+  resultObj.set("mixArray", mixArray);
+  resultObj.set("profit", profitCents / 100.0);
+  resultObj.set("sellPrice", sellPriceCents / 100.0);
+  resultObj.set("cost", costCents / 100.0);
+  
+  // Call the JavaScript function with the mix data
+  emscripten::val::global("self").call<void>("reportBestMixFound", resultObj);
 }
 #endif
