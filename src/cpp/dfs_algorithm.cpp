@@ -347,15 +347,16 @@ JsBestMixResult findBestMixDFS(
   bool canUseThreads = true; // Default true for native builds
 
 #ifdef __EMSCRIPTEN__
-  // For WebAssembly, check if threading is supported
-  #ifdef __EMSCRIPTEN_PTHREADS__
-    canUseThreads = emscripten_has_threading_support();
-  #else
-    canUseThreads = false; // No threading support in this build
-  #endif
+// For WebAssembly, check if threading is supported
+#ifdef __EMSCRIPTEN_PTHREADS__
+  canUseThreads = emscripten_has_threading_support();
+#else
+  canUseThreads = false; // No threading support in this build
+#endif
 #endif
 
-  if (canUseThreads) {
+  if (canUseThreads)
+  {
     // Multi-threaded implementation (native or WebAssembly with threading)
     // Create a set of all effect names for efficiency
     std::unordered_map<std::string, bool> effectsSet;
@@ -395,8 +396,9 @@ JsBestMixResult findBestMixDFS(
         thread.join();
       }
     }
-  } 
-  else {
+  }
+  else
+  {
     // Single-threaded WebAssembly fallback
     // Create a set of all effect names for efficiency
     std::unordered_map<std::string, bool> effectsSet;
@@ -405,9 +407,9 @@ JsBestMixResult findBestMixDFS(
     {
       effectsSet[pair.first] = true;
     }
-    
+
     int processedCombinations = 0;
-    
+
     // Process each substance as a starting point in sequence
     for (size_t startIdx = 0; startIdx < substances.size(); ++startIdx)
     {
@@ -615,8 +617,29 @@ void reportProgressToDfsJS(int depth, int processed, int total)
   progressObj.set("processed", processed);
   progressObj.set("total", total);
 
-  // Call JavaScript function from C++
-  emscripten::val::global("self").call<void>("reportDfsProgress", progressObj);
+  // Call JavaScript function from C++, using the global scope for workers
+  emscripten::val global = emscripten::val::global("self");
+
+  // Check if the function exists before calling it
+  if (global.hasOwnProperty("reportDfsProgress"))
+  {
+    global.call<void>("reportDfsProgress", progressObj);
+  }
+  else
+  {
+    // If we're in a thread and the function isn't available, try posting a message
+    // This is a fallback mechanism for thread workers
+    emscripten::val message = emscripten::val::object();
+    message.set("type", "progress");
+    message.set("depth", depth);
+    message.set("processed", processed);
+    message.set("total", total);
+
+    if (global.hasOwnProperty("postMessage"))
+    {
+      global.call<void>("postMessage", message);
+    }
+  }
 }
 
 // Report the best mix found to JavaScript
@@ -629,14 +652,11 @@ void reportBestMixFoundToDfsJS(const MixState &bestMix,
   // Create an array in JavaScript
   emscripten::val mixArray = emscripten::val::array();
 
-  // MixState has substanceIndices member, not indices
-  for (size_t i = 0; i < bestMix.substanceIndices.size(); i++)
+  // Convert the mix to JS array
+  std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
+  for (const auto &name : mixNames)
   {
-    size_t substanceIndex = bestMix.substanceIndices[i];
-    if (substanceIndex < substances.size())
-    {
-      mixArray.call<void>("push", substances[substanceIndex].name);
-    }
+    mixArray.call<void>("push", name);
   }
 
   // Create result object
@@ -646,7 +666,29 @@ void reportBestMixFoundToDfsJS(const MixState &bestMix,
   resultObj.set("sellPrice", sellPriceCents / 100.0);
   resultObj.set("cost", costCents / 100.0);
 
-  // Call the JavaScript function with the mix data
-  emscripten::val::global("self").call<void>("reportBestMixFound", resultObj);
+  // Call the JavaScript function with the mix data, using the global scope for workers
+  emscripten::val global = emscripten::val::global("self");
+
+  // Check if the function exists before calling it
+  if (global.hasOwnProperty("reportBestMixFound"))
+  {
+    global.call<void>("reportBestMixFound", resultObj);
+  }
+  else
+  {
+    // If we're in a thread and the function isn't available, try posting a message
+    // This is a fallback mechanism for thread workers
+    emscripten::val message = emscripten::val::object();
+    message.set("type", "bestMix");
+    message.set("mixArray", mixArray);
+    message.set("profit", profitCents / 100.0);
+    message.set("sellPrice", sellPriceCents / 100.0);
+    message.set("cost", costCents / 100.0);
+
+    if (global.hasOwnProperty("postMessage"))
+    {
+      global.call<void>("postMessage", message);
+    }
+  }
 }
 #endif

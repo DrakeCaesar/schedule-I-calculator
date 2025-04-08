@@ -169,8 +169,7 @@ self.onmessage = async (event: MessageEvent) => {
       // Post a message to inform the main thread that we're using threading
       self.postMessage({
         type: "info",
-        message:
-          "Using multi-threaded WebAssembly implementation with 16 threads",
+        message: "Using multi-threaded WebAssembly implementation with 16 threads",
         workerId,
       });
 
