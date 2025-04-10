@@ -7,11 +7,10 @@ import {
   createBestMixDisplay,
   updateBestMixDisplay,
 } from "./bfsMixDisplay";
-import { 
-  createProgressDisplay, 
-  updateProgressDisplay, 
+import {
+  createProgressDisplay,
   ProgressData,
-  PROGRESS_UPDATE_INTERVAL 
+  updateProgressDisplay,
 } from "./bfsProgress";
 import { ProductVariety } from "./substances";
 
@@ -37,7 +36,10 @@ export function updateWasmDfsBestMixDisplay() {
   updateBestMixDisplay("wasm-dfs", wasmDfsBestMix, wasmDfsCurrentProduct);
 }
 
-export function updateWasmDfsProgressDisplay(progress: number, forceUpdate = false) {
+export function updateWasmDfsProgressDisplay(
+  progress: number,
+  forceUpdate = false
+) {
   // Create a progress data object for the shared component
   const progressData: ProgressData = {
     processed: totalDfsProcessedCombinations,
@@ -53,9 +55,9 @@ export function updateWasmDfsProgressDisplay(progress: number, forceUpdate = fal
 
   // Use the shared progress display component
   lastWasmDfsProgressUpdate = updateProgressDisplay(
-    "wasm-dfs", 
-    progressData, 
-    lastWasmDfsProgressUpdate, 
+    "wasm-dfs",
+    progressData,
+    lastWasmDfsProgressUpdate,
     forceUpdate || progress === 100 // Force update if progress is 100%
   );
 }

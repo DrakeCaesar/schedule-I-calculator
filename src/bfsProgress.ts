@@ -61,10 +61,14 @@ export function updateProgressDisplay(
   const estimatedFinishTime = Date.now() + remainingTime;
 
   // Determine display title based on implementation
-  const implParts = implementation.split('-');
-  const algorithm = implParts.length > 1 ? implParts[1].toUpperCase() : 'BFS';
-  const engine = implParts[0] === 'ts' ? 'TypeScript' : 
-                implParts[0] === 'wasm' ? 'WebAssembly' : 'Native';
+  const implParts = implementation.split("-");
+  const algorithm = implParts.length > 1 ? implParts[1].toUpperCase() : "BFS";
+  const engine =
+    implParts[0] === "ts"
+      ? "TypeScript"
+      : implParts[0] === "wasm"
+      ? "WebAssembly"
+      : "Native";
   const title = `${engine} ${algorithm} Progress`;
 
   // Update the DOM with progress information
@@ -92,9 +96,7 @@ export function updateProgressDisplay(
 }
 
 // Create or get a progress display element for a specific implementation
-export function createProgressDisplay(
-  implementation: string
-): HTMLElement {
+export function createProgressDisplay(implementation: string): HTMLElement {
   const displayId = `${implementation}ProgressDisplay`;
   let progressDisplay = document.getElementById(displayId);
 
@@ -104,7 +106,7 @@ export function createProgressDisplay(
     progressDisplay.classList.add("progress-display");
 
     // Find the appropriate column to place the display
-    const implParts = implementation.split('-');
+    const implParts = implementation.split("-");
     const engine = implParts[0];
     const columnSelector = `.${engine}-column`;
     const column = document.querySelector(columnSelector);
