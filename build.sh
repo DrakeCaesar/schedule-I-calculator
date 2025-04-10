@@ -30,6 +30,7 @@ COMMON_ARGS=(
   -s TOTAL_MEMORY=128MB
   -s ALLOW_MEMORY_GROWTH=1
   -s ENVIRONMENT=web,worker
+  -s ASYNCIFY=1
   -I "$VCPKG_ROOT/installed/wasm32-emscripten/include"
   --bind
   --no-entry
