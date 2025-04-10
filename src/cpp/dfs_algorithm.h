@@ -68,4 +68,16 @@ void reportBestMixFoundToDfsJS(const MixState &bestMix,
                                int profitCents,
                                int sellPriceCents,
                                int costCents);
+
+// Unified JavaScript-compatible progress reporting function
+// This is used by both BFS and DFS algorithms
+void reportProgressToJS(int depth, int processed, int total);
+
+// Unified function to report the best mix found to JavaScript
+// This is used by both BFS and DFS algorithms
+void reportBestMixFoundToJS(const MixState &bestMix,
+                           const std::vector<Substance> &substances,
+                           int profitCents,
+                           int sellPriceCents,
+                           int costCents);
 #endif

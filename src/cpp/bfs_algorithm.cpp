@@ -71,6 +71,7 @@ void recursiveBFS(
 
       // Report the new best mix in WebAssembly mode
 #ifdef __EMSCRIPTEN__
+      // Report the new best mix using the unified function
       reportBestMixFoundToJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
 #endif
 
@@ -537,43 +538,87 @@ JsBestMixResult findBestMix(
 }
 
 #ifdef __EMSCRIPTEN__
-// JavaScript-compatible progress reporting function
+// Unified JavaScript-compatible progress reporting function
 void reportProgressToJS(int depth, int processed, int total)
 {
-  val progressEvent = val::object();
-  progressEvent.set("depth", depth);
-  progressEvent.set("processed", processed);
-  progressEvent.set("total", total);
+  // Create a progress object
+  emscripten::val progressObj = emscripten::val::object();
+  progressObj.set("depth", depth);
+  progressObj.set("processed", processed);
+  progressObj.set("total", total);
 
-  // Call JavaScript progress function
-  val::global("reportBfsProgress").call<void>("call", val::null(), progressEvent);
+  // Get the global scope (works in both main thread and workers)
+  emscripten::val global = emscripten::val::global("self");
+
+  // Determine which progress function to call based on availability
+  bool isDfs = global.hasOwnProperty("reportDfsProgress");
+  bool isBfs = global.hasOwnProperty("reportBfsProgress");
+
+  // Try direct function calls first
+  if (isDfs) {
+    global.call<void>("reportDfsProgress", progressObj);
+  } 
+  else if (isBfs) {
+    global.call<void>("reportBfsProgress", progressObj);
+  }
+  // Fallback to postMessage if we're in a worker thread
+  else if (global.hasOwnProperty("postMessage")) {
+    emscripten::val message = emscripten::val::object();
+    message.set("type", "progress");
+    message.set("depth", depth);
+    message.set("processed", processed);
+    message.set("total", total);
+    global.call<void>("postMessage", message);
+  }
 }
 
-// JavaScript-compatible best mix reporting function
+// Unified function to report the best mix found to JavaScript
 void reportBestMixFoundToJS(const MixState &bestMix,
-                            const std::vector<Substance> &substances,
-                            int profitCents,
-                            int sellPriceCents,
-                            int costCents)
+                           const std::vector<Substance> &substances,
+                           int profitCents,
+                           int sellPriceCents,
+                           int costCents)
 {
   // Convert mix state to substance names
   std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
 
-  // Create JavaScript array for mix names
-  val jsArray = val::array();
-  for (size_t i = 0; i < mixNames.size(); ++i)
-  {
-    jsArray.set(i, val(mixNames[i]));
+  // Create JavaScript array for mix names - two methods that do the same thing
+  emscripten::val mixArray = emscripten::val::array();
+  for (size_t i = 0; i < mixNames.size(); ++i) {
+    mixArray.set(i, emscripten::val(mixNames[i]));
   }
 
-  // Create event object with mix data
-  val mixEvent = val::object();
-  mixEvent.set("mix", jsArray);
-  mixEvent.set("profit", profitCents / 100.0);
-  mixEvent.set("sellPrice", sellPriceCents / 100.0);
-  mixEvent.set("cost", costCents / 100.0);
+  // Create result object
+  emscripten::val resultObj = emscripten::val::object();
+  resultObj.set("mixArray", mixArray);
+  resultObj.set("mix", mixArray); // Include both naming conventions
+  resultObj.set("profit", profitCents / 100.0);
+  resultObj.set("sellPrice", sellPriceCents / 100.0);
+  resultObj.set("cost", costCents / 100.0);
 
-  // Call JavaScript function to report the new best mix
-  val::global("reportBestMixFound").call<void>("call", val::null(), mixEvent);
+  // Get the global scope
+  emscripten::val global = emscripten::val::global("self");
+
+  // Determine which function to call based on availability
+  bool isDfs = global.hasOwnProperty("reportBestMixFound");
+  bool isBfs = global.hasOwnProperty("reportBestMixFound");
+
+  // Try direct function calls first
+  if (isDfs) {
+    global.call<void>("reportBestMixFound", resultObj);
+  }
+  else if (isBfs) {
+    global.call<void>("reportBestMixFound", resultObj);
+  }
+  // Fallback to postMessage if we're in a worker thread
+  else if (global.hasOwnProperty("postMessage")) {
+    emscripten::val message = emscripten::val::object();
+    message.set("type", "bestMix");
+    message.set("mixArray", mixArray);
+    message.set("profit", profitCents / 100.0);
+    message.set("sellPrice", sellPriceCents / 100.0);
+    message.set("cost", costCents / 100.0);
+    global.call<void>("postMessage", message);
+  }
 }
 #endif

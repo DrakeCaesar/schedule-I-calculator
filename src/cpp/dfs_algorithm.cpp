@@ -605,91 +605,21 @@ JsBestMixResult findBestMixDFS(
 }
 
 #ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#include <emscripten/bind.h>
-#include <emscripten/val.h>
-
-// JavaScript-compatible progress reporting function (only for WebAssembly)
+// Use our unified reporting functions
 void reportProgressToDfsJS(int depth, int processed, int total)
 {
-  // Use emscripten::val to create a JavaScript object
-  emscripten::val progressObj = emscripten::val::object();
-  progressObj.set("depth", depth);
-  progressObj.set("processed", processed);
-  progressObj.set("total", total);
-
-  // Call JavaScript function from C++, using the global scope for workers
-  emscripten::val global = emscripten::val::global("self");
-
-  // Check if the function exists before calling it
-  if (global.hasOwnProperty("reportDfsProgress"))
-  {
-    global.call<void>("reportDfsProgress", progressObj);
-  }
-  else
-  {
-    // If we're in a thread and the function isn't available, try posting a message
-    // This is a fallback mechanism for thread workers
-    emscripten::val message = emscripten::val::object();
-    message.set("type", "progress");
-    message.set("depth", depth);
-    message.set("processed", processed);
-    message.set("total", total);
-
-    if (global.hasOwnProperty("postMessage"))
-    {
-      global.call<void>("postMessage", message);
-    }
-  }
+  // Call the unified function
+  reportProgressToJS(depth, processed, total);
 }
 
-// Report the best mix found to JavaScript
+// Report the best mix found using the unified function
 void reportBestMixFoundToDfsJS(const MixState &bestMix,
                                const std::vector<Substance> &substances,
                                int profitCents,
                                int sellPriceCents,
                                int costCents)
 {
-  // Create an array in JavaScript
-  emscripten::val mixArray = emscripten::val::array();
-
-  // Convert the mix to JS array
-  std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
-  for (const auto &name : mixNames)
-  {
-    mixArray.call<void>("push", name);
-  }
-
-  // Create result object
-  emscripten::val resultObj = emscripten::val::object();
-  resultObj.set("mixArray", mixArray);
-  resultObj.set("profit", profitCents / 100.0);
-  resultObj.set("sellPrice", sellPriceCents / 100.0);
-  resultObj.set("cost", costCents / 100.0);
-
-  // Call the JavaScript function with the mix data, using the global scope for workers
-  emscripten::val global = emscripten::val::global("self");
-
-  // Check if the function exists before calling it
-  if (global.hasOwnProperty("reportBestMixFound"))
-  {
-    global.call<void>("reportBestMixFound", resultObj);
-  }
-  else
-  {
-    // If we're in a thread and the function isn't available, try posting a message
-    // This is a fallback mechanism for thread workers
-    emscripten::val message = emscripten::val::object();
-    message.set("type", "bestMix");
-    message.set("mixArray", mixArray);
-    message.set("profit", profitCents / 100.0);
-    message.set("sellPrice", sellPriceCents / 100.0);
-    message.set("cost", costCents / 100.0);
-
-    if (global.hasOwnProperty("postMessage"))
-    {
-      global.call<void>("postMessage", message);
-    }
-  }
+  // Call the unified function
+  reportBestMixFoundToJS(bestMix, substances, profitCents, sellPriceCents, costCents);
 }
 #endif
