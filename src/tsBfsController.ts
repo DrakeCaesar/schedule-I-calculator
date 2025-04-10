@@ -1,7 +1,7 @@
 // TypeScript BFS Controller
 // Manages the TypeScript implementation of the BFS algorithm
 
-import { MAX_RECIPE_DEPTH } from "./bfsCommon";
+import { MAX_RECIPE_DEPTH, scheduleDomUpdate } from "./bfsCommon";
 import {
   BfsMixResult,
   createBestMixDisplay,
@@ -9,6 +9,7 @@ import {
 } from "./bfsMixDisplay";
 import {
   createProgressDisplay,
+  ProgressData,
   updateProgressDisplay,
 } from "./bfsProgress";
 import {
@@ -132,9 +133,11 @@ export function updateTsBestMixDisplay() {
     tsBestMix.cost = cost;
   }
 
-  updateBestMixDisplay("ts", tsBestMix, tsCurrentProduct);
+  // Update with explicit algorithm type for consistency with other controllers
+  updateBestMixDisplay("ts", tsBestMix, tsCurrentProduct, "BFS");
 }
 
+// Standard progress display update that matches other controllers
 export function updateTsProgressDisplay(forceUpdate = false) {
   const totalProcessed = Array.from(workersProgress.values()).reduce(
     (sum, progress) => sum + progress.totalProcessed,
@@ -146,20 +149,91 @@ export function updateTsProgressDisplay(forceUpdate = false) {
   );
   const executionTime = tsStartTime > 0 ? Date.now() - tsStartTime : 0;
 
-  const progressData = {
+  // Find the maximum depth across all workers
+  const maxWorkerDepth = Math.max(
+    ...Array.from(workersProgress.values()).map(
+      (progress) => progress.depth || 0
+    )
+  );
+
+  // Create a progress data object for the shared component
+  const progressData: ProgressData = {
     processed: totalProcessed,
     total: grandTotal || 100, // Avoid division by zero
-    depth: 0, // TS doesn't provide depth info
+    depth: maxWorkerDepth,
     executionTime,
-    message: tsBfsRunning ? "Processing..." : "Paused",
+    message: tsBfsRunning
+      ? tsBfsPaused
+        ? "Paused"
+        : "Processing..."
+      : totalProcessed > 0
+      ? "Calculation complete"
+      : "Ready",
+    algorithm: "BFS",
+    forceUpdate,
   };
 
+  // Use the shared progress display component with the standard pattern
   lastTsProgressUpdate = updateProgressDisplay(
-    "ts",
+    "ts-bfs",
     progressData,
-    lastTsProgressUpdate,
-    forceUpdate
+    lastTsProgressUpdate
   );
+
+  // If we have worker progress information, add it to the display
+  if (workersProgress.size > 0 && tsBfsRunning) {
+    addWorkerDetailsToProgressDisplay();
+  }
+}
+
+// Helper function to add worker details to the progress display
+function addWorkerDetailsToProgressDisplay() {
+  const progressDisplay = document.getElementById("ts-bfsProgressDisplay");
+  if (!progressDisplay) return;
+
+  // Create worker progress HTML
+  const workerProgressHTML = Array.from(workersProgress.entries())
+    .map(([id, progress]) => {
+      // Calculate percentage for current worker's depth
+      const depthPercentage =
+        Math.min(
+          100,
+          Math.round((progress.processed / Math.max(1, progress.total)) * 100)
+        ) || 0;
+
+      return `
+        <div class="worker-progress">
+          <div class="worker-header">
+            <span class="worker-name">${progress.substanceName}</span>
+            <span class="worker-depth">Depth: ${progress.depth}/${MAX_RECIPE_DEPTH}</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${depthPercentage}%"></div>
+            <span class="progress-text" data-progress="${depthPercentage}%" style="--progress-percent: ${depthPercentage}%"></span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Schedule the DOM update for worker details
+  scheduleDomUpdate(() => {
+    // Check if we already have a workers container
+    let workersContainer = progressDisplay.querySelector(".workers-container");
+
+    if (!workersContainer) {
+      workersContainer = document.createElement("div");
+      workersContainer.className = "workers-container";
+      workersContainer.innerHTML = `<h4>Worker Status</h4>`;
+      progressDisplay.appendChild(workersContainer);
+    }
+
+    // Update worker details
+    workersContainer.innerHTML = `
+      <h4>Worker Status</h4>
+      ${workerProgressHTML}
+    `;
+  });
 }
 
 // Optimize worker message handler to reduce memory allocations
@@ -307,7 +381,7 @@ export async function toggleTsBFS(product: ProductVariety) {
     tsBfsButton.textContent = tsBfsPaused ? "Resume TS BFS" : "Pause TS BFS";
   } else {
     // Create the progress and result displays
-    createProgressDisplay("ts");
+    createProgressDisplay("ts-bfs");
     createBestMixDisplay("ts");
 
     // Start TypeScript BFS

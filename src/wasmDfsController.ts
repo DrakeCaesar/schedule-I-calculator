@@ -33,7 +33,7 @@ let totalDfsCombinations = 0;
 
 export function updateWasmDfsBestMixDisplay() {
   if (!wasmDfsCurrentProduct) return;
-  updateBestMixDisplay("wasm-dfs", wasmDfsBestMix, wasmDfsCurrentProduct);
+  updateBestMixDisplay("wasm", wasmDfsBestMix, wasmDfsCurrentProduct, "DFS");
 }
 
 export function updateWasmDfsProgressDisplay(
@@ -44,21 +44,17 @@ export function updateWasmDfsProgressDisplay(
   const progressData: ProgressData = {
     processed: totalDfsProcessedCombinations,
     total: totalDfsCombinations || 100, // Avoid division by zero
-    depth: 0, // WASM doesn't always provide depth info
     executionTime: wasmDfsStartTime > 0 ? Date.now() - wasmDfsStartTime : 0,
+    message: progress === 100 ? "Calculation complete" : "Processing...",
+    algorithm: "DFS",
+    forceUpdate: forceUpdate || progress === 100, // Force update if progress is 100%
   };
-
-  // If the progress is 100%, make sure processed equals total for proper display
-  if (progress >= 100) {
-    progressData.processed = progressData.total;
-  }
 
   // Use the shared progress display component
   lastWasmDfsProgressUpdate = updateProgressDisplay(
     "wasm-dfs",
     progressData,
-    lastWasmDfsProgressUpdate,
-    forceUpdate || progress === 100 // Force update if progress is 100%
+    lastWasmDfsProgressUpdate
   );
 }
 

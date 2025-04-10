@@ -25,7 +25,7 @@ export function updateBestMixDisplay(
   implementation: "ts" | "wasm" | "native",
   bestMix: BfsMixResult,
   currentProduct: ProductVariety,
-  algorithmType: string = "BFS" // Add algorithm type parameter with default "BFS"
+  algorithmType: string
 ): void {
   const displayId =
     implementation === "native"

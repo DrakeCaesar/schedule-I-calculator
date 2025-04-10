@@ -32,7 +32,7 @@ let totalCombinations = 0;
 
 export function updateWasmBestMixDisplay() {
   if (!wasmCurrentProduct) return;
-  updateBestMixDisplay("wasm", wasmBestMix, wasmCurrentProduct);
+  updateBestMixDisplay("wasm", wasmBestMix, wasmCurrentProduct, "BFS");
 }
 
 export function updateWasmProgressDisplay(
@@ -43,21 +43,17 @@ export function updateWasmProgressDisplay(
   const progressData: ProgressData = {
     processed: totalProcessedCombinations,
     total: totalCombinations || 100, // Avoid division by zero
-    depth: 0, // WASM doesn't always provide depth info
     executionTime: wasmStartTime > 0 ? Date.now() - wasmStartTime : 0,
+    message: progress === 100 ? "Calculation complete" : "Processing...",
+    algorithm: "BFS",
+    forceUpdate: forceUpdate || progress === 100, // Force update if progress is 100%
   };
 
-  // If the progress is 100%, make sure processed equals total for proper display
-  if (progress >= 100) {
-    progressData.processed = progressData.total;
-  }
-
-  // Use the shared progress display component
+  // Use the shared progress display component with updated implementation type
   lastWasmProgressUpdate = updateProgressDisplay(
-    "wasm",
+    "wasm-bfs",
     progressData,
-    lastWasmProgressUpdate,
-    forceUpdate || progress === 100 // Force update if progress is 100%
+    lastWasmProgressUpdate
   );
 }
 
@@ -204,8 +200,8 @@ export async function toggleWasmBFS(product: ProductVariety) {
 
     wasmBfsButton.textContent = "Start WASM BFS";
   } else {
-    // Create displays using the shared components
-    createProgressDisplay("wasm");
+    // Create displays using the shared components with updated implementation type
+    createProgressDisplay("wasm-bfs");
     createBestMixDisplay("wasm");
 
     // Start WebAssembly BFS

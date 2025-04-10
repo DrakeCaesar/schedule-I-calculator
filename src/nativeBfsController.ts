@@ -58,26 +58,22 @@ export function updateNativeProgressDisplay(
     nativeGrandTotal = progressData.total;
   }
 
-  // Update the column header to reflect the current algorithm
-  const nativeColumnHeader = document.querySelector(".native-column h3");
-  if (nativeColumnHeader) {
-    nativeColumnHeader.textContent = `Native ${currentAlgorithm.toUpperCase()}`;
-  }
+  // Add algorithm and forceUpdate flags to the progress data
+  const enhancedProgressData: ProgressData = {
+    ...progressData,
+    algorithm: currentAlgorithm.toUpperCase(),
+    forceUpdate,
+  };
 
-  // Update the progress display header
-  const nativeProgressHeader = document.querySelector(
-    ".native-column .progress-display h4"
-  );
-  if (nativeProgressHeader) {
-    nativeProgressHeader.textContent = `Native ${currentAlgorithm.toUpperCase()} Progress`;
-  }
+  // Determine which implementation type to use based on the current algorithm
+  const implementation =
+    currentAlgorithm === "bfs" ? "native-bfs" : "native-dfs";
 
   // Use the shared progress display component
   nativeLastUpdate = updateProgressDisplay(
-    "native",
-    progressData,
-    nativeLastUpdate,
-    forceUpdate
+    implementation,
+    enhancedProgressData,
+    nativeLastUpdate
   );
 }
 
@@ -274,9 +270,12 @@ async function toggleNativeAlgorithm(
     return;
   }
 
-  // Create displays using shared components
-  createProgressDisplay("native");
-  createBestMixDisplay("native", algorithm.toUpperCase()); // Pass algorithm type to the display
+  // Determine which implementation type to use
+  const implementation = algorithm === "bfs" ? "native-bfs" : "native-dfs";
+
+  // Create displays using shared components with standardized implementation type
+  createProgressDisplay(implementation);
+  createBestMixDisplay(implementation);
 
   // Set start time for execution time calculation
   nativeStartTime = Date.now();

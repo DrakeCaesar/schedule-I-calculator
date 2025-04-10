@@ -51,9 +51,9 @@ export function formatClockTime(ms: number): string {
 // Create all progress displays
 export function createProgressDisplays() {
   // Create progress displays for each implementation
-  createProgressDisplay("ts");
-  createProgressDisplay("wasm");
-  createProgressDisplay("native");
+  createProgressDisplay("ts-bfs");
+  createProgressDisplay("wasm-bfs");
+  createProgressDisplay("native-bfs");
 
   // Create result displays for each implementation
   createBestMixDisplay("ts");

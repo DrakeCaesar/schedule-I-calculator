@@ -10,16 +10,35 @@ export const PROGRESS_UPDATE_INTERVAL = 250; // ms
 export interface ProgressData {
   processed: number;
   total: number;
-  depth: number;
+  depth?: number;
   executionTime: number;
   message?: string;
+  algorithm?: string; // Add algorithm type for display
+  forceUpdate?: boolean; // Integrate force update into the data object
 }
 
-function calculateRemainingTimeAndFinishTime(processed: number, total: number, executionTime: number) {
-  const percentage = Math.min(100, Math.round((processed / Math.max(1, total)) * 100));
+// Define a consistent implementation type
+export type ImplementationType =
+  | "ts-bfs" // TypeScript BFS
+  | "wasm-bfs" // WebAssembly BFS
+  | "wasm-dfs" // WebAssembly DFS
+  | "native-bfs" // Native BFS
+  | "native-dfs"; // Native DFS
+
+function calculateRemainingTimeAndFinishTime(
+  processed: number,
+  total: number,
+  executionTime: number
+) {
+  const percentage = Math.min(
+    100,
+    Math.round((processed / Math.max(1, total)) * 100)
+  );
   let remainingTime = 0;
   if (percentage > 0 && percentage < 100) {
-    remainingTime = Math.round((executionTime / percentage) * (100 - percentage));
+    remainingTime = Math.round(
+      (executionTime / percentage) * (100 - percentage)
+    );
   }
   const estimatedFinishTime = Date.now() + remainingTime;
   return { percentage, remainingTime, estimatedFinishTime };
@@ -27,19 +46,23 @@ function calculateRemainingTimeAndFinishTime(processed: number, total: number, e
 
 // Creates or updates a progress display for the specified implementation
 export function updateProgressDisplay(
-  implementation: "ts" | "wasm" | "native",
+  implementation: ImplementationType,
   progressData: ProgressData,
-  lastUpdateTime: number,
-  forceUpdate = false
+  lastUpdateTime: number
 ): number {
   const currentTime = Date.now();
+  const forceUpdate = progressData.forceUpdate || false;
 
   // Only update if forced or enough time has passed since last update
+  const isCompleteOrError =
+    progressData.message === "Ready" ||
+    progressData.message === "Calculation complete" ||
+    progressData.message?.startsWith("Error") ||
+    progressData.message === "Calculation canceled";
+
   if (
     !forceUpdate &&
-    progressData.message !== "Ready" &&
-    progressData.message !== "Calculation complete" &&
-    progressData.message !== "Error" &&
+    !isCompleteOrError &&
     currentTime - lastUpdateTime < PROGRESS_UPDATE_INTERVAL
   ) {
     return lastUpdateTime; // Return the original lastUpdateTime if we're skipping this update
@@ -51,19 +74,22 @@ export function updateProgressDisplay(
   if (!progressDisplay) return currentTime;
 
   // Extract and prepare data for display
-  const { processed, total, depth, executionTime, message } = progressData;
-  const { percentage, remainingTime, estimatedFinishTime } = calculateRemainingTimeAndFinishTime(processed, total, executionTime);
+  const { processed, total, depth, executionTime, message, algorithm } =
+    progressData;
+  const { percentage, remainingTime, estimatedFinishTime } =
+    calculateRemainingTimeAndFinishTime(processed, total, executionTime);
 
   // Determine display title based on implementation
   const implParts = implementation.split("-");
-  const algorithm = implParts.length > 1 ? implParts[1].toUpperCase() : "BFS";
+  const algorithmType =
+    algorithm || (implParts.length > 1 ? implParts[1].toUpperCase() : "BFS");
   const engine =
     implParts[0] === "ts"
       ? "TypeScript"
       : implParts[0] === "wasm"
       ? "WebAssembly"
       : "Native";
-  const title = `${engine} ${algorithm} Progress`;
+  const title = `${engine} ${algorithmType} Progress`;
 
   // Update the DOM with progress information
   scheduleDomUpdate(() => {
@@ -90,7 +116,9 @@ export function updateProgressDisplay(
 }
 
 // Create or get a progress display element for a specific implementation
-export function createProgressDisplay(implementation: string): HTMLElement {
+export function createProgressDisplay(
+  implementation: ImplementationType
+): HTMLElement {
   const displayId = `${implementation}ProgressDisplay`;
   let progressDisplay = document.getElementById(displayId);
 
@@ -125,9 +153,16 @@ export function createProgressDisplay(implementation: string): HTMLElement {
   // Initialize with "Ready" state
   updateProgressDisplay(
     implementation,
-    { processed: 0, total: 100, depth: 0, executionTime: 0, message: "Ready" },
-    0,
-    true
+    {
+      processed: 0,
+      total: 100,
+      depth: 0,
+      executionTime: 0,
+      message: "Ready",
+      algorithm: implementation.split("-")[1]?.toUpperCase() || "BFS",
+      forceUpdate: true,
+    },
+    0
   );
 
   return progressDisplay;
@@ -184,61 +219,59 @@ export function updateTsProgressDisplayWithWorkers(
   lastUpdateTime: number,
   forceUpdate = false
 ): number {
-  const currentTime = Date.now();
+  // Use the unified updateProgressDisplay for the overall progress
+  // but add worker-specific details after
+  const progressData: ProgressData = {
+    processed: totalProcessed,
+    total: grandTotal || 100,
+    executionTime,
+    message: "Processing...",
+    forceUpdate,
+  };
 
-  // Only update every PROGRESS_UPDATE_INTERVAL ms, unless forceUpdate is true
-  if (!forceUpdate && currentTime - lastUpdateTime < PROGRESS_UPDATE_INTERVAL) {
+  const currentTime = updateProgressDisplay(
+    "ts-bfs",
+    progressData,
+    lastUpdateTime
+  );
+
+  // Only proceed if enough time has passed or force update is true
+  if (!forceUpdate && currentTime === lastUpdateTime) {
     return lastUpdateTime;
   }
 
-  const progressDisplay = document.getElementById("tsBfsProgressDisplay");
+  const progressDisplay = document.getElementById("ts-bfsProgressDisplay");
   if (!progressDisplay) return currentTime;
 
   // Calculate overall percentage
   const overallPercentage =
     Math.min(100, Math.round((totalProcessed / grandTotal) * 100)) || 0;
 
-  // Estimate remaining time
-  const remainingTime =
-    totalProcessed > 0
-      ? Math.round(
-          (executionTime / totalProcessed) * (grandTotal - totalProcessed)
-        )
-      : 0;
+  // Add worker-specific content
+  const workerProgressHTML = createTsWorkerProgressHTML(
+    workersProgress,
+    maxDepth
+  );
 
-  const estimatedFinishTime = currentTime + remainingTime;
-
-  // Schedule the DOM update
+  // Schedule the DOM update for worker details
   scheduleDomUpdate(() => {
-    // Create HTML for overall progress
-    const overallProgressHTML = `
-      <div class="overall-progress">
-        <h4>TypeScript BFS Progress</h4>
-        <div>Total processed: ${totalProcessed.toLocaleString()} / ${grandTotal.toLocaleString()}</div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" style="width: ${overallPercentage}%"></div>
-          <span class="progress-text" data-progress="${overallPercentage}%" style="--progress-percent: ${overallPercentage}%"></span>
-        </div>
-        <div>Execution time: ${formatTime(executionTime)}</div>
-        <div>Estimated time remaining: ${formatTime(remainingTime)}</div>
-        <div>Estimated finish time: ${formatClockTime(
-          estimatedFinishTime
-        )}</div>
-      </div>
-    `;
+    // Find the overall progress container
+    const overallProgress = progressDisplay.querySelector(".overall-progress");
 
-    // Create worker-specific progress display
-    const workerProgressHTML = createTsWorkerProgressHTML(
-      workersProgress,
-      maxDepth
-    );
+    // Check if we already have a workers container
+    let workersContainer = progressDisplay.querySelector(".workers-container");
 
-    progressDisplay.innerHTML = `
-      ${overallProgressHTML}
-      <div class="workers-container">
-        <h4>Worker Status</h4>
-        ${workerProgressHTML}
-      </div>
+    if (!workersContainer) {
+      workersContainer = document.createElement("div");
+      workersContainer.className = "workers-container";
+      workersContainer.innerHTML = `<h4>Worker Status</h4>`;
+      progressDisplay.appendChild(workersContainer);
+    }
+
+    // Update worker details
+    workersContainer.innerHTML = `
+      <h4>Worker Status</h4>
+      ${workerProgressHTML}
     `;
   });
 
