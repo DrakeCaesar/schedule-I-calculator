@@ -41,13 +41,17 @@
           <h2>Best Mix Finder</h2>
           <div class="button-container">
             <button id="bothBfsButton">Start Both BFS</button>
-            <button id="tsBfsButton">Start TS BFS</button>
-            <button id="wasmBfsButton">Start WASM BFS</button>
+
+            <div class="ts-buttons-row">
+              <button id="tsBfsButton">Start TS BFS</button>
+              <button id="tsDfsButton">Start TS DFS</button>
+            </div>
             <div class="native-buttons-row">
               <button id="nativeBfsButton">Start Native BFS</button>
               <button id="nativeDfsButton">Start Native DFS</button>
             </div>
-            <div class="wasm-dfs-button-row">
+            <div class="wasm-buttons-row">
+              <button id="wasmBfsButton">Start WASM BFS</button>
               <button id="wasmDfsButton">Start WASM DFS</button>
             </div>
           </div>
@@ -65,16 +69,6 @@
             value="6"
             step="1"
           />
-          <div class="depth-info">
-            Higher depth = more combinations to check = longer processing time
-          </div>
-        </div>
-
-        <div id="bestMixDisplay">
-          <p>
-            Click any "Start BFS / DFS" button to find the most profitable mix
-            for the selected product.
-          </p>
         </div>
 
         <!-- BFS Results Grid -->

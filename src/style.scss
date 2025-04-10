@@ -183,27 +183,6 @@ body {
   }
 }
 
-/* BFS Button and Result Display */
-#bfsButton {
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: #3e8e41;
-  }
-
-  &:active {
-    background-color: #3e8e41;
-    transform: translateY(1px);
-  }
-}
-
 #bestMixDisplay {
   padding: 10px;
   border: 1px solid #ccc;
@@ -362,7 +341,9 @@ body {
 }
 
 /* Add a container for native buttons to display them side by side */
-.native-buttons-row {
+.ts-buttons-row,
+.native-buttons-row,
+.wasm-buttons-row {
   display: flex;
   gap: 10px;
   width: 100%;
@@ -370,7 +351,9 @@ body {
 
 #bothBfsButton,
 #tsBfsButton,
+#tsDfsButton,
 #wasmBfsButton,
+#wasmDfsButton,
 #nativeBfsButton,
 #nativeDfsButton {
   padding: 10px 20px;
@@ -391,8 +374,12 @@ body {
 }
 
 /* Make the native buttons take equal width in their container */
+#tsBfsButton,
+#tsDfsButton,
 #nativeBfsButton,
-#nativeDfsButton {
+#nativeDfsButton,
+#wasmBfsButton,
+#wasmDfsButton {
   flex: 1;
 }
 
@@ -404,7 +391,8 @@ body {
   }
 }
 
-#tsBfsButton {
+#tsBfsButton,
+#tsDfsButton {
   background-color: #2196f3; /* Blue */
 
   &:hover {
@@ -412,7 +400,8 @@ body {
   }
 }
 
-#wasmBfsButton {
+#wasmBfsButton,
+#wasmDfsButton {
   background-color: #ff9800; /* Orange */
 
   &:hover {
@@ -422,15 +411,7 @@ body {
 
 #nativeBfsButton,
 #nativeDfsButton {
-  background {
-    background-color: #9c27b0; /* Purple */
-
-    &:hover {
-      background-color: #7b1fa2;
-    }
-  }
-
-  -color: #9c27b0;
+  background-color: #9c27b0; /* Purple */
 
   &:hover {
     background-color: #7b1fa2;
