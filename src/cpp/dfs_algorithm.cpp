@@ -350,6 +350,7 @@ JsBestMixResult findBestMixDFS(
 // For WebAssembly, check if threading is supported
 #ifdef __EMSCRIPTEN_PTHREADS__
   canUseThreads = emscripten_has_threading_support();
+  canUseThreads = false; // Disable threading for now
 #else
   canUseThreads = false; // No threading support in this build
 #endif
