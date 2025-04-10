@@ -9,7 +9,7 @@ import {
 } from "./bfsMixDisplay";
 import {
   createProgressDisplay,
-  updateTsProgressDisplayWithWorkers,
+  updateProgressDisplay,
 } from "./bfsProgress";
 import {
   calculateFinalCost,
@@ -136,25 +136,27 @@ export function updateTsBestMixDisplay() {
 }
 
 export function updateTsProgressDisplay(forceUpdate = false) {
-  // Calculate overall progress across all workers
-  let totalProcessed = 0;
-  let grandTotal = 0;
-  const now = Date.now();
-  const executionTime = tsStartTime > 0 ? now - tsStartTime : 0;
+  const totalProcessed = Array.from(workersProgress.values()).reduce(
+    (sum, progress) => sum + progress.totalProcessed,
+    0
+  );
+  const grandTotal = Array.from(workersProgress.values()).reduce(
+    (sum, progress) => sum + progress.grandTotal,
+    0
+  );
+  const executionTime = tsStartTime > 0 ? Date.now() - tsStartTime : 0;
 
-  // Sum up totals from all workers
-  workersProgress.forEach((progress) => {
-    totalProcessed += progress.totalProcessed;
-    grandTotal += progress.grandTotal;
-  });
-
-  // Update the progress display with worker-specific information
-  lastTsProgressUpdate = updateTsProgressDisplayWithWorkers(
-    totalProcessed,
-    grandTotal,
+  const progressData = {
+    processed: totalProcessed,
+    total: grandTotal || 100, // Avoid division by zero
+    depth: 0, // TS doesn't provide depth info
     executionTime,
-    workersProgress,
-    MAX_RECIPE_DEPTH,
+    message: tsBfsRunning ? "Processing..." : "Paused",
+  };
+
+  lastTsProgressUpdate = updateProgressDisplay(
+    "ts",
+    progressData,
     lastTsProgressUpdate,
     forceUpdate
   );
