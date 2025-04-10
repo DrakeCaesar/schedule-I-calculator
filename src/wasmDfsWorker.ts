@@ -4,11 +4,11 @@
 import {
   WorkerState,
   createWorkerState,
-  setupProgressReporting,
-  setupBestMixReporting,
-  prepareWasmRun,
   extractMixArray,
-  sendCompletionMessages
+  prepareWasmRun,
+  sendCompletionMessages,
+  setupBestMixReporting,
+  setupProgressReporting,
 } from "./wasmWorkerCommon";
 
 // Worker state
@@ -57,7 +57,7 @@ self.onmessage = async (event: MessageEvent) => {
         productJson,
         substancesJson,
         effectMultipliersJson,
-        substanceRulesJson
+        substanceRulesJson,
       } = await prepareWasmRun(state, product, maxDepth);
 
       // Check if DFS functions are available

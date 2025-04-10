@@ -162,7 +162,7 @@ export async function prepareWasmRun(
 
 // Extract mix array from WASM result with fallbacks
 export function extractMixArray(
-  result: WasmAlgorithmResult, 
+  result: WasmAlgorithmResult,
   wasmModule: any
 ): string[] {
   let mixArray: string[] = [];
@@ -199,8 +199,7 @@ export function sendCompletionMessages(
   maxDepth: number
 ) {
   // Get the total combinations value, using our tracked value if available
-  let finalTotalCombinations =
-    state.totalTrackedCombinations || 100;
+  let finalTotalCombinations = state.totalTrackedCombinations || 100;
   let finalProcessedCombinations = finalTotalCombinations; // At completion, processed equals total
 
   // Always send a final 100% progress update

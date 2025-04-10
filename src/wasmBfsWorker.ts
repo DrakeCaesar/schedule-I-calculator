@@ -4,12 +4,12 @@
 import {
   WorkerState,
   createWorkerState,
-  setupProgressReporting,
-  setupBestMixReporting,
-  prepareWasmRun,
   extractMixArray,
+  prepareWasmRun,
   sendCompletionMessages,
-  simulateProgress
+  setupBestMixReporting,
+  setupProgressReporting,
+  simulateProgress,
 } from "./wasmWorkerCommon";
 
 // Worker state
@@ -58,7 +58,7 @@ self.onmessage = async (event: MessageEvent) => {
         productJson,
         substancesJson,
         effectMultipliersJson,
-        substanceRulesJson
+        substanceRulesJson,
       } = await prepareWasmRun(state, product, maxDepth);
 
       // Check if progress reporting is available
