@@ -15,6 +15,16 @@ export interface ProgressData {
   message?: string;
 }
 
+function calculateRemainingTimeAndFinishTime(processed: number, total: number, executionTime: number) {
+  const percentage = Math.min(100, Math.round((processed / Math.max(1, total)) * 100));
+  let remainingTime = 0;
+  if (percentage > 0 && percentage < 100) {
+    remainingTime = Math.round((executionTime / percentage) * (100 - percentage));
+  }
+  const estimatedFinishTime = Date.now() + remainingTime;
+  return { percentage, remainingTime, estimatedFinishTime };
+}
+
 // Creates or updates a progress display for the specified implementation
 export function updateProgressDisplay(
   implementation: "ts" | "wasm" | "native",
@@ -42,23 +52,7 @@ export function updateProgressDisplay(
 
   // Extract and prepare data for display
   const { processed, total, depth, executionTime, message } = progressData;
-
-  // Calculate progress percentage
-  const percentage = Math.min(
-    100,
-    Math.round((processed / Math.max(1, total)) * 100)
-  );
-
-  // Calculate estimated remaining time based on progress
-  let remainingTime = 0;
-  if (percentage > 0 && percentage < 100) {
-    remainingTime = Math.round(
-      (executionTime / percentage) * (100 - percentage)
-    );
-  }
-
-  // Calculate estimated finish time
-  const estimatedFinishTime = Date.now() + remainingTime;
+  const { percentage, remainingTime, estimatedFinishTime } = calculateRemainingTimeAndFinishTime(processed, total, executionTime);
 
   // Determine display title based on implementation
   const implParts = implementation.split("-");

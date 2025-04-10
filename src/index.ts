@@ -27,6 +27,17 @@ export let currentProduct: ProductVariety = {
 // The additives (by substance name) added to the mix, in order.
 export let currentMix: string[] = [];
 
+function setupButton(buttonId: string, clickHandler: () => void) {
+  const button = document.getElementById(buttonId);
+  if (button) {
+    const newButton = button.cloneNode(true);
+    if (button.parentNode) {
+      button.parentNode.replaceChild(newButton, button);
+    }
+    newButton.addEventListener("click", clickHandler);
+  }
+}
+
 function initializeApp() {
   // Populate the additives list in the sidebar using our substances array.
   const additivesList = document.getElementById("additivesList");
@@ -103,80 +114,13 @@ function initializeApp() {
     trash.addEventListener("drop", onTrashDrop);
   }
 
-  // Set up both BFS button event listener
-  const bothBfsButton = document.getElementById("bothBfsButton");
-  if (bothBfsButton) {
-    const newBothButton = bothBfsButton.cloneNode(true);
-    if (bothBfsButton.parentNode) {
-      bothBfsButton.parentNode.replaceChild(newBothButton, bothBfsButton);
-    }
-    newBothButton.addEventListener("click", () => {
-      toggleBFS(); // Use the existing toggleBFS function which now calls toggleBothBFS
-    });
-  }
-
-  // Set up BFS TypeScript button event listener
-  const tsBfsButton = document.getElementById("tsBfsButton");
-  if (tsBfsButton) {
-    const newTsButton = tsBfsButton.cloneNode(true);
-    if (tsBfsButton.parentNode) {
-      tsBfsButton.parentNode.replaceChild(newTsButton, tsBfsButton);
-    }
-    newTsButton.addEventListener("click", () => {
-      toggleTS(); // Call new toggleTS function
-    });
-  }
-
-  // Set up BFS WebAssembly button event listener
-  const wasmBfsButton = document.getElementById("wasmBfsButton");
-  if (wasmBfsButton) {
-    const newWasmButton = wasmBfsButton.cloneNode(true);
-    if (wasmBfsButton.parentNode) {
-      wasmBfsButton.parentNode.replaceChild(newWasmButton, wasmBfsButton);
-    }
-    newWasmButton.addEventListener("click", () => {
-      toggleWASM(); // Call new toggleWASM function
-    });
-  }
-
-  // Set up Native BFS button event listener
-  const nativeBfsButton = document.getElementById("nativeBfsButton");
-  if (nativeBfsButton) {
-    const newNativeButton = nativeBfsButton.cloneNode(true);
-    if (nativeBfsButton.parentNode) {
-      nativeBfsButton.parentNode.replaceChild(newNativeButton, nativeBfsButton);
-    }
-    newNativeButton.addEventListener("click", () => {
-      toggleNativeBFSHandler(); // Use the new BFS-specific handler
-    });
-  }
-
-  // Set up Native DFS button event listener
-  const nativeDfsButton = document.getElementById("nativeDfsButton");
-  if (nativeDfsButton) {
-    const newNativeDfsButton = nativeDfsButton.cloneNode(true);
-    if (nativeDfsButton.parentNode) {
-      nativeDfsButton.parentNode.replaceChild(
-        newNativeDfsButton,
-        nativeDfsButton
-      );
-    }
-    newNativeDfsButton.addEventListener("click", () => {
-      toggleNativeDFSHandler(); // Use the new DFS-specific handler
-    });
-  }
-
-  // Set up WebAssembly DFS button event listener
-  const wasmDfsButton = document.getElementById("wasmDfsButton");
-  if (wasmDfsButton) {
-    const newWasmDfsButton = wasmDfsButton.cloneNode(true);
-    if (wasmDfsButton.parentNode) {
-      wasmDfsButton.parentNode.replaceChild(newWasmDfsButton, wasmDfsButton);
-    }
-    newWasmDfsButton.addEventListener("click", () => {
-      toggleWasmDFSHandler(); // Call the new WASM DFS toggle function
-    });
-  }
+  // Set up BFS buttons
+  setupButton("bothBfsButton", toggleBFS);
+  setupButton("tsBfsButton", toggleTS);
+  setupButton("wasmBfsButton", toggleWASM);
+  setupButton("nativeBfsButton", toggleNativeBFSHandler);
+  setupButton("nativeDfsButton", toggleNativeDFSHandler);
+  setupButton("wasmDfsButton", toggleWasmDFSHandler);
 
   // Set up max depth slider
   const maxDepthSlider = document.getElementById(
