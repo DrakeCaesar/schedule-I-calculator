@@ -7,6 +7,7 @@
 #include "effects.h"
 #include "pricing.h"
 #include "bfs_algorithm.h"
+#include "reporter.h"
 #include "json_parser.h"
 
 // Include Emscripten headers only when building for WebAssembly

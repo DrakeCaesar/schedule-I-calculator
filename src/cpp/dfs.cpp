@@ -7,6 +7,7 @@
 #include "effects.h"
 #include "pricing.h"
 #include "dfs_algorithm.h"
+#include "reporter.h"
 #include "json_parser.h"
 
 // Include Emscripten headers only when building for WebAssembly
@@ -63,7 +64,7 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
   if (reportProgress)
   {
     // Use the WebAssembly-specific progress reporting function
-    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToDfsJS);
+    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
   }
   else
 #else

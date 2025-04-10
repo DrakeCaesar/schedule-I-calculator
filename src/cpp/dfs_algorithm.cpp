@@ -1,4 +1,5 @@
 #include "dfs_algorithm.h"
+#include "reporter.h"
 #include "effects.h"
 #include "pricing.h"
 #include <iostream>
@@ -445,7 +446,7 @@ JsBestMixResult findBestMixDFS(
         // Report to JavaScript
         if (progressCallback)
         {
-          reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
+          reportBestMixFoundToJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
         }
 #endif
       }
@@ -541,7 +542,7 @@ JsBestMixResult findBestMixDFS(
           // Report to JavaScript
           if (progressCallback)
           {
-            reportBestMixFoundToDfsJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
+            reportBestMixFoundToJS(bestMix, substances, bestProfitCents, bestSellPriceCents, bestCostCents);
           }
 #endif
         }
@@ -603,23 +604,3 @@ JsBestMixResult findBestMixDFS(
 
   return result;
 }
-
-#ifdef __EMSCRIPTEN__
-// Use our unified reporting functions
-void reportProgressToDfsJS(int depth, int processed, int total)
-{
-  // Call the unified function
-  reportProgressToJS(depth, processed, total);
-}
-
-// Report the best mix found using the unified function
-void reportBestMixFoundToDfsJS(const MixState &bestMix,
-                               const std::vector<Substance> &substances,
-                               int profitCents,
-                               int sellPriceCents,
-                               int costCents)
-{
-  // Call the unified function
-  reportBestMixFoundToJS(bestMix, substances, profitCents, sellPriceCents, costCents);
-}
-#endif

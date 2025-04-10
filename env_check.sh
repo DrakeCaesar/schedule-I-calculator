@@ -33,16 +33,18 @@ fi
 # Only run vcpkg updates in local development, not in CI
 if [ "${CI:-}" != "true" ]; then
   # Update vcpkg
-  echo "Updating vcpkg..."
-  git -C "$VCPKG_ROOT" pull
+  # echo "Updating vcpkg..."
+  # git -C "$VCPKG_ROOT" pull
 
   # Re-run bootstrap
-  echo "Running bootstrap for vcpkg..."
-  "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+  # echo "Running bootstrap for vcpkg..."
+  # "$VCPKG_ROOT/bootstrap-vcpkg.sh"
 
   # Run integrate install
-  echo "Running vcpkg integrate install..."
-  "$VCPKG_ROOT/vcpkg" integrate install
+  # echo "Running vcpkg integrate install..."
+  # "$VCPKG_ROOT/vcpkg" integrate install
+
+  echo "Skipping vcpkg update and bootstrap in CI environment."
 fi
 
 # Display environment info for debugging

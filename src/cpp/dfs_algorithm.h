@@ -57,27 +57,3 @@ JsBestMixResult findBestMixDFS(
     const std::unordered_map<std::string, int> &effectMultipliers,
     int maxDepth,
     ProgressCallback progressCallback = nullptr);
-
-#ifdef __EMSCRIPTEN__
-// JavaScript-compatible progress reporting function (only for WebAssembly)
-void reportProgressToDfsJS(int depth, int processed, int total);
-
-// Report the best mix found to JavaScript (for WebAssembly build)
-void reportBestMixFoundToDfsJS(const MixState &bestMix,
-                               const std::vector<Substance> &substances,
-                               int profitCents,
-                               int sellPriceCents,
-                               int costCents);
-
-// Unified JavaScript-compatible progress reporting function
-// This is used by both BFS and DFS algorithms
-void reportProgressToJS(int depth, int processed, int total);
-
-// Unified function to report the best mix found to JavaScript
-// This is used by both BFS and DFS algorithms
-void reportBestMixFoundToJS(const MixState &bestMix,
-                            const std::vector<Substance> &substances,
-                            int profitCents,
-                            int sellPriceCents,
-                            int costCents);
-#endif

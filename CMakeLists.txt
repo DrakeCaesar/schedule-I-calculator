@@ -36,6 +36,7 @@ if(EMSCRIPTEN)
     src/cpp/dfs.cpp
     src/cpp/effects.cpp
     src/cpp/pricing.cpp
+    src/cpp/reporter.cpp
     src/cpp/bfs_algorithm.cpp
     src/cpp/dfs_algorithm.cpp
     src/cpp/json_parser.cpp
@@ -70,6 +71,7 @@ else()
     src/cpp/standalone.cpp
     src/cpp/effects.cpp
     src/cpp/pricing.cpp
+    src/cpp/reporter.cpp
     src/cpp/bfs_algorithm.cpp
     src/cpp/dfs_algorithm.cpp
     src/cpp/dfs.cpp

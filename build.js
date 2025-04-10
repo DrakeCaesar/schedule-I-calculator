@@ -23,6 +23,7 @@ const sourceFiles = [
   "dfs.cpp",
   "effects.cpp",
   "pricing.cpp",
+  "reporter.cpp",
   "bfs_algorithm.cpp",
   "dfs_algorithm.cpp",
   "json_parser.cpp",

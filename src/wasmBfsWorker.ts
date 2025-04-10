@@ -9,7 +9,6 @@ import {
   sendCompletionMessages,
   setupBestMixReporting,
   setupProgressReporting,
-  simulateProgress,
 } from "./wasmWorkerCommon";
 
 // Worker state
@@ -67,11 +66,6 @@ self.onmessage = async (event: MessageEvent) => {
         if (typeof wasmModule.findBestMixJson !== "function") {
           throw new Error("BFS functions not found in WASM module");
         }
-
-        console.warn(
-          "Progress reporting not available in WASM module. Falling back to simulated progress."
-        );
-        simulateProgress(state);
       }
 
       // Call the WASM function with JSON strings and enable progress reporting
