@@ -555,14 +555,17 @@ void reportProgressToJS(int depth, int processed, int total)
   bool isBfs = global.hasOwnProperty("reportBfsProgress");
 
   // Try direct function calls first
-  if (isDfs) {
+  if (isDfs)
+  {
     global.call<void>("reportDfsProgress", progressObj);
-  } 
-  else if (isBfs) {
+  }
+  else if (isBfs)
+  {
     global.call<void>("reportBfsProgress", progressObj);
   }
   // Fallback to postMessage if we're in a worker thread
-  else if (global.hasOwnProperty("postMessage")) {
+  else if (global.hasOwnProperty("postMessage"))
+  {
     emscripten::val message = emscripten::val::object();
     message.set("type", "progress");
     message.set("depth", depth);
@@ -574,17 +577,18 @@ void reportProgressToJS(int depth, int processed, int total)
 
 // Unified function to report the best mix found to JavaScript
 void reportBestMixFoundToJS(const MixState &bestMix,
-                           const std::vector<Substance> &substances,
-                           int profitCents,
-                           int sellPriceCents,
-                           int costCents)
+                            const std::vector<Substance> &substances,
+                            int profitCents,
+                            int sellPriceCents,
+                            int costCents)
 {
   // Convert mix state to substance names
   std::vector<std::string> mixNames = bestMix.toSubstanceNames(substances);
 
   // Create JavaScript array for mix names - two methods that do the same thing
   emscripten::val mixArray = emscripten::val::array();
-  for (size_t i = 0; i < mixNames.size(); ++i) {
+  for (size_t i = 0; i < mixNames.size(); ++i)
+  {
     mixArray.set(i, emscripten::val(mixNames[i]));
   }
 
@@ -604,14 +608,17 @@ void reportBestMixFoundToJS(const MixState &bestMix,
   bool isBfs = global.hasOwnProperty("reportBestMixFound");
 
   // Try direct function calls first
-  if (isDfs) {
+  if (isDfs)
+  {
     global.call<void>("reportBestMixFound", resultObj);
   }
-  else if (isBfs) {
+  else if (isBfs)
+  {
     global.call<void>("reportBestMixFound", resultObj);
   }
   // Fallback to postMessage if we're in a worker thread
-  else if (global.hasOwnProperty("postMessage")) {
+  else if (global.hasOwnProperty("postMessage"))
+  {
     emscripten::val message = emscripten::val::object();
     message.set("type", "bestMix");
     message.set("mixArray", mixArray);
