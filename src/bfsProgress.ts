@@ -36,7 +36,7 @@ export function updateProgressDisplay(
   }
 
   // Get the appropriate progress display element
-  const displayId = `${implementation}BfsProgressDisplay`;
+  const displayId = `${implementation}ProgressDisplay`;
   const progressDisplay = document.getElementById(displayId);
   if (!progressDisplay) return currentTime;
 
@@ -60,18 +60,18 @@ export function updateProgressDisplay(
   // Calculate estimated finish time
   const estimatedFinishTime = Date.now() + remainingTime;
 
-  // Create implementation-specific title
-  const titles = {
-    ts: "TypeScript BFS Progress",
-    wasm: "WebAssembly BFS Progress",
-    native: "Native BFS Progress",
-  };
+  // Determine display title based on implementation
+  const implParts = implementation.split('-');
+  const algorithm = implParts.length > 1 ? implParts[1].toUpperCase() : 'BFS';
+  const engine = implParts[0] === 'ts' ? 'TypeScript' : 
+                implParts[0] === 'wasm' ? 'WebAssembly' : 'Native';
+  const title = `${engine} ${algorithm} Progress`;
 
   // Update the DOM with progress information
   scheduleDomUpdate(() => {
     progressDisplay.innerHTML = `
       <div class="overall-progress">
-        <h4>${titles[implementation]}</h4>
+        <h4>${title}</h4>
         <div>Total processed: ${processed.toLocaleString()} / ${total.toLocaleString()}</div>
         <div class="progress-bar-container">
           <div class="progress-bar" style="width: ${percentage}%"></div>
@@ -93,9 +93,9 @@ export function updateProgressDisplay(
 
 // Create or get a progress display element for a specific implementation
 export function createProgressDisplay(
-  implementation: "ts" | "wasm" | "native"
+  implementation: string
 ): HTMLElement {
-  const displayId = `${implementation}BfsProgressDisplay`;
+  const displayId = `${implementation}ProgressDisplay`;
   let progressDisplay = document.getElementById(displayId);
 
   if (!progressDisplay) {
@@ -104,7 +104,9 @@ export function createProgressDisplay(
     progressDisplay.classList.add("progress-display");
 
     // Find the appropriate column to place the display
-    const columnSelector = `.${implementation}-column`;
+    const implParts = implementation.split('-');
+    const engine = implParts[0];
+    const columnSelector = `.${engine}-column`;
     const column = document.querySelector(columnSelector);
 
     if (column) {
