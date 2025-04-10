@@ -148,11 +148,6 @@ self.onmessage = async (event: MessageEvent) => {
         if (typeof bfsModule.findBestMixDFSJson !== "function") {
           throw new Error("DFS functions not found in WASM module");
         }
-
-        console.warn(
-          "DFS Progress reporting not available in WASM module. Falling back to simulated progress."
-        );
-        simulateProgress();
       }
 
       console.log("Starting multi-threaded WebAssembly DFS...");
@@ -169,7 +164,8 @@ self.onmessage = async (event: MessageEvent) => {
       // Post a message to inform the main thread that we're using threading
       self.postMessage({
         type: "info",
-        message: "Using multi-threaded WebAssembly implementation with 16 threads",
+        message:
+          "Using multi-threaded WebAssembly implementation with 16 threads",
         workerId,
       });
 
@@ -279,87 +275,3 @@ self.onmessage = async (event: MessageEvent) => {
     isPaused = false;
   }
 };
-
-// Fallback function to simulate progress for older WASM modules
-function simulateProgress() {
-  let progress = 0;
-  let estimatedTotal = 100;
-
-  // Also simulate best mix updates during progress
-  let simulatedMixes = [
-    {
-      mix: ["Stone", "Powder"],
-      profit: 50,
-      sellPrice: 150,
-      cost: 100,
-    },
-    {
-      mix: ["Stone", "Powder", "Liquid"],
-      profit: 75,
-      sellPrice: 200,
-      cost: 125,
-    },
-    {
-      mix: ["Stone", "Powder", "Liquid", "Crystal"],
-      profit: 120,
-      sellPrice: 250,
-      cost: 130,
-    },
-  ];
-
-  const progressInterval = setInterval(() => {
-    if (isPaused) return;
-
-    progress = Math.min(progress + 1, 95);
-
-    // Send progress update
-    self.postMessage({
-      type: "progress",
-      progress,
-      processed: Math.floor((progress / 100) * estimatedTotal),
-      total: estimatedTotal,
-      executionTime: Date.now() - startTime,
-      workerId,
-    });
-
-    // Also simulate best mix updates at certain progress thresholds
-    if (progress === 30 && simulatedMixes.length > 0) {
-      const mix = simulatedMixes.shift();
-      if (mix) {
-        self.postMessage({
-          type: "update",
-          bestMix: mix,
-          workerId,
-        });
-        currentBestMix = mix;
-      }
-    } else if (progress === 60 && simulatedMixes.length > 0) {
-      const mix = simulatedMixes.shift();
-      if (mix) {
-        self.postMessage({
-          type: "update",
-          bestMix: mix,
-          workerId,
-        });
-        currentBestMix = mix;
-      }
-    } else if (progress === 90 && simulatedMixes.length > 0) {
-      const mix = simulatedMixes.shift();
-      if (mix) {
-        self.postMessage({
-          type: "update",
-          bestMix: mix,
-          workerId,
-        });
-        currentBestMix = mix;
-      }
-    }
-
-    if (progress >= 95) {
-      clearInterval(progressInterval);
-    }
-  }, 100);
-
-  // Clean up interval after 30 seconds to avoid memory leaks
-  setTimeout(() => clearInterval(progressInterval), 30000);
-}
