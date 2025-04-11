@@ -60,9 +60,8 @@ export function updateBestMixDisplay(
   // Schedule the DOM update
   scheduleDomUpdate(() => {
     bestMixDisplay.innerHTML = `
-      <h3>${implementationNames[implementation]} ${algorithmType} Result for ${
-      currentProduct.name
-    }</h3>
+      <h3>${implementationNames[implementation]} ${algorithmType} Result for<br>
+      ${currentProduct.name}</h3>
       <p>Mix: ${mixArray.join(", ")}</p>
       <p>Effects: ${effectsHTML}</p>
       <p>Sell Price: $${bestMix.sellPrice?.toFixed(2) || "0.00"}</p>
