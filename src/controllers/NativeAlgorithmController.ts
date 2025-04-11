@@ -2,16 +2,18 @@
 // Implementation of AlgorithmController for both Native BFS and DFS
 
 import { MAX_RECIPE_DEPTH } from "../bfsCommon";
-import { createProgressDisplay } from "../bfsProgress";
 import { createBestMixDisplay } from "../bfsMixDisplay";
-import { updateProgressDisplay } from "../bfsProgress";
-import { ProgressData } from "../bfsProgress";
+import {
+  ProgressData,
+  createProgressDisplay,
+  updateProgressDisplay,
+} from "../bfsProgress";
+import { ProductVariety, effects } from "../substances";
 import {
   prepareEffectMultipliersForWasm,
   prepareSubstanceRulesForWasm,
   prepareSubstancesForWasm,
 } from "../wasmLoader";
-import { ProductVariety, effects } from "../substances";
 import { AlgorithmController } from "./AlgorithmController";
 
 // Base class for Native algorithm controllers (BFS/DFS)
@@ -145,7 +147,8 @@ export class NativeAlgorithmController extends AlgorithmController {
       console.error(`Native ${this.algorithm.toUpperCase()} error:`, error);
 
       // Convert error to string for display
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
 
       // Show error message in progress display
       this.updateProgressDisplay(
@@ -172,7 +175,7 @@ export class NativeAlgorithmController extends AlgorithmController {
       this.webSocket = null;
     }
     this.running = false;
-    
+
     // Update progress display with cancellation message
     this.updateProgressDisplay(
       {
@@ -184,7 +187,7 @@ export class NativeAlgorithmController extends AlgorithmController {
       },
       true
     );
-    
+
     this.reset();
   }
 
@@ -321,7 +324,10 @@ export class NativeAlgorithmController extends AlgorithmController {
   }
 
   // Update progress display with standardized progress data
-  protected updateProgressDisplay(data: Partial<ProgressData> = {}, forceUpdate = false): void {
+  protected updateProgressDisplay(
+    data: Partial<ProgressData> = {},
+    forceUpdate = false
+  ): void {
     const progressData: ProgressData = {
       processed: this.totalProcessed,
       total: this.grandTotal || 100,
