@@ -3,16 +3,19 @@
 import { currentMix, currentProduct } from ".";
 import { toggleBothBFS } from "./bfsCommon";
 import { createEffectSpan } from "./bfsMixDisplay";
-import { toggleNativeBFS, toggleNativeDFS } from "./nativeBfsController";
+import {
+  nativeBfsController,
+  nativeDfsController,
+  typeScriptBfsController,
+  wasmBfsController,
+  wasmDfsController,
+} from "./controllers";
 import {
   applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
   substances,
 } from "./substances";
-import { toggleTsBFS } from "./tsBfsController";
-import { toggleWasmBFS } from "./wasmBfsController";
-import { toggleWasmDFS } from "./wasmDfsController";
 
 const STORAGE_KEY_MIX = "currentMix";
 const STORAGE_KEY_PRODUCT = "currentProduct";
@@ -214,33 +217,33 @@ export function loadFromLocalStorage() {
   }
 }
 
-// BFS button handlers
+// BFS button handlers - using our new controllers
 export function toggleBFS() {
   toggleBothBFS(currentProduct);
 }
 
 export function toggleTS() {
-  toggleTsBFS(currentProduct);
+  typeScriptBfsController.toggle(currentProduct);
 }
 
 export function toggleWASM() {
-  toggleWasmBFS(currentProduct);
+  wasmBfsController.toggle(currentProduct);
 }
 
 export function toggleWasmDFSHandler() {
-  toggleWasmDFS(currentProduct);
+  wasmDfsController.toggle(currentProduct);
 }
 
 export function toggleNative() {
   // For backward compatibility, use DFS since that's the default
-  toggleNativeDFS(currentProduct);
+  nativeDfsController.toggle(currentProduct);
 }
 
 // New separated algorithm handlers
 export function toggleNativeBFSHandler() {
-  toggleNativeBFS(currentProduct);
+  nativeBfsController.toggle(currentProduct);
 }
 
 export function toggleNativeDFSHandler() {
-  toggleNativeDFS(currentProduct);
+  nativeDfsController.toggle(currentProduct);
 }

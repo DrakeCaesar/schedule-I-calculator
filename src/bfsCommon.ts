@@ -3,10 +3,8 @@
 
 import { createBestMixDisplay } from "./bfsMixDisplay";
 import { createProgressDisplay } from "./bfsProgress";
-import { isNativeBfsRunning } from "./nativeBfsController";
+import { typeScriptBfsController, wasmBfsController } from "./controllers";
 import { ProductVariety } from "./substances";
-import { isTsBfsRunning, startTsBFS } from "./tsBfsController";
-import { isWasmBfsRunning, startWasmBFS } from "./wasmBfsController";
 
 // Constants
 export let MAX_RECIPE_DEPTH = 5; // Default value, can be changed via slider
@@ -80,8 +78,14 @@ export async function toggleBothBFS(product: ProductVariety) {
   }
 
   // Check if either implementation is running
-  if (isTsBfsRunning() || isWasmBfsRunning()) {
+  if (typeScriptBfsController.isRunning() || wasmBfsController.isRunning()) {
     // Stop both implementations
+    if (typeScriptBfsController.isRunning()) {
+      typeScriptBfsController.toggle(product);
+    }
+    if (wasmBfsController.isRunning()) {
+      wasmBfsController.toggle(product);
+    }
     bothBfsButton.textContent = "Start Both BFS";
   } else {
     // Start both implementations
@@ -89,16 +93,16 @@ export async function toggleBothBFS(product: ProductVariety) {
     createProgressDisplays();
 
     // Start TypeScript BFS
-    startTsBFS(product);
+    typeScriptBfsController.toggle(product);
 
     // Start WASM BFS
-    startWasmBFS(product);
+    wasmBfsController.toggle(product);
   }
 }
 
 // Check if any BFS is running
 export function isBfsRunning(): boolean {
-  return isTsBfsRunning() || isWasmBfsRunning() || isNativeBfsRunning();
+  return typeScriptBfsController.isRunning() || wasmBfsController.isRunning();
 }
 
 // Export the combined function to control both implementations

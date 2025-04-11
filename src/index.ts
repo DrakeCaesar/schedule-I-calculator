@@ -1,4 +1,4 @@
-import { createProgressDisplays, setMaxRecipeDepth } from "./bfs";
+import { createProgressDisplays, setMaxRecipeDepth } from "./bfsCommon";
 import {
   loadFromLocalStorage,
   onDragStart,
@@ -175,7 +175,10 @@ document.addEventListener("DOMContentLoaded", initializeApp);
 
 // Add HMR handling
 if ((import.meta as any).hot) {
-  (import.meta as any).hot.accept(["./gui", "./substances", "./bfs"], () => {
-    initializeApp();
-  });
+  (import.meta as any).hot.accept(
+    ["./gui", "./substances", "./bfsCommon"],
+    () => {
+      initializeApp();
+    }
+  );
 }

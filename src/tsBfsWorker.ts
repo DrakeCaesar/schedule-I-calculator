@@ -1,10 +1,10 @@
 import {
-  applySubstanceRules,
   calculateFinalCost,
   calculateFinalPrice,
   ProductVariety,
   substances,
 } from "./substances";
+import { calculateEffects } from "./utils";
 
 // Performance optimization: Create a Map for O(1) substance lookups
 const substanceMap = new Map(
@@ -120,7 +120,10 @@ function processMix(currentMix: string[], maxDepth: number) {
   }
 
   // Process current combination
-  const effectsList = calculateEffects(currentMix);
+  const effectsList = calculateEffects(
+    currentMix,
+    currentProduct?.initialEffect
+  );
   const sellPrice = currentProduct
     ? calculateFinalPrice(currentProduct.name, effectsList)
     : 0;
@@ -167,19 +170,4 @@ function sendProgressUpdate() {
     executionTime: executionTime,
     workerId,
   });
-}
-
-function calculateEffects(mix: string[]): string[] {
-  let effectsList = currentProduct ? [currentProduct.initialEffect] : [];
-
-  // Use Map lookup (O(1)) instead of find() (O(n))
-  for (let i = 0; i < mix.length; i++) {
-    const substanceName = mix[i];
-    const substance = substanceMap.get(substanceName);
-    if (substance) {
-      effectsList = applySubstanceRules(effectsList, substance, i + 1);
-    }
-  }
-
-  return effectsList;
 }

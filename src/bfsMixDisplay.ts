@@ -3,7 +3,7 @@
 
 import { scheduleDomUpdate } from "./bfsCommon";
 import { ProductVariety } from "./substances";
-import { calculateEffects } from "./tsBfsController";
+import { calculateEffects } from "./utils";
 
 // Interface for BFS result data
 export interface BfsMixResult {
