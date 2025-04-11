@@ -1,13 +1,13 @@
 // Native Algorithm Controller
 // Implementation of AlgorithmController for both Native BFS and DFS
 
-import { MAX_RECIPE_DEPTH } from "../bfsCommon";
-import { createBestMixDisplay } from "../bfsMixDisplay";
 import {
   ProgressData,
   createProgressDisplay,
   updateProgressDisplay,
-} from "../bfsProgress";
+} from "@/bfsProgress";
+import { MAX_RECIPE_DEPTH } from "../bfsCommon";
+import { createBestMixDisplay } from "../bfsMixDisplay";
 import { ProductVariety, effects } from "../substances";
 import {
   prepareEffectMultipliersForWasm,
@@ -318,8 +318,7 @@ export class NativeAlgorithmController extends AlgorithmController {
 
   // Override the createDisplays method to use the correct implementation prefixes
   protected createDisplays(): void {
-    const implementation = `native-${this.algorithm.toLowerCase()}`;
-    createProgressDisplay(implementation);
+    createProgressDisplay(this.implementationType);
     createBestMixDisplay("native", this.algorithm);
   }
 
@@ -338,12 +337,9 @@ export class NativeAlgorithmController extends AlgorithmController {
       forceUpdate: forceUpdate,
     };
 
-    // Determine which implementation type to use
-    const implementation = `native-${this.algorithm.toLowerCase()}`;
-
     // Use the shared progress display component
     this.lastUpdate = updateProgressDisplay(
-      implementation,
+      this.implementationType,
       progressData,
       this.lastUpdate
     );

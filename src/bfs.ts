@@ -3,5 +3,3 @@
 
 // Re-export functionality from the component modules
 export * from "./bfsCommon";
-export * from "./tsBfsController";
-export * from "./wasmBfsController";
