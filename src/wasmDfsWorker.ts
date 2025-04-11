@@ -81,22 +81,27 @@ self.onmessage = async (event: MessageEvent) => {
       // Call the WASM DFS function with JSON strings and enable progress reporting
       // The multi-threaded implementation will be used automatically by the WebAssembly module
       // due to the PTHREAD_POOL_SIZE=16 setting in the build
-      const result = wasmModule.findBestMixDFSJsonWithProgress
-        ? wasmModule.findBestMixDFSJsonWithProgress(
-            productJson,
-            substancesJson,
-            effectMultipliersJson,
-            substanceRulesJson,
-            maxDepth,
-            true // Enable progress reporting
-          )
-        : wasmModule.findBestMixDFSJson(
-            productJson,
-            substancesJson,
-            effectMultipliersJson,
-            substanceRulesJson,
-            maxDepth
-          );
+      let result;
+      if (wasmModule.findBestMixDFSJsonWithProgress) {
+        result = wasmModule.findBestMixDFSJsonWithProgress(
+          productJson,
+          substancesJson,
+          effectMultipliersJson,
+          substanceRulesJson,
+          maxDepth,
+          true // Enable progress reporting
+        );
+      } else if (wasmModule.findBestMixDFSJson) {
+        result = wasmModule.findBestMixDFSJson(
+          productJson,
+          substancesJson,
+          effectMultipliersJson,
+          substanceRulesJson,
+          maxDepth
+        );
+      } else {
+        throw new Error("DFS functions not found in WASM module");
+      }
 
       // Extract mix array from result
       let mixArray = extractMixArray(result, wasmModule);
