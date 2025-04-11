@@ -57,7 +57,7 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
   applySubstanceRulesJson(substances, substanceRulesJson);
 
   // Function pointer for progress reporting in console mode
-  extern void reportProgressToConsole(int depth, int processed, int total);
+  extern void reportProgressToConsole(int depth, int processed, int64_t total);
 
   // Run the DFS algorithm with progress reporting if enabled
 #ifdef __EMSCRIPTEN__

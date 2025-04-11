@@ -23,7 +23,7 @@ using namespace emscripten;
 // Mutex for thread synchronization when updating best mix - only used in native build
 #ifndef __EMSCRIPTEN__
 std::mutex bestMixMutex;
-std::atomic<int> totalProcessedCombinations(0);
+std::atomic<int64_t> totalProcessedCombinations(0);
 #endif
 
 // Version of recursiveBFS for both Emscripten and native single-threaded mode
@@ -39,8 +39,8 @@ void recursiveBFS(
     int &bestProfitCents,
     int &bestSellPriceCents,
     int &bestCostCents,
-    int &processedCombinations,
-    int totalCombinations,
+    int64_t &processedCombinations,
+    int64_t totalCombinations,
     ProgressCallback progressCallback)
 {
   // Process all mixes at the current depth (breadth-first fashion)
@@ -166,8 +166,8 @@ void recursiveBFSThreaded(
     int &threadBestProfitCents,
     int &threadBestSellPriceCents,
     int &threadBestCostCents,
-    int &processedCombinations,
-    int expectedCombinations,
+    int64_t &processedCombinations,
+    int64_t expectedCombinations,
     ProgressCallback progressCallback)
 {
   // Process all mixes at the current depth (breadth-first fashion)
@@ -298,7 +298,7 @@ void bfsThreadWorker(
     const std::unordered_map<std::string, bool> &effectsSet,
     size_t startSubstanceIndex,
     int maxDepth,
-    int expectedCombinations,
+    int64_t expectedCombinations,
     MixState &globalBestMix,
     int &globalBestProfitCents,
     int &globalBestSellPriceCents,
@@ -320,7 +320,7 @@ void bfsThreadWorker(
   initialMixes.push_back(initialMix);
 
   // Track thread-local processed combinations
-  int processedCombinations = 0;
+  int64_t processedCombinations = 0; // Changed from int to int64_t
 
   // Execute BFS for this thread's starting state
   recursiveBFSThreaded(
@@ -391,14 +391,14 @@ JsBestMixResult findBestMix(
     totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
   }
 
-  // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+  // Use the full 64-bit value for total combinations
+  int64_t totalCombinations = totalCombinations64;
 
-  // If we'll exceed INT_MAX, print a warning
+  // If we'll exceed INT_MAX, print a warning that we're using 64-bit mode
   if (totalCombinations64 > INT_MAX)
   {
-    std::cout << "WARNING: Total combinations (" << totalCombinations64
-              << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
+    std::cout << "INFO: Total combinations (" << totalCombinations64
+              << ") exceeds INT_MAX. Using 64-bit progress reporting." << std::endl;
   }
 
   // Initial progress report
@@ -482,11 +482,11 @@ JsBestMixResult findBestMix(
     totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
   }
 
-  // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+  // Use the full 64-bit value for total combinations
+  int64_t totalCombinations = totalCombinations64;
 
   // Initial progress report
-  int processedCombinations = 0;
+  int64_t processedCombinations = 0;
   if (progressCallback)
   {
     progressCallback(1, 0, totalCombinations);

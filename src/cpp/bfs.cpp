@@ -65,7 +65,7 @@ JsBestMixResult findBestMixJsonWithProgress(
   else
 #else
   // In native mode, use the reportProgressToConsole function defined in standalone.cpp
-  extern void reportProgressToConsole(int depth, int processed, int total);
+  extern void reportProgressToConsole(int depth, int processed, int64_t total);
   if (reportProgress)
   {
     return findBestMix(product, substances, effectMultipliers, maxDepth, reportProgressToConsole);

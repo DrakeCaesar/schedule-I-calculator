@@ -2,13 +2,13 @@
 
 #ifdef __EMSCRIPTEN__
 // Unified JavaScript-compatible progress reporting function
-void reportProgressToJS(int depth, int processed, int total)
+void reportProgressToJS(int depth, int processed, int64_t total)
 {
   // Create a progress object
   emscripten::val progressObj = emscripten::val::object();
   progressObj.set("depth", depth);
   progressObj.set("processed", processed);
-  progressObj.set("total", total);
+  progressObj.set("total", emscripten::val(static_cast<double>(total))); // Cast to double for JavaScript compatibility
 
   // Get the global scope (works in both main thread and workers)
   emscripten::val global = emscripten::val::global("self");
@@ -33,7 +33,7 @@ void reportProgressToJS(int depth, int processed, int total)
     message.set("type", "progress");
     message.set("depth", depth);
     message.set("processed", processed);
-    message.set("total", total);
+    message.set("total", emscripten::val(static_cast<double>(total))); // Cast to double for JavaScript compatibility
     global.call<void>("postMessage", message);
   }
 }

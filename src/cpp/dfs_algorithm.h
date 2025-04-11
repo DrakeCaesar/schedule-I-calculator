@@ -31,7 +31,7 @@ struct DFSState
 
 // Global variables for thread synchronization in DFS algorithm
 extern std::mutex g_bestMixMutex;
-extern std::atomic<int> g_totalProcessedCombinations;
+extern std::atomic<int64_t> g_totalProcessedCombinations;
 extern std::atomic<bool> g_shouldTerminate;
 extern const int MAX_SUBSTANCES;
 extern const int MAX_DEPTH;
@@ -43,7 +43,7 @@ void dfsThreadWorker(
     const std::unordered_map<std::string, int> &effectMultipliers,
     int startSubstanceIndex,
     int maxDepth,
-    int expectedCombinations,
+    int64_t expectedCombinations,
     MixState &globalBestMix,
     int &globalBestProfitCents,
     int &globalBestSellPriceCents,

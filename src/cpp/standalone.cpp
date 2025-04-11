@@ -28,7 +28,7 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
     bool reportProgress);
 
 // Simple progress reporting to console
-void reportProgressToConsole(int depth, int processed, int total)
+void reportProgressToConsole(int depth, int processed, int64_t total)
 {
     // Only report progress every 10,000 combinations instead of every time
     if (processed % 10000 != 0 && processed != total)
@@ -43,8 +43,12 @@ void reportProgressToConsole(int depth, int processed, int total)
     int percentage = 0;
     if (total > 0)
     {
-        // Use integer arithmetic instead of floating-point
-        percentage = (100 * processed) / total;
+        // Convert processed to int64_t before calculation to avoid overflow
+        int64_t processed64 = static_cast<int64_t>(processed);
+
+        // Calculate percentage using 64-bit arithmetic
+        percentage = static_cast<int>((100 * processed64) / total);
+
         // Make sure percentage is between 0 and 100
         percentage = std::max(0, std::min(100, percentage));
     }
@@ -166,7 +170,7 @@ int main(int argc, char *argv[])
 {
     bool reportProgress = false;
     std::string outputFile;
-    std::string algorithm = "bfs"; // Changed default to "dfs" instead of "bfs"
+    std::string algorithm = "dfs"; // Changed default to "dfs" instead of "bfs"
     std::vector<std::string> jsonArgs;
 
     // Check if being called from server by looking for explicit algorithm flag

@@ -17,7 +17,7 @@ using namespace emscripten;
 
 // Define global variables for thread synchronization
 std::mutex g_bestMixMutex;
-std::atomic<int> g_totalProcessedCombinations(0);
+std::atomic<int64_t> g_totalProcessedCombinations(0);
 std::atomic<bool> g_shouldTerminate(false);
 const int MAX_SUBSTANCES = 16; // Maximum number of substances
 const int MAX_DEPTH = 10;      // Maximum depth for the mix
@@ -86,7 +86,7 @@ void dfsThreadWorker(
     const std::unordered_map<std::string, int> &effectMultipliers,
     int startSubstanceIndex,
     int maxDepth,
-    int expectedCombinations,
+    int64_t expectedCombinations,
     MixState &globalBestMix,
     int &globalBestProfitCents,
     int &globalBestSellPriceCents,
@@ -165,7 +165,8 @@ void dfsThreadWorker(
     }
   }
 
-  g_totalProcessedCombinations++; // Count the first node
+  // Count the first node
+  g_totalProcessedCombinations.fetch_add(1, std::memory_order_relaxed);
 
   // Use a stack-based iterative DFS approach
   // Each entry represents (substance_index, depth)
@@ -227,7 +228,7 @@ void dfsThreadWorker(
     }
 
     // Update progress and count this combination
-    g_totalProcessedCombinations++;
+    g_totalProcessedCombinations.fetch_add(1, std::memory_order_relaxed);
 
     // Adaptively adjust progress reporting frequency
     int reportFrequency = 10000;
@@ -237,7 +238,7 @@ void dfsThreadWorker(
     }
 
     // Report progress periodically
-    if (progressCallback && g_totalProcessedCombinations % reportFrequency == 0)
+    if (progressCallback && (g_totalProcessedCombinations.load() % reportFrequency == 0))
     {
       progressCallback(current.depth, g_totalProcessedCombinations.load(), expectedCombinations);
     }
@@ -325,16 +326,16 @@ JsBestMixResult findBestMixDFS(
     totalCombinations64 += static_cast<int64_t>(pow(static_cast<double>(substanceCount), static_cast<double>(i)));
   }
 
-  // Cap to INT_MAX if needed for compatibility with progress callback
-  int totalCombinations = (totalCombinations64 > INT_MAX) ? INT_MAX : static_cast<int>(totalCombinations64);
+  // Use the full 64-bit value for total combinations
+  int64_t totalCombinations = totalCombinations64;
 
 #ifndef __EMSCRIPTEN__
-  // If we'll exceed INT_MAX, print a warning (native only)
+  // If we'll exceed INT_MAX, print an informational message (native only)
   if (totalCombinations64 > INT_MAX)
   {
     std::lock_guard<std::mutex> lock(g_consoleMutex);
-    std::cout << "WARNING: Total combinations (" << totalCombinations64
-              << ") exceeds INT_MAX. Progress reporting will be approximate." << std::endl;
+    std::cout << "INFO: Total combinations (" << totalCombinations64
+              << ") exceeds INT_MAX. Using 64-bit progress reporting." << std::endl;
   }
 #endif
 
