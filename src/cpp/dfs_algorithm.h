@@ -54,7 +54,11 @@ struct EffectsCache
   // String pool for shared strings to minimize allocations
   std::unordered_map<std::string, std::string> stringPool;
 
-  EffectsCache(int maxDepth, const std::string &initialEffect)
+  // Flag to control whether to use advanced caching via hashing
+  bool useHashingOptimization;
+
+  EffectsCache(int maxDepth, const std::string &initialEffect, bool enableHashing = true)
+      : useHashingOptimization(enableHashing)
   {
     depthCache.resize(maxDepth + 1);
     depthCache[0].push_back(initialEffect);
@@ -94,6 +98,9 @@ struct EffectsCache
   // Check if we already calculated these effects
   bool hasCalculatedEffects(int substanceIndex, const std::vector<std::string> &parentEffects)
   {
+    if (!useHashingOptimization)
+      return false; // Skip hash-based caching if disabled
+
     uint64_t hash = getEffectsHash(substanceIndex, parentEffects);
     return effectsMap.find(hash) != effectsMap.end();
   }
@@ -102,6 +109,9 @@ struct EffectsCache
   void cacheCalculatedEffects(int substanceIndex, const std::vector<std::string> &parentEffects,
                               const std::vector<std::string> &resultEffects)
   {
+    if (!useHashingOptimization)
+      return; // Skip hash-based caching if disabled
+
     uint64_t hash = getEffectsHash(substanceIndex, parentEffects);
     effectsMap[hash] = resultEffects;
   }
@@ -133,7 +143,8 @@ void dfsThreadWorker(
     int &globalBestProfitCents,
     int &globalBestSellPriceCents,
     int &globalBestCostCents,
-    ProgressCallback progressCallback);
+    ProgressCallback progressCallback,
+    bool useHashingOptimization = true);
 
 // Main DFS algorithm with threading
 JsBestMixResult findBestMixDFS(
@@ -141,4 +152,5 @@ JsBestMixResult findBestMixDFS(
     const std::vector<Substance> &substances,
     const std::unordered_map<std::string, int> &effectMultipliers,
     int maxDepth,
-    ProgressCallback progressCallback = nullptr);
+    ProgressCallback progressCallback = nullptr,
+    bool useHashingOptimization = true);

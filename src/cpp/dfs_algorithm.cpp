@@ -101,7 +101,8 @@ void dfsThreadWorker(
     int &globalBestProfitCents,
     int &globalBestSellPriceCents,
     int &globalBestCostCents,
-    ProgressCallback progressCallback)
+    ProgressCallback progressCallback,
+    bool useHashingOptimization)
 {
   // Initialize thread-local best mix data
   DFSState currentState;
@@ -121,8 +122,8 @@ void dfsThreadWorker(
     effectsSet[pair.first] = true;
   }
 
-  // Initialize the optimized effects cache
-  EffectsCache effectsCache(maxDepth, product.initialEffect);
+  // Initialize the optimized effects cache with the hashing flag
+  EffectsCache effectsCache(maxDepth, product.initialEffect, useHashingOptimization);
 
   // Pre-calculate effects for the first substance (which is already added)
   std::vector<std::string> effectsList = applySubstanceRules(
@@ -321,11 +322,19 @@ JsBestMixResult findBestMixDFS(
     const std::vector<Substance> &substances,
     const std::unordered_map<std::string, int> &effectMultipliers,
     int maxDepth,
-    ProgressCallback progressCallback)
+    ProgressCallback progressCallback,
+    bool useHashingOptimization)
 {
   // Reset global counters
   g_totalProcessedCombinations = 0;
   g_shouldTerminate = false;
+
+  // Log optimization status
+  {
+    std::lock_guard<std::mutex> lock(g_consoleMutex);
+    std::cout << "DFS algorithm running with " << (useHashingOptimization ? "ENABLED" : "DISABLED")
+              << " hashing optimization" << std::endl;
+  }
 
   // Initialize best mix variables
   MixState bestMix(maxDepth);
@@ -405,7 +414,8 @@ JsBestMixResult findBestMixDFS(
           std::ref(bestProfitCents),
           std::ref(bestSellPriceCents),
           std::ref(bestCostCents),
-          progressCallback);
+          progressCallback,
+          useHashingOptimization);
     }
 
     // Wait for all threads to complete
@@ -438,8 +448,8 @@ JsBestMixResult findBestMixDFS(
       currentState.addSubstance(startIdx, substances);
       processedCombinations++;
 
-      // Initialize the optimized effects cache
-      EffectsCache effectsCache(maxDepth, product.initialEffect);
+      // Initialize the optimized effects cache with the hashing option
+      EffectsCache effectsCache(maxDepth, product.initialEffect, useHashingOptimization);
 
       // Calculate effects for the first substance
       std::vector<std::string> effectsList = applySubstanceRules(
