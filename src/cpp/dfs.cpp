@@ -49,7 +49,8 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
     std::string effectMultipliersJson,
     std::string substanceRulesJson,
     int maxDepth,
-    bool reportProgress)
+    bool reportProgress,
+    bool useHashingOptimization = true)
 {
   Product product = parseProductJson(productJson);
   std::vector<Substance> substances = parseSubstancesJson(substancesJson);
@@ -64,18 +65,18 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
   if (reportProgress)
   {
     // Use the WebAssembly-specific progress reporting function
-    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToJS);
+    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToJS, useHashingOptimization);
   }
   else
 #else
   if (reportProgress)
   {
-    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToConsole);
+    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, reportProgressToConsole, useHashingOptimization);
   }
   else
 #endif
   {
-    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, nullptr);
+    return findBestMixDFS(product, substances, effectMultipliers, maxDepth, nullptr, useHashingOptimization);
   }
 }
 

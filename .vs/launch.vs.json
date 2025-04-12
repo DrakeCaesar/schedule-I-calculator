@@ -20,8 +20,10 @@
         "${workspaceRoot}\\temp\\effectMultipliers.json",
         "${workspaceRoot}\\temp\\substanceRules.json",
         "5",
-        "-o",
-        "${workspaceRoot}\\temp\\output.json"
+        "--output",
+        "${workspaceRoot}\\temp\\output.json",
+        "--alorithm",
+        "dfs"
       ],
       "cwd": "${workspaceRoot}"
     }

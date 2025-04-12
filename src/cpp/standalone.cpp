@@ -25,7 +25,8 @@ JsBestMixResult findBestMixDFSJsonWithProgress(
     std::string effectMultipliersJson,
     std::string substanceRulesJson,
     int maxDepth,
-    bool reportProgress);
+    bool reportProgress,
+    bool useHashingOptimization);
 
 // Simple progress reporting to console
 void reportProgressToConsole(int depth, int processed, int64_t total)
@@ -148,6 +149,7 @@ void printUsage(const char *programName)
               << "  -p, --progress  Enable progress reporting\n"
               << "  -o, --output    Output file (if not specified, prints to stdout)\n"
               << "  -a, --algorithm  Algorithm to use: bfs (default) or dfs\n"
+              << "  --no-hashing     Disable the hashing optimization for DFS (for benchmarking)\n"
               << "  -h, --help      Show this help message\n";
 }
 
@@ -170,7 +172,8 @@ int main(int argc, char *argv[])
 {
     bool reportProgress = false;
     std::string outputFile;
-    std::string algorithm = "dfs"; // Changed default to "dfs" instead of "bfs"
+    std::string algorithm = "dfs";      // Changed default to "dfs" instead of "bfs"
+    bool useHashingOptimization = true; // Default to using hashing optimization
     std::vector<std::string> jsonArgs;
 
     // Check if being called from server by looking for explicit algorithm flag
@@ -198,6 +201,10 @@ int main(int argc, char *argv[])
         if (arg == "-p" || arg == "--progress")
         {
             reportProgress = true;
+        }
+        else if (arg == "--no-hashing")
+        {
+            useHashingOptimization = false;
         }
         else if (arg == "-o" || arg == "--output")
         {
@@ -318,11 +325,12 @@ int main(int argc, char *argv[])
     {
         {
             std::lock_guard<std::mutex> lock(g_consoleMutex);
-            std::cout << "Running DFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting") << std::endl;
+            std::cout << "Running DFS algorithm with " << (reportProgress ? "progress reporting" : "no progress reporting")
+                      << " and hashing optimization " << (useHashingOptimization ? "ENABLED" : "DISABLED") << std::endl;
         }
         result = findBestMixDFSJsonWithProgress(
             productJson, substancesJson, effectMultipliersJson,
-            substanceRulesJson, maxDepth, reportProgress);
+            substanceRulesJson, maxDepth, reportProgress, useHashingOptimization);
     }
     else
     {
