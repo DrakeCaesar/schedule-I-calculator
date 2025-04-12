@@ -249,11 +249,7 @@ void dfsThreadWorker(
     g_totalProcessedCombinations.fetch_add(1, std::memory_order_relaxed);
 
     // Adaptively adjust progress reporting frequency
-    int reportFrequency = 10000;
-    if (current.depth > 5)
-    {
-      reportFrequency = 50000 * (current.depth - 4);
-    }
+    int reportFrequency = 10000000;
 
     // Report progress periodically
     if (progressCallback && (g_totalProcessedCombinations.load() % reportFrequency == 0))

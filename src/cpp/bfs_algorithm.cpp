@@ -48,7 +48,7 @@ void recursiveBFS(
   nextDepthMixes.reserve(currentDepthMixes.size() * substances.size());
 
   int batchSize = 0;
-  const int reportInterval = 1000;
+  const int reportInterval = 100000;
 
   // Process all states at the current depth
   for (auto &currentMix : currentDepthMixes)
@@ -175,7 +175,7 @@ void recursiveBFSThreaded(
   nextDepthMixes.reserve(currentDepthMixes.size() * substances.size());
 
   int batchSize = 0;
-  const int reportInterval = 1000;
+  const int reportInterval = 100000;
   const int bestMixCheckInterval = 5000; // Check global best mix every 5000 steps
   int stepsSinceLastBestMixCheck = 0;
 
