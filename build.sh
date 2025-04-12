@@ -20,7 +20,6 @@ COMMON_ARGS=(
   src/cpp/json_parser.cpp
   -o src/cpp/bfs.wasm.js
   -s WASM=1
-  -s ALLOW_MEMORY_GROWTH=1
   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
   -s EXPORT_ES6=1
   -s EXPORT_NAME=createBfsModule
@@ -28,8 +27,9 @@ COMMON_ARGS=(
   # Enable WebAssembly threads support
   -s USE_PTHREADS=1
   -s PTHREAD_POOL_SIZE=16
-  -s TOTAL_MEMORY=128MB
-  -s ALLOW_MEMORY_GROWTH=1
+  -s INITIAL_MEMORY=4294967296 # 4GB - Maximum allowed for WASM (4294967296 bytes)
+  -s MAXIMUM_MEMORY=4294967296 # Set maximum to the same value
+  -s ALLOW_MEMORY_GROWTH=0     # Disable memory growth
   -s ENVIRONMENT=web,worker
   -s ASYNCIFY=1
   -I "$VCPKG_ROOT/installed/wasm32-emscripten/include"
