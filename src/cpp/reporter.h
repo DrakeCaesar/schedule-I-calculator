@@ -12,6 +12,6 @@ void reportBestMixFoundToJS(const MixState &bestMix,
 
 // Unified JavaScript-compatible progress reporting function
 // This is used by both BFS and DFS algorithms
-void reportProgressToJS(int depth, int processed, int64_t total);
+void reportProgressToJS(int depth, int64_t processed, int64_t total);
 
 #endif

@@ -11,7 +11,7 @@
 #endif
 
 // Progress reporting function type
-typedef std::function<void(int, int, int64_t)> ProgressCallback;
+typedef std::function<void(int, int64_t, int64_t)> ProgressCallback;
 
 // Data structures that mirror the TypeScript ones
 struct Effect
