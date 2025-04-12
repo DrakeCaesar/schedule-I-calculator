@@ -55,7 +55,8 @@ export interface BFSModule {
     effectMultipliersJson: string,
     substanceRulesJson: string,
     maxDepth: number,
-    reportProgress: boolean
+    reportProgress: boolean,
+    enableHashing: boolean
   ) => {
     mixArray: string[];
     profit: number;

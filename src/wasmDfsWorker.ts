@@ -89,7 +89,8 @@ self.onmessage = async (event: MessageEvent) => {
           effectMultipliersJson,
           substanceRulesJson,
           maxDepth,
-          true // Enable progress reporting
+          true, // Enable progress reporting
+          true // Enable hashing optimization
         );
       } else if (wasmModule.findBestMixDFSJson) {
         result = wasmModule.findBestMixDFSJson(
