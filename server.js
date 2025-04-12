@@ -50,12 +50,18 @@ wss.on("connection", (ws) => {
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
+  // Basic CORS headers
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  
+  // Headers required for SharedArrayBuffer
+  res.header("Cross-Origin-Opener-Policy", "same-origin");
+  res.header("Cross-Origin-Embedder-Policy", "require-corp");
+  
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
