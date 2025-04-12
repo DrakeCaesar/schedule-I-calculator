@@ -3,16 +3,24 @@
 #include "types.h"
 #include <vector>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <atomic>
 #include <mutex>
 
-// DFS State struct with static memory allocation
+// Forward declarations
+struct EffectsCache;
+
+// DFS State struct with optimized memory layout
 struct DFSState
 {
-  int substanceIndices[10]; // Fixed-size array for the current path (MAX_DEPTH = 10)
+  // Use a larger fixed-size array to handle deeper searches without reallocation
+  int substanceIndices[16]; // Support up to 16 substances in a mix for better future-proofing
   int depth;                // Current depth in the search
   int currentCost;          // Track the current mix cost in cents (integer)
+
+  // Hash value that can be incrementally updated to quickly identify identical states
+  uint64_t stateHash;
 
   DFSState();
 
@@ -27,6 +35,83 @@ struct DFSState
 
   // Copy the current state to a MixState for compatibility with existing code
   MixState toMixState() const;
+
+  // Get a unique hash for the current state (for potential memoization)
+  uint64_t getHash() const { return stateHash; }
+};
+
+// Effects cache optimized for DFS traversal
+// Stores effects at each depth to avoid recalculating them
+struct EffectsCache
+{
+  // Primary cache: full effects list for each depth
+  std::vector<std::vector<std::string>> depthCache;
+
+  // Secondary cache: substance+parent effects hash -> resulting effects
+  // This allows reusing effects calculations even when they don't fall on the same depth
+  std::unordered_map<uint64_t, std::vector<std::string>> effectsMap;
+
+  // String pool for shared strings to minimize allocations
+  std::unordered_map<std::string, std::string> stringPool;
+
+  EffectsCache(int maxDepth, const std::string &initialEffect)
+  {
+    depthCache.resize(maxDepth + 1);
+    depthCache[0].push_back(initialEffect);
+    stringPool[initialEffect] = initialEffect; // Add initial effect to pool
+  }
+
+  // Get shared string reference
+  const std::string &getPooledString(const std::string &str)
+  {
+    auto it = stringPool.find(str);
+    if (it != stringPool.end())
+    {
+      return it->second;
+    }
+    auto result = stringPool.emplace(str, str);
+    return result.first->second;
+  }
+
+  // Add effects to cache
+  void cacheEffects(int depth, const std::vector<std::string> &effects)
+  {
+    depthCache[depth] = effects;
+  }
+
+  // Get a unique hash for substance + parent effects
+  static uint64_t getEffectsHash(int substanceIndex, const std::vector<std::string> &parentEffects)
+  {
+    uint64_t hash = static_cast<uint64_t>(substanceIndex) << 32;
+    for (const auto &effect : parentEffects)
+    {
+      // Simple hash combination
+      hash = hash ^ std::hash<std::string>{}(effect);
+    }
+    return hash;
+  }
+
+  // Check if we already calculated these effects
+  bool hasCalculatedEffects(int substanceIndex, const std::vector<std::string> &parentEffects)
+  {
+    uint64_t hash = getEffectsHash(substanceIndex, parentEffects);
+    return effectsMap.find(hash) != effectsMap.end();
+  }
+
+  // Cache calculated effects with substance+parent hash
+  void cacheCalculatedEffects(int substanceIndex, const std::vector<std::string> &parentEffects,
+                              const std::vector<std::string> &resultEffects)
+  {
+    uint64_t hash = getEffectsHash(substanceIndex, parentEffects);
+    effectsMap[hash] = resultEffects;
+  }
+
+  // Get cached effects
+  const std::vector<std::string> &getCachedEffects(int substanceIndex, const std::vector<std::string> &parentEffects)
+  {
+    uint64_t hash = getEffectsHash(substanceIndex, parentEffects);
+    return effectsMap[hash];
+  }
 };
 
 // Global variables for thread synchronization in DFS algorithm

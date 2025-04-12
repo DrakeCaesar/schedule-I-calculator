@@ -26,10 +26,10 @@ const int MAX_DEPTH = 10;      // Maximum depth for the mix
 std::mutex g_consoleMutex;
 
 // DFSState implementation
-DFSState::DFSState() : depth(0), currentCost(0)
+DFSState::DFSState() : depth(0), currentCost(0), stateHash(0)
 {
   // Initialize all indices to -1 (not used)
-  for (int i = 0; i < MAX_DEPTH; ++i)
+  for (int i = 0; i < 16; ++i)
   {
     substanceIndices[i] = -1;
   }
@@ -37,10 +37,15 @@ DFSState::DFSState() : depth(0), currentCost(0)
 
 void DFSState::addSubstance(int index, const std::vector<Substance> &substances)
 {
-  if (depth < MAX_DEPTH)
+  if (depth < 16)
   {
     substanceIndices[depth] = index;
     currentCost += substances[index].cost; // Add the cost in cents
+
+    // Update hash incrementally - multiply by a prime number and add index
+    // This creates a unique hash value for each path of substances
+    stateHash = stateHash * 31 + static_cast<uint64_t>(index);
+
     depth++;
   }
 }
@@ -50,7 +55,12 @@ void DFSState::removeLastSubstance(const std::vector<Substance> &substances)
   if (depth > 0)
   {
     depth--;
-    currentCost -= substances[substanceIndices[depth]].cost; // Subtract the cost in cents
+    int index = substanceIndices[depth];
+    currentCost -= substances[index].cost; // Subtract the cost in cents
+
+    // Reverse the hash calculation for backtracking
+    stateHash = (stateHash - static_cast<uint64_t>(index)) / 31;
+
     substanceIndices[depth] = -1;
   }
 }
@@ -68,7 +78,7 @@ std::vector<std::string> DFSState::toSubstanceNames(const std::vector<Substance>
 
 MixState DFSState::toMixState() const
 {
-  MixState mix(MAX_DEPTH);
+  MixState mix(depth); // Only allocate what we need
   for (int i = 0; i < depth; ++i)
   {
     if (substanceIndices[i] >= 0)
@@ -103,7 +113,7 @@ void dfsThreadWorker(
   // Initialize with the starting substance
   currentState.addSubstance(startSubstanceIndex, substances);
 
-  // Create a set of all effect names for efficiency
+  // Create a set of all effect names for fast lookups
   std::unordered_map<std::string, bool> effectsSet;
   effectsSet.reserve(effectMultipliers.size() * 2);
   for (const auto &pair : effectMultipliers)
@@ -111,16 +121,18 @@ void dfsThreadWorker(
     effectsSet[pair.first] = true;
   }
 
-  // Thread-local cache for effect calculations at each depth
-  std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
-
-  // Initialize effects cache with initial effect
-  effectsCache[0].push_back(product.initialEffect);
+  // Initialize the optimized effects cache
+  EffectsCache effectsCache(maxDepth, product.initialEffect);
 
   // Pre-calculate effects for the first substance (which is already added)
   std::vector<std::string> effectsList = applySubstanceRules(
-      effectsCache[0], substances[startSubstanceIndex], 1, effectsSet);
-  effectsCache[1] = effectsList;
+      effectsCache.depthCache[0], substances[startSubstanceIndex], 1, effectsSet);
+
+  // Cache the effects at depth 1
+  effectsCache.cacheEffects(1, effectsList);
+
+  // Also cache in the substance-specific map for potential reuse
+  effectsCache.cacheCalculatedEffects(startSubstanceIndex, effectsCache.depthCache[0], effectsList);
 
   // Process the first node (already added substance)
   {
@@ -205,27 +217,32 @@ void dfsThreadWorker(
     // Add the current substance
     currentState.addSubstance(current.substanceIndex, substances);
 
-    // Calculate effects efficiently using the cached previous level
-    if (current.depth == 2)
+    // Calculate effects efficiently, checking for cached results first
+    const int substanceIndex = current.substanceIndex;
+    const size_t currentDepth = current.depth;
+    const auto &parentEffects = effectsCache.depthCache[currentDepth - 1];
+
+    // Use direct cache lookup using the substance+parent combo
+    if (effectsCache.hasCalculatedEffects(substanceIndex, parentEffects))
     {
-      // For depth 2, use the cached effects from the starting substance
-      effectsList = applySubstanceRules(
-          effectsCache[1],
-          substances[current.substanceIndex],
-          current.depth,
-          effectsSet);
-      effectsCache[current.depth] = effectsList;
+      // Get pre-calculated effects - no need to reapply rules
+      effectsList = effectsCache.getCachedEffects(substanceIndex, parentEffects);
     }
     else
     {
-      // For deeper levels, use the parent's cached effects
+      // Calculate effects from parent effects
       effectsList = applySubstanceRules(
-          effectsCache[current.depth - 1],
-          substances[current.substanceIndex],
-          current.depth,
+          parentEffects,
+          substances[substanceIndex],
+          currentDepth,
           effectsSet);
-      effectsCache[current.depth] = effectsList;
+
+      // Cache for potential reuse with same substance+parent combo
+      effectsCache.cacheCalculatedEffects(substanceIndex, parentEffects, effectsList);
     }
+
+    // Always update the depth cache
+    effectsCache.cacheEffects(currentDepth, effectsList);
 
     // Update progress and count this combination
     g_totalProcessedCombinations.fetch_add(1, std::memory_order_relaxed);
@@ -411,7 +428,7 @@ JsBestMixResult findBestMixDFS(
       effectsSet[pair.first] = true;
     }
 
-    int processedCombinations = 0;
+    int64_t processedCombinations = 0;
 
     // Process each substance as a starting point in sequence
     for (size_t startIdx = 0; startIdx < substances.size(); ++startIdx)
@@ -421,14 +438,18 @@ JsBestMixResult findBestMixDFS(
       currentState.addSubstance(startIdx, substances);
       processedCombinations++;
 
-      // Initialize effects cache with initial effect
-      std::vector<std::vector<std::string>> effectsCache(maxDepth + 1);
-      effectsCache[0].push_back(product.initialEffect);
+      // Initialize the optimized effects cache
+      EffectsCache effectsCache(maxDepth, product.initialEffect);
 
       // Calculate effects for the first substance
       std::vector<std::string> effectsList = applySubstanceRules(
-          effectsCache[0], substances[startIdx], 1, effectsSet);
-      effectsCache[1] = effectsList;
+          effectsCache.depthCache[0], substances[startIdx], 1, effectsSet);
+
+      // Cache the effects at depth 1
+      effectsCache.cacheEffects(1, effectsList);
+
+      // Also cache in the substance-specific map for potential reuse
+      effectsCache.cacheCalculatedEffects(startIdx, effectsCache.depthCache[0], effectsList);
 
       // Calculate profit for starting substance
       int sellPriceCents = calculateFinalPrice(product.name, effectsList, effectMultipliers);
@@ -493,20 +514,32 @@ JsBestMixResult findBestMixDFS(
         // Add the current substance
         currentState.addSubstance(current.substanceIndex, substances);
 
-        // Calculate effects using the cached previous level
-        if (current.depth == 2)
+        // Calculate effects efficiently, checking for cached results first
+        const int substanceIndex = current.substanceIndex;
+        const size_t currentDepth = current.depth;
+        const auto &parentEffects = effectsCache.depthCache[currentDepth - 1];
+
+        // Use direct cache lookup using the substance+parent combo
+        if (effectsCache.hasCalculatedEffects(substanceIndex, parentEffects))
         {
-          // Use cached effects from starting substance
-          effectsList = applySubstanceRules(
-              effectsCache[1], substances[current.substanceIndex], current.depth, effectsSet);
+          // Get pre-calculated effects - no need to reapply rules
+          effectsList = effectsCache.getCachedEffects(substanceIndex, parentEffects);
         }
         else
         {
-          // Use parent's cached effects
+          // Calculate effects from parent effects
           effectsList = applySubstanceRules(
-              effectsCache[current.depth - 1], substances[current.substanceIndex], current.depth, effectsSet);
+              parentEffects,
+              substances[substanceIndex],
+              currentDepth,
+              effectsSet);
+
+          // Cache for potential reuse with same substance+parent combo
+          effectsCache.cacheCalculatedEffects(substanceIndex, parentEffects, effectsList);
         }
-        effectsCache[current.depth] = effectsList;
+
+        // Always update the depth cache
+        effectsCache.cacheEffects(currentDepth, effectsList);
 
         // Count this combination
         processedCombinations++;
