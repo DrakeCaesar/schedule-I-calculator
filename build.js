@@ -51,7 +51,7 @@ const commonArgs = [
   // Enable WebAssembly threads support
   "-s USE_PTHREADS=1",
   "-s PTHREAD_POOL_SIZE=16", // Specify thread pool size
-  "-s TOTAL_MEMORY=128MB", // Increase memory to accommodate threads
+  "-s TOTAL_MEMORY=3072MB", // Increase memory to accommodate threads
   "-s ALLOW_MEMORY_GROWTH=1",
   "--bind",
   "--no-entry",

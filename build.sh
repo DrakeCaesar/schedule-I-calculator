@@ -28,7 +28,7 @@ COMMON_ARGS=(
   # Enable WebAssembly threads support
   -s USE_PTHREADS=1
   -s PTHREAD_POOL_SIZE=16
-  -s TOTAL_MEMORY=128MB
+  -s TOTAL_MEMORY=3072MB
   -s ALLOW_MEMORY_GROWTH=1
   -s ENVIRONMENT=web,worker
   -s ASYNCIFY=1
